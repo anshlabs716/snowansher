@@ -199,7 +199,7 @@ Recommended browsers include:
 
 - 🦊 Firefox
 - 🌐 Chromium
-- 🪟 Microsoft Edge
+- 🪟 Microslop Edge
 - 🧭 Safari
 
 Performance will depend on your hardware, browser, and selected graphics settings.
