@@ -300,8 +300,7 @@ This makes bugs much easier to reproduce.
 
 ### 🤖 Development Assistance
 
-- Codex
-- Gemini CLI
+- shozanthebozan
 
 ---
 
