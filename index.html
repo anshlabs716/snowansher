@@ -1,346 +1,1944 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SNOW ANSHER</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>❄️ SNOW RIDER ELITE</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap');
 
-        :root {
-            --primary: #00d2ff;
-            --secondary: #3a7bd5;
-            --accent: #f1c40f;
-            --danger: #e74c3c;
-            --glass: rgba(0, 20, 40, 0.85);
-            --glass-border: rgba(255, 255, 255, 0.15);
-        }
-
-        body {
+        * {
             margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
             overflow: hidden;
-            background-color: #000;
+            background: #0b1f3a;
             font-family: 'Rajdhani', sans-serif;
             user-select: none;
-            color: white;
+            color: #f0faff;
             height: 100vh;
+            width: 100vw;
         }
-
+        #game-canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            background: #0b1f3a;
+        }
         #loader {
             position: fixed;
             inset: 0;
-            background: #000;
+            background: #0b1f3a;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             z-index: 9999;
-            transition: opacity 0.5s;
+            transition: opacity .6s ease;
         }
-
-        .spinner {
-            width: 80px;
-            height: 80px;
-            border: 8px solid var(--glass-border);
-            border-top: 8px solid var(--primary);
+        .loader-ring {
+            width: 90px;
+            height: 90px;
+            border: 6px solid rgba(85, 215, 255, .12);
+            border-top: 6px solid #55d7ff;
             border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
+            animation: spin 1s cubic-bezier(.6, .0, .4, 1) infinite;
+            margin-bottom: 24px;
+            box-shadow: 0 0 40px rgba(85, 215, 255, .08);
+        }
+        .loader-text {
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 8px;
+            font-size: 13px;
+            color: #55d7ff;
+            text-transform: uppercase;
+            animation: pulse 1.8s ease-in-out infinite;
+        }
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+        @keyframes pulse {
+            0%,
+            100% {
+                opacity: .3;
+            }
+            50% {
+                opacity: 1;
+            }
         }
 
-        @keyframes spin { 100% { transform: rotate(360deg); } }
+        /* ── HUD ── */
+        #hud {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 60;
+            padding: 28px 36px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity .5s ease;
+        }
+        #hud.visible {
+            visibility: visible;
+            opacity: 1;
+        }
+        .hud-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .hud-stat {
+            background: rgba(7, 25, 48, .72);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(170, 225, 255, .18);
+            padding: 12px 22px;
+            border-radius: 14px;
+            min-width: 100px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, .25);
+        }
+        .hud-stat .label {
+            font-size: 10px;
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 3px;
+            color: #55d7ff;
+            text-transform: uppercase;
+        }
+        .hud-stat .value {
+            font-size: 36px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 900;
+            line-height: 1.1;
+            margin-top: 2px;
+        }
+        .hud-stat .value .icon {
+            font-size: .6em;
+            margin-right: 6px;
+            color: #ffd166;
+        }
+        .hud-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+        .hud-controls {
+            font-size: 14px;
+            opacity: .5;
+            letter-spacing: 2px;
+            font-weight: 600;
+            background: rgba(0, 0, 0, .3);
+            padding: 8px 18px;
+            border-radius: 30px;
+            backdrop-filter: blur(6px);
+            border: 1px solid rgba(255, 255, 255, .04);
+        }
+        .hud-speed .value {
+            color: #55d7ff;
+            font-size: 32px;
+        }
+        .hud-speed .value small {
+            font-size: 14px;
+            opacity: .5;
+            font-weight: 400;
+        }
 
+        /* ── MENU OVERLAY ── */
         .overlay {
-            position: absolute;
+            position: fixed;
             inset: 0;
             display: flex;
             justify-content: center;
             align-items: center;
             z-index: 100;
-            backdrop-filter: blur(15px);
-            background: radial-gradient(circle at center, rgba(0, 30, 60, 0.4), rgba(0, 5, 10, 0.95));
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            background: radial-gradient(circle at 50% 30%, rgba(19, 74, 116, .50), rgba(3, 12, 28, .85));
+            transition: opacity .4s ease;
         }
-
-        .container {
-            width: 90%;
-            max-width: 800px;
-            background: var(--glass);
-            padding: 40px;
-            border-radius: 24px;
-            border: 1px solid var(--glass-border);
+        .overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .panel-box {
+            width: 92%;
+            max-width: 820px;
+            background: rgba(7, 25, 48, .88);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 40px 44px;
+            border-radius: 28px;
+            border: 1px solid rgba(170, 225, 255, .18);
+            box-shadow: 0 30px 80px rgba(0, 0, 0, .50), inset 0 0 60px rgba(85, 215, 255, .03);
             text-align: center;
-            box-shadow: 0 0 60px rgba(0, 0, 0, 0.7), inset 0 0 30px rgba(0, 210, 255, 0.1);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .panel-box::-webkit-scrollbar {
+            width: 4px;
+        }
+        .panel-box::-webkit-scrollbar-thumb {
+            background: #55d7ff;
+            border-radius: 10px;
         }
 
-        h1 {
+        .logo {
             font-family: 'Orbitron', sans-serif;
-            font-size: 80px;
+            font-size: 72px;
             font-weight: 900;
             margin: 0;
-            background: linear-gradient(to bottom, #fff, var(--primary));
+            background: linear-gradient(to bottom, #ffffff, #55d7ff);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            background-clip: text;
             text-transform: uppercase;
-            letter-spacing: -4px;
-            filter: drop-shadow(0 0 15px rgba(0, 210, 255, 0.6));
+            letter-spacing: -3px;
+            filter: drop-shadow(0 0 30px rgba(85, 215, 255, .20));
+            line-height: 1;
         }
-
-        .subtitle {
+        .logo-sub {
             font-family: 'Orbitron', sans-serif;
-            color: var(--accent);
-            letter-spacing: 10px;
-            font-size: 14px;
-            margin-top: -5px;
-            margin-bottom: 40px;
-            text-shadow: 0 0 12px var(--accent);
+            color: #ffd166;
+            letter-spacing: 12px;
+            font-size: 12px;
+            margin-top: -4px;
+            margin-bottom: 32px;
+            text-transform: uppercase;
+            opacity: .8;
         }
 
-        .tabs { display: flex; gap: 15px; justify-content: center; margin-bottom: 30px; }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 28px;
+        }
         .tab-btn {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--glass-border);
-            color: white;
-            padding: 14px 28px;
+            background: rgba(255, 255, 255, .04);
+            border: 1px solid rgba(170, 225, 255, .12);
+            color: #c8e6ff;
+            padding: 12px 24px;
             border-radius: 12px;
             cursor: pointer;
             font-family: 'Orbitron', sans-serif;
-            font-size: 13px;
-            transition: 0.3s;
+            font-size: 12px;
+            letter-spacing: 1px;
+            transition: .25s;
             display: flex;
             align-items: center;
             gap: 10px;
+            font-weight: 600;
         }
-        .tab-btn:hover { background: rgba(255, 255, 255, 0.12); }
-        .tab-btn.active { background: var(--primary); color: #000; font-weight: bold; box-shadow: 0 0 25px var(--primary); }
+        .tab-btn:hover {
+            background: rgba(85, 215, 255, .10);
+            border-color: rgba(85, 215, 255, .25);
+        }
+        .tab-btn.active {
+            background: #55d7ff;
+            color: #06182c;
+            border-color: #55d7ff;
+            box-shadow: 0 6px 28px rgba(85, 215, 255, .25);
+        }
 
-        .panel { display: none; min-height: 320px; animation: fadeIn 0.4s ease-out; }
-        .panel.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        .panel {
+            display: none;
+            animation: fadeUp .35s ease-out;
+        }
+        .panel.active {
+            display: block;
+        }
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(16px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
 
-        .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px;
+        }
         .card {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--glass-border);
-            padding: 25px;
-            border-radius: 18px;
+            background: rgba(255, 255, 255, .04);
+            border: 1px solid rgba(170, 225, 255, .10);
+            padding: 26px 18px;
+            border-radius: 16px;
             cursor: pointer;
-            transition: 0.3s;
+            transition: .3s;
         }
-        .card:hover { transform: translateY(-8px); background: rgba(255, 255, 255, 0.1); border-color: var(--primary); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .card i { font-size: 36px; margin-bottom: 15px; color: var(--primary); }
-        .card h3 { margin: 10px 0; font-family: 'Orbitron', sans-serif; font-size: 18px; }
-
-        .settings-grid { text-align: left; display: flex; flex-direction: column; gap: 20px; }
-        .setting-item { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.3); padding: 18px 24px; border-radius: 12px; }
-        .setting-item label { font-family: 'Orbitron', sans-serif; font-size: 13px; color: var(--primary); }
-
-        select, input[type="range"] {
-            background: #000;
-            border: 1px solid var(--glass-border);
-            color: white;
-            padding: 10px;
-            border-radius: 8px;
-            width: 180px;
+        .card:hover {
+            transform: translateY(-6px);
+            background: rgba(85, 215, 255, .08);
+            border-color: #55d7ff;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, .25);
+        }
+        .card i {
+            font-size: 38px;
+            color: #55d7ff;
+            margin-bottom: 12px;
+        }
+        .card h3 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 16px;
+            margin: 6px 0 4px;
+        }
+        .card p {
+            opacity: .6;
+            font-size: 14px;
+            margin: 0;
         }
 
-        #hud {
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            z-index: 50;
-            padding: 40px;
+        .settings-grid {
             display: flex;
             flex-direction: column;
+            gap: 16px;
+            text-align: left;
+        }
+        .setting-row {
+            display: flex;
             justify-content: space-between;
-            visibility: hidden;
+            align-items: center;
+            background: rgba(0, 0, 0, .25);
+            padding: 14px 22px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, .04);
+        }
+        .setting-row label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 12px;
+            color: #55d7ff;
+            letter-spacing: 1px;
+        }
+        .setting-row select,
+        .setting-row input[type="range"] {
+            background: #06182c;
+            border: 1px solid rgba(170, 225, 255, .12);
+            color: #f0faff;
+            padding: 8px 14px;
+            border-radius: 8px;
+            width: 180px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 600;
+        }
+        .setting-row input[type="range"] {
+            accent-color: #55d7ff;
+            cursor: pointer;
         }
 
-        .hud-row { display: flex; justify-content: space-between; align-items: flex-start; }
-        .hud-stat {
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
-            padding: 15px 25px;
-            border-radius: 15px;
-            backdrop-filter: blur(8px);
+        .credit-line {
+            display: flex;
+            justify-content: space-between;
+            padding: 14px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, .04);
+            font-size: 18px;
         }
-        .hud-label { font-size: 12px; color: var(--primary); letter-spacing: 2px; text-transform: uppercase; font-family: 'Orbitron', sans-serif; }
-        .hud-value { font-size: 48px; font-family: 'Orbitron', sans-serif; font-weight: 900; line-height: 1; margin-top: 5px; }
+        .credit-line .role {
+            color: #ffd166;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        .credits-list {
+            margin-top: 8px;
+        }
 
-        #speedometer { text-align: right; }
-        #speed-val { color: var(--primary); }
+        /* GARAGE */
+        .garage-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 22px;
+        }
+        .garage-header h2 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 18px;
+            margin: 0;
+        }
+        .garage-gifts {
+            color: #ffd166;
+            font-size: 22px;
+            font-weight: 700;
+        }
+        .garage-gifts i {
+            margin-right: 8px;
+        }
 
-        #game-over { display: none; }
-        #game-over h1 { font-size: 80px; color: var(--danger); }
-
+        /* GAME OVER */
+        .final-stats {
+            display: flex;
+            justify-content: center;
+            gap: 50px;
+            margin: 30px 0 36px;
+        }
+        .final-stat .fval {
+            font-size: 44px;
+            font-family: 'Orbitron', sans-serif;
+            color: #ffd166;
+            font-weight: 900;
+        }
+        .final-stat .flabel {
+            font-size: 13px;
+            letter-spacing: 3px;
+            opacity: .6;
+            text-transform: uppercase;
+        }
         .btn-main {
-            background: linear-gradient(to right, var(--primary), var(--secondary));
+            background: linear-gradient(135deg, #087ea4, #3577c7);
             border: none;
-            color: #000;
-            padding: 18px 60px;
+            color: #fff;
+            padding: 18px 56px;
             font-family: 'Orbitron', sans-serif;
             font-weight: 900;
-            font-size: 22px;
-            border-radius: 12px;
+            font-size: 20px;
+            border-radius: 14px;
             cursor: pointer;
-            transition: 0.3s;
+            transition: .3s;
             text-transform: uppercase;
-            box-shadow: 0 10px 30px rgba(0, 210, 255, 0.4);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .30);
+            letter-spacing: 2px;
         }
-        .btn-main:hover { transform: translateY(-4px) scale(1.05); box-shadow: 0 15px 45px rgba(0, 210, 255, 0.6); }
-
-        .credit-line { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
-        .credit-role { color: var(--accent); font-weight: bold; }
-
-        #vignette {
-            position: fixed;
-            inset: 0;
-            background: radial-gradient(circle, transparent 40%, rgba(0,0,0,0.85) 100%);
-            pointer-events: none;
-            z-index: 5;
+        .btn-main:hover {
+            transform: translateY(-4px) scale(1.03);
+            box-shadow: 0 16px 40px rgba(53, 119, 199, .30);
+        }
+        .btn-secondary {
+            background: transparent;
+            border: none;
+            color: rgba(255, 255, 255, .5);
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 18px;
+            transition: .2s;
+            letter-spacing: 2px;
+        }
+        .btn-secondary:hover {
+            color: #fff;
+            opacity: 1;
         }
 
-        .final-stats { display: flex; justify-content: center; gap: 50px; margin: 40px 0; }
-        .stat-box .val { font-size: 40px; font-family: 'Orbitron', sans-serif; color: var(--accent); }
+        /* RESPONSIVE */
+        @media (max-width: 700px) {
+            .logo {
+                font-size: 44px;
+                letter-spacing: -1px;
+            }
+            .panel-box {
+                padding: 24px 16px;
+            }
+            .grid-3 {
+                grid-template-columns: 1fr 1fr;
+            }
+            .grid-3 .card:last-child {
+                grid-column: 1 / -1;
+            }
+            .hud-stat .value {
+                font-size: 26px;
+            }
+            .hud-stat {
+                padding: 8px 14px;
+                min-width: 70px;
+            }
+            #hud {
+                padding: 16px 18px;
+            }
+            .final-stats {
+                gap: 24px;
+            }
+            .final-stat .fval {
+                font-size: 30px;
+            }
+            .setting-row {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+            .setting-row select,
+            .setting-row input[type="range"] {
+                width: 100%;
+            }
+            .tabs .tab-btn {
+                font-size: 10px;
+                padding: 8px 14px;
+            }
+            .hud-controls {
+                display: none;
+            }
+        }
+        @media (max-width: 480px) {
+            .grid-3 {
+                grid-template-columns: 1fr;
+            }
+            .grid-3 .card:last-child {
+                grid-column: 1;
+            }
+            .logo {
+                font-size: 34px;
+            }
+            .logo-sub {
+                letter-spacing: 6px;
+                font-size: 10px;
+            }
+        }
+
+        /* SCROLLBAR */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #55d7ff;
+            border-radius: 10px;
+        }
     </style>
 </head>
 <body>
+
+    <!-- LOADER -->
     <div id="loader">
-        <div class="spinner"></div>
-        <div style="font-family: 'Orbitron'; letter-spacing: 6px; font-size: 14px; color: var(--primary);">SYNCING WORLD DATA...</div>
+        <div class="loader-ring"></div>
+        <div class="loader-text">❄️ Loading Slopes</div>
     </div>
 
-    <div id="vignette"></div>
-
+    <!-- HUD -->
     <div id="hud">
-        <div class="hud-row">
+        <div class="hud-top">
             <div class="hud-stat">
-                <div class="hud-label">GIFTS</div>
-                <div class="hud-value"><i class="fas fa-gift" style="color: var(--accent); font-size: 0.7em;"></i> <span id="gifts-hud">0</span></div>
+                <div class="label"><i class="fas fa-gift" style="color:#ffd166;margin-right:4px;"></i> GIFTS</div>
+                <div class="value"><span id="hud-gifts">0</span></div>
             </div>
-            <div class="hud-stat" style="text-align: center;">
-                <div class="hud-label">SURVIVAL</div>
-                <div class="hud-value" id="score-hud">0</div>
+            <div class="hud-stat" style="text-align:center;">
+                <div class="label">🏔️ DISTANCE</div>
+                <div class="value"><span id="hud-score">0</span><span style="font-size:16px;opacity:.4;font-weight:400;">m</span></div>
             </div>
-            <div class="hud-stat">
-                <div class="hud-label">BEST</div>
-                <div class="hud-value" id="best-hud">0</div>
+            <div class="hud-stat" style="text-align:right;">
+                <div class="label">⭐ BEST</div>
+                <div class="value"><span id="hud-best">0</span></div>
             </div>
         </div>
-        <div class="hud-row" style="align-items: flex-end;">
-            <div style="opacity: 0.6; font-size: 16px; letter-spacing: 3px; font-weight: bold;">
-                <i class="fas fa-keyboard"></i> A/D TO STEER | SPACE TO JUMP
-            </div>
-            <div class="hud-stat" id="speedometer">
-                <div class="hud-label">VELOCITY</div>
-                <div class="hud-value"><span id="speed-val">0</span><small style="font-size: 16px; opacity: 0.5;"> KM/H</small></div>
+        <div class="hud-bottom">
+            <div class="hud-controls"><i class="fas fa-keyboard"></i> A/D · ←/→ &nbsp;|&nbsp; <i class="fas fa-arrow-up"></i> SPACE</div>
+            <div class="hud-stat hud-speed">
+                <div class="label">⚡ SPEED</div>
+                <div class="value"><span id="hud-speed">0</span><small> km/h</small></div>
             </div>
         </div>
     </div>
 
-    <div id="menu" class="overlay">
-        <div class="container">
-            <h1>SNOW ANSHER</h1>
-            <div class="subtitle"></div>
+    <!-- MENU -->
+    <div id="menu-overlay" class="overlay">
+        <div class="panel-box">
+            <div class="logo">SNOW RIDER</div>
+            <div class="logo-sub">❄️ Elite Edition</div>
 
             <div class="tabs">
                 <button class="tab-btn active" data-tab="play"><i class="fas fa-play"></i> PLAY</button>
                 <button class="tab-btn" data-tab="garage"><i class="fas fa-sled"></i> GARAGE</button>
-                <button class="tab-btn" data-tab="settings"><i class="fas fa-cog"></i> OPTIONS</button>
-                <button class="tab-btn" data-tab="credits"><i class="fas fa-info-circle"></i> CREDITS</button>
+                <button class="tab-btn" data-tab="settings"><i class="fas fa-sliders-h"></i> OPTIONS</button>
+                <button class="tab-btn" data-tab="credits"><i class="fas fa-award"></i> CREDITS</button>
             </div>
 
-            <div id="play" class="panel active">
-                <div class="grid">
-                    <div class="card" onclick="game.start('easy')">
+            <!-- PLAY -->
+            <div id="panel-play" class="panel active">
+                <div class="grid-3">
+                    <div class="card" data-diff="easy">
                         <i class="fas fa-snowflake"></i>
                         <h3>CRUISE</h3>
-                        <p>Relaxed descent.</p>
+                        <p>Relaxed ride • Gentle slopes</p>
                     </div>
-                    <div class="card" onclick="game.start('medium')">
+                    <div class="card" data-diff="medium">
                         <i class="fas fa-mountain"></i>
                         <h3>CHALLENGE</h3>
-                        <p>Pro slopes.</p>
+                        <p>Pro terrain • Faster pace</p>
                     </div>
-                    <div class="card" onclick="game.start('hard')">
+                    <div class="card" data-diff="hard">
                         <i class="fas fa-bolt"></i>
                         <h3>EXTREME</h3>
-                        <p>No limits.</p>
+                        <p>No limits • Maximum speed</p>
                     </div>
                 </div>
             </div>
 
-            <div id="garage" class="panel">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 25px;">
-                    <h2 style="font-family: 'Orbitron'; margin: 0;">SLED SELECTION</h2>
-                    <div style="color: var(--accent); font-size: 24px;"><i class="fas fa-gift"></i> <span id="garage-gifts">0</span></div>
+            <!-- GARAGE -->
+            <div id="panel-garage" class="panel">
+                <div class="garage-header">
+                    <h2>🎿 SLED SKINS</h2>
+                    <div class="garage-gifts"><i class="fas fa-gift"></i> <span id="garage-gifts">0</span></div>
                 </div>
-                <div class="grid" id="sled-grid">
-                    <div class="card" onclick="game.setSkin(0)">🔴 Racing Red</div>
-                    <div class="card" onclick="game.setSkin(1)">🔵 Nitro Blue</div>
-                    <div class="card" onclick="game.setSkin(2)">🟢 Toxic Green</div>
+                <div class="grid-3" id="sled-grid">
+                    <div class="card" data-skin="0">🔴 <strong>Blaze</strong><br><span style="opacity:.5;font-size:13px;">Crimson</span></div>
+                    <div class="card" data-skin="1">🔵 <strong>Frost</strong><br><span style="opacity:.5;font-size:13px;">Electric Blue</span></div>
+                    <div class="card" data-skin="2">🟢 <strong>Viper</strong><br><span style="opacity:.5;font-size:13px;">Neon Green</span></div>
                 </div>
             </div>
 
-            <div id="settings" class="panel">
+            <!-- SETTINGS -->
+            <div id="panel-settings" class="panel">
                 <div class="settings-grid">
-                    <div class="setting-item">
-                        <label>GRAPHICS</label>
-                        <select id="gfx-quality" onchange="game.updateSetting('graphics', this.value)">
-                            <option value="low">LOW (FAST)</option>
-                            <option value="medium" selected>BALANCED</option>
-                            <option value="high">HIGH (ULTRA)</option>
+                    <div class="setting-row">
+                        <label>🎨 Graphics</label>
+                        <select id="gfx-quality">
+                            <option value="low">Low (Fast)</option>
+                            <option value="medium" selected>Balanced</option>
+                            <option value="high">High (Ultra)</option>
                         </select>
                     </div>
-                    <div class="setting-item">
-                        <label>SENSITIVITY</label>
-                        <input type="range" id="sens" min="0.5" max="2.5" step="0.1" value="1.2" oninput="game.updateSetting('sensitivity', this.value)">
+                    <div class="setting-row">
+                        <label>🎯 Sensitivity</label>
+                        <input type="range" id="sens-slider" min="0.3" max="2.5" step="0.1" value="1.2" />
                     </div>
-                    <div class="setting-item">
-                        <label>FIELD OF VIEW</label>
-                        <input type="range" id="fov-range" min="50" max="100" step="5" value="70" oninput="game.updateSetting('fov', this.value)">
+                    <div class="setting-row">
+                        <label>🔭 Field of View</label>
+                        <input type="range" id="fov-slider" min="50" max="100" step="2" value="70" />
                     </div>
-                    <div class="setting-item">
-                        <label>MASTER VOLUME</label>
-                        <input type="range" id="audio-vol" min="0" max="1" step="0.1" value="0.5" oninput="game.updateSetting('volume', this.value)">
+                    <div class="setting-row">
+                        <label>🔊 Volume</label>
+                        <input type="range" id="vol-slider" min="0" max="1" step="0.05" value="0.5" />
                     </div>
                 </div>
             </div>
 
-            <div id="credits" class="panel">
-                <h2 style="font-family: 'Orbitron'; margin-top: 0;">THE TEAM</h2>
+            <!-- CREDITS -->
+            <div id="panel-credits" class="panel">
+                <h2 style="font-family:'Orbitron',sans-serif;font-size:18px;margin-top:0;">🏆 THE TEAM</h2>
                 <div class="credits-list">
-                    <div class="credit-line"><span>ANSH</span> <span class="credit-role">DIRECTOR</span></div>
-                    <div class="credit-line"><span>CODEX GEMINI CLI</span> <span class="credit-role">CORE AI</span></div>
-                    <div class="credit-line"><span>CODEX</span> <span class="credit-role">THE IDEA</span></div>
+                    <div class="credit-line"><span>ANSH</span> <span class="role">DIRECTOR</span></div>
+                    <div class="credit-line"><span>CODEX GEMINI CLI</span> <span class="role">CORE AI</span></div>
+                    <div class="credit-line"><span>CODEX</span> <span class="role">THE IDEA</span></div>
+                    <div class="credit-line"><span>❄️ Snow Rider Elite</span> <span class="role">v2.0</span></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="game-over" class="overlay">
-        <div class="container">
-            <h1 style="color: var(--danger);">MISSION ABORTED</h1>
-            <div class="subtitle" style="color: white; opacity: 0.6;">FATAL IMPACT DETECTED</div>
+    <!-- GAME OVER -->
+    <div id="gameover-overlay" class="overlay hidden">
+        <div class="panel-box">
+            <div style="font-size:60px;margin-bottom:6px;">💥</div>
+            <div style="font-family:'Orbitron',sans-serif;font-size:36px;font-weight:900;color:#ff786e;">CRASH</div>
+            <div class="logo-sub" style="margin-bottom:20px;opacity:.5;">Mission Aborted</div>
 
             <div class="final-stats">
-                <div class="stat-box">
-                    <div class="label">FINAL TIME</div>
-                    <div class="val" id="final-time">0s</div>
+                <div class="final-stat">
+                    <div class="flabel">Distance</div>
+                    <div class="fval" id="final-distance">0 <span style="font-size:20px;opacity:.5;">m</span></div>
                 </div>
-                <div class="stat-box">
-                    <div class="label">GIFTS</div>
-                    <div class="val" id="final-gifts">0</div>
+                <div class="final-stat">
+                    <div class="flabel">Gifts</div>
+                    <div class="fval" id="final-gifts">0</div>
+                </div>
+                <div class="final-stat">
+                    <div class="flabel">Speed</div>
+                    <div class="fval" id="final-speed">0 <span style="font-size:20px;opacity:.5;">km/h</span></div>
                 </div>
             </div>
 
-            <button class="btn-main" onclick="game.retry()">RE-DEPLOY</button>
-            <p style="margin-top: 25px; cursor: pointer; opacity: 0.6; font-weight: bold;" onclick="game.toMenu()">RETURN TO HUB</p>
+            <button class="btn-main" id="retry-btn">🔄 Ride Again</button>
+            <button class="btn-secondary" id="menu-btn">← Return to Hub</button>
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
-    <script src="index.js"></script>
+    <!-- Three.js Canvas injected here -->
+    <div id="game-canvas"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js">
+    </script>
+
+    <script>
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        //  SNOW RIDER ELITE  –  Full Game
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+        (function() {
+            'use strict';
+
+            // ── DOM refs ──
+            const $ = id => document.getElementById(id);
+            const hud = $('hud');
+            const hudGifts = $('hud-gifts');
+            const hudScore = $('hud-score');
+            const hudBest = $('hud-best');
+            const hudSpeed = $('hud-speed');
+            const menuOverlay = $('menu-overlay');
+            const gameoverOverlay = $('gameover-overlay');
+            const finalDist = $('final-distance');
+            const finalGifts = $('final-gifts');
+            const finalSpeed = $('final-speed');
+            const garageGifts = $('garage-gifts');
+            const loader = $('loader');
+
+            // ── Settings ──
+            const settings = {
+                graphics: 'medium',
+                sensitivity: 1.2,
+                fov: 70,
+                volume: 0.5,
+                skin: 0
+            };
+
+            // ── State ──
+            const state = {
+                playing: false,
+                score: 0,
+                gifts: 0,
+                best: parseInt(localStorage.getItem('snowrider_best')) || 0,
+                speed: 0,
+                maxSpeed: 0,
+                difficulty: 'medium',
+                distance: 0,
+                time: 0,
+                gameOver: false,
+                skin: 0
+            };
+            state.best = Math.max(state.best, 0);
+            hudBest.textContent = state.best;
+
+            // ── Three.js globals ──
+            let scene, camera, renderer;
+            let sledGroup, sledBody;
+            let terrain, trees = [],
+                obstacles = [],
+                giftItems = [],
+                snowParticles;
+            let clock = new THREE.Clock();
+            let animFrameId = null;
+            let keys = { left: false, right: false, jump: false };
+            let moveX = 0;
+            let world;
+            let groundBody;
+            let terrainMesh;
+            let isJumping = false;
+            let jumpCooldown = 0;
+            let terrainSegments = [];
+            let treeMeshes = [];
+            let obstacleMeshes = [];
+            let giftMeshes = [];
+            let cloudMeshes = [];
+            let sunLight, ambientLight;
+            let fog;
+            let sledTrail = [];
+            let trailParticles = [];
+
+            // ── Skin colors ──
+            const SKIN_COLORS = [
+                { main: 0xcc2233, accent: 0xff6644, glow: 0xff4433 }, // Blaze
+                { main: 0x2288dd, accent: 0x44ddff, glow: 0x44aaff }, // Frost
+                { main: 0x33cc55, accent: 0x88ff66, glow: 0x66ff88 } // Viper
+            ];
+
+            // ── Difficulty config ──
+            const DIFFICULTY = {
+                easy: { speedBase: 6, speedMax: 22, obstacleRate: 0.6, giftRate: 0.8, spawnDist: 120, name: 'Cruise' },
+                medium: { speedBase: 10, speedMax: 36, obstacleRate: 1.0, giftRate: 1.0, spawnDist: 100, name: 'Challenge' },
+                hard: { speedBase: 15, speedMax: 52, obstacleRate: 1.5, giftRate: 0.7, spawnDist: 80, name: 'Extreme' }
+            };
+
+            // ───────────────────────────────────────────────
+            //  THREE.JS SETUP
+            // ───────────────────────────────────────────────
+
+            function initScene() {
+                const container = $('game-canvas');
+                const w = window.innerWidth,
+                    h = window.innerHeight;
+
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0x4a8fc9);
+                scene.fog = new THREE.Fog(0x4a8fc9, 180, 450);
+
+                camera = new THREE.PerspectiveCamera(settings.fov, w / h, 0.1, 600);
+                camera.position.set(0, 8, 14);
+                camera.lookAt(0, 0, 0);
+
+                renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+                renderer.setSize(w, h);
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                renderer.shadowMap.enabled = true;
+                renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                renderer.toneMappingExposure = 1.2;
+                container.appendChild(renderer.domElement);
+
+                // Lights
+                ambientLight = new THREE.AmbientLight(0x6688cc, 0.45);
+                scene.add(ambientLight);
+
+                sunLight = new THREE.DirectionalLight(0xffeedd, 1.6);
+                sunLight.position.set(80, 120, 60);
+                sunLight.castShadow = true;
+                sunLight.shadow.mapSize.width = 2048;
+                sunLight.shadow.mapSize.height = 2048;
+                sunLight.shadow.camera.near = 0.5;
+                sunLight.shadow.camera.far = 300;
+                sunLight.shadow.camera.left = -100;
+                sunLight.shadow.camera.right = 100;
+                sunLight.shadow.camera.top = 100;
+                sunLight.shadow.camera.bottom = -100;
+                scene.add(sunLight);
+
+                const hemi = new THREE.HemisphereLight(0x88ccff, 0x445566, 0.5);
+                scene.add(hemi);
+
+                // ── Sky ──
+                createSky();
+
+                // ── Ground / Terrain ──
+                createTerrain();
+
+                // ── Snow particles ──
+                createSnowParticles();
+
+                // ── Sled ──
+                createSled();
+
+                // ── Cannon.js world ──
+                initPhysics();
+
+                // ── Resize ──
+                window.addEventListener('resize', onResize);
+            }
+
+            // ───────────────────────────────────────────────
+            //  SKY
+            // ───────────────────────────────────────────────
+
+            function createSky() {
+                // Gradient sky dome
+                const skyGeo = new THREE.SphereGeometry(450, 32, 32);
+                const skyMat = new THREE.ShaderMaterial({
+                    side: THREE.BackSide,
+                    uniforms: {
+                        uTop: { value: new THREE.Color(0x1a3a6a) },
+                        uBottom: { value: new THREE.Color(0x7ac4e8) },
+                        uSun: { value: new THREE.Color(0xffeebb) }
+                    },
+                    vertexShader: `
+                varying vec3 vWorldPos;
+                void main() {
+                  vec4 wp = modelMatrix * vec4(position, 1.0);
+                  vWorldPos = wp.xyz;
+                  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+              `,
+                    fragmentShader: `
+                uniform vec3 uTop;
+                uniform vec3 uBottom;
+                uniform vec3 uSun;
+                varying vec3 vWorldPos;
+                void main() {
+                  float h = normalize(vWorldPos).y;
+                  vec3 col = mix(uBottom, uTop, max(0.0, h * 0.8 + 0.3));
+                  // sun glow
+                  vec3 sunDir = normalize(vec3(0.3, 0.7, 0.4));
+                  float sun = pow(max(0.0, dot(normalize(vWorldPos), sunDir)), 64.0);
+                  col += uSun * sun * 2.5;
+                  // horizon glow
+                  float horizon = 1.0 - abs(h);
+                  col += vec3(1.0, 0.7, 0.4) * pow(horizon, 6.0) * 0.3;
+                  gl_FragColor = vec4(col, 1.0);
+                }
+              `
+                });
+                const skyMesh = new THREE.Mesh(skyGeo, skyMat);
+                scene.add(skyMesh);
+
+                // ── Clouds ──
+                const cloudMat = new THREE.MeshLambertMaterial({
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity: 0.55,
+                    depthWrite: false,
+                    side: THREE.DoubleSide
+                });
+
+                for (let i = 0; i < 28; i++) {
+                    const size = 8 + Math.random() * 28;
+                    const geo = new THREE.SphereGeometry(size, 7, 7);
+                    const m = new THREE.Mesh(geo, cloudMat);
+                    const angle = Math.random() * Math.PI * 2;
+                    const rad = 60 + Math.random() * 140;
+                    m.position.set(
+                        Math.cos(angle) * rad,
+                        28 + Math.random() * 50,
+                        Math.sin(angle) * rad - 20
+                    );
+                    m.scale.set(1, 0.35 + Math.random() * 0.3, 0.6 + Math.random() * 0.6);
+                    m.rotation.y = Math.random() * Math.PI;
+                    m.userData = {
+                        speed: 0.002 + Math.random() * 0.005,
+                        angle: angle,
+                        rad: rad,
+                        yOff: m.position.y
+                    };
+                    scene.add(m);
+                    cloudMeshes.push(m);
+                }
+
+                // Sun sprite
+                const sunGeo = new THREE.SphereGeometry(6, 16, 16);
+                const sunMat = new THREE.MeshBasicMaterial({ color: 0xffdd88 });
+                const sunMesh = new THREE.Mesh(sunGeo, sunMat);
+                sunMesh.position.set(60, 90, -50);
+                scene.add(sunMesh);
+                // glow
+                const glowGeo = new THREE.SphereGeometry(18, 16, 16);
+                const glowMat = new THREE.MeshBasicMaterial({
+                    color: 0xffaa44,
+                    transparent: true,
+                    opacity: 0.12,
+                    depthWrite: false
+                });
+                const glowMesh = new THREE.Mesh(glowGeo, glowMat);
+                glowMesh.position.copy(sunMesh.position);
+                scene.add(glowMesh);
+            }
+
+            // ───────────────────────────────────────────────
+            //  TERRAIN
+            // ───────────────────────────────────────────────
+
+            function createTerrain() {
+                const segX = 40,
+                    segZ = 120;
+                const w = 160,
+                    d = 500;
+                const geo = new THREE.BufferGeometry();
+                const verts = [];
+                const uvs = [];
+                const indices = [];
+                const normals = [];
+
+                const halfW = w / 2;
+                const halfD = d / 2;
+
+                for (let iz = 0; iz <= segZ; iz++) {
+                    const z = -halfD + (iz / segZ) * d;
+                    for (let ix = 0; ix <= segX; ix++) {
+                        const x = -halfW + (ix / segX) * w;
+                        // Terrain height: slope + bumps + curves
+                        const t = (z + halfD) / d; // 0..1
+                        const slope = -t * 22;
+                        const bump = Math.sin(z * 0.04) * 1.2 * Math.cos(x * 0.06 + z * 0.02) +
+                            Math.sin(z * 0.07 + x * 0.05) * 0.6;
+                        const curve = Math.sin(z * 0.012) * 6 * (1 - Math.abs(x) / halfW * 0.7);
+                        const y = slope + bump + curve;
+                        verts.push(x, y, z);
+                        uvs.push(ix / segX, iz / segZ);
+                    }
+                }
+
+                for (let iz = 0; iz < segZ; iz++) {
+                    for (let ix = 0; ix < segX; ix++) {
+                        const a = iz * (segX + 1) + ix;
+                        const b = iz * (segX + 1) + ix + 1;
+                        const c = (iz + 1) * (segX + 1) + ix;
+                        const d2 = (iz + 1) * (segX + 1) + ix + 1;
+                        indices.push(a, b, c);
+                        indices.push(b, d2, c);
+                    }
+                }
+
+                geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+                geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+                geo.setIndex(indices);
+                geo.computeVertexNormals();
+
+                // Snow texture (procedural)
+                const canvas = document.createElement('canvas');
+                canvas.width = 512;
+                canvas.height = 512;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#e8f4fc';
+                ctx.fillRect(0, 0, 512, 512);
+                for (let i = 0; i < 3000; i++) {
+                    const x = Math.random() * 512,
+                        y = Math.random() * 512;
+                    const r = 1 + Math.random() * 2;
+                    const a = 0.2 + Math.random() * 0.25;
+                    ctx.beginPath();
+                    ctx.arc(x, y, r, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(255,255,255,${a})`;
+                    ctx.fill();
+                }
+                // sparkles
+                for (let i = 0; i < 600; i++) {
+                    const x = Math.random() * 512,
+                        y = Math.random() * 512;
+                    ctx.fillStyle = `rgba(200,230,255,${0.1+Math.random()*0.2})`;
+                    ctx.fillRect(x, y, 1, 1);
+                }
+                const tex = new THREE.CanvasTexture(canvas);
+                tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+                tex.repeat.set(4, 12);
+
+                const mat = new THREE.MeshLambertMaterial({
+                    map: tex,
+                    color: 0xccddee,
+                    emissive: 0x223355,
+                    emissiveIntensity: 0.04,
+                    roughness: 0.8,
+                    metalness: 0.0,
+                    flatShading: false
+                });
+
+                terrainMesh = new THREE.Mesh(geo, mat);
+                terrainMesh.receiveShadow = true;
+                terrainMesh.castShadow = false;
+                terrainMesh.position.y = 0;
+                scene.add(terrainMesh);
+
+                // Store height data for collision
+                const pos = geo.attributes.position.array;
+                terrainSegments = [];
+                for (let iz = 0; iz <= segZ; iz++) {
+                    const row = [];
+                    for (let ix = 0; ix <= segX; ix++) {
+                        const idx = (iz * (segX + 1) + ix) * 3;
+                        row.push({ x: pos[idx], y: pos[idx + 1], z: pos[idx + 2] });
+                    }
+                    terrainSegments.push(row);
+                }
+
+                // ── Trees ──
+                const treeMatTrunk = new THREE.MeshLambertMaterial({ color: 0x6b4a3a, roughness: 0.9 });
+                const treeMatTop = new THREE.MeshLambertMaterial({ color: 0x2d6a3a, roughness: 0.8 });
+                const treeMatTop2 = new THREE.MeshLambertMaterial({ color: 0x3d8a4a, roughness: 0.8 });
+
+                for (let i = 0; i < 120; i++) {
+                    const z = -halfD + Math.random() * d;
+                    const t = (z + halfD) / d;
+                    const x = (Math.random() - 0.5) * w * 1.1;
+                    // Avoid center path
+                    const pathWidth = 12 + t * 6;
+                    if (Math.abs(x) < pathWidth) continue;
+                    if (Math.abs(x) < pathWidth + 4 && Math.random() > 0.3) continue;
+
+                    const h = getTerrainHeight(x, z);
+                    if (h < -18) continue;
+
+                    const trunkH = 0.8 + Math.random() * 1.6;
+                    const trunkR = 0.15 + Math.random() * 0.15;
+                    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(trunkR, trunkR * 1.3, trunkH, 6), treeMatTrunk);
+                    trunk.position.set(x, h + trunkH / 2, z);
+                    trunk.castShadow = true;
+                    trunk.receiveShadow = true;
+                    scene.add(trunk);
+                    treeMeshes.push(trunk);
+
+                    const topR = 0.8 + Math.random() * 1.2;
+                    const topH = 1.2 + Math.random() * 1.8;
+                    const top = new THREE.Mesh(new THREE.ConeGeometry(topR, topH, 7), treeMatTop);
+                    top.position.set(x, h + trunkH + topH * 0.35, z);
+                    top.castShadow = true;
+                    top.receiveShadow = true;
+                    scene.add(top);
+                    treeMeshes.push(top);
+
+                    const top2 = new THREE.Mesh(new THREE.ConeGeometry(topR * 0.7, topH * 0.7, 7), treeMatTop2);
+                    top2.position.set(x, h + trunkH + topH * 0.75, z);
+                    top2.castShadow = true;
+                    top2.receiveShadow = true;
+                    scene.add(top2);
+                    treeMeshes.push(top2);
+
+                    // snow on top
+                    const snowMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.25 });
+                    const snow = new THREE.Mesh(new THREE.SphereGeometry(topR * 0.5, 6, 6), snowMat);
+                    snow.position.set(x, h + trunkH + topH * 0.95, z);
+                    snow.scale.y = 0.2;
+                    scene.add(snow);
+                    treeMeshes.push(snow);
+                }
+
+                // ── Rocks ──
+                const rockMat = new THREE.MeshLambertMaterial({ color: 0x778899, roughness: 0.9 });
+                for (let i = 0; i < 50; i++) {
+                    const z = -halfD + Math.random() * d;
+                    const t = (z + halfD) / d;
+                    const x = (Math.random() - 0.5) * w * 0.9;
+                    const pathWidth = 10 + t * 5;
+                    if (Math.abs(x) < pathWidth) continue;
+
+                    const h = getTerrainHeight(x, z);
+                    if (h < -16) continue;
+                    const s = 0.5 + Math.random() * 1.6;
+                    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 1), rockMat);
+                    rock.position.set(x, h + s * 0.3, z);
+                    rock.rotation.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
+                    rock.castShadow = true;
+                    rock.receiveShadow = true;
+                    scene.add(rock);
+                    treeMeshes.push(rock);
+                }
+            }
+
+            function getTerrainHeight(x, z) {
+                if (!terrainSegments.length) return 0;
+                const segX = terrainSegments[0].length - 1;
+                const segZ = terrainSegments.length - 1;
+                const halfW = 80,
+                    halfD = 250;
+                const fx = (x + halfW) / (halfW * 2);
+                const fz = (z + halfD) / (halfD * 2);
+                const ix = Math.floor(fx * segX);
+                const iz = Math.floor(fz * segZ);
+                if (ix < 0 || ix >= segX || iz < 0 || iz >= segZ) return 0;
+                const p1 = terrainSegments[iz][ix];
+                const p2 = terrainSegments[iz][ix + 1];
+                const p3 = terrainSegments[iz + 1][ix];
+                const p4 = terrainSegments[iz + 1][ix + 1];
+                const u = (fx * segX) - ix;
+                const v = (fz * segZ) - iz;
+                const h1 = p1.y + (p2.y - p1.y) * u;
+                const h2 = p3.y + (p4.y - p3.y) * u;
+                return h1 + (h2 - h1) * v;
+            }
+
+            // ───────────────────────────────────────────────
+            //  SNOW PARTICLES
+            // ───────────────────────────────────────────────
+
+            function createSnowParticles() {
+                const count = 2200;
+                const geo = new THREE.BufferGeometry();
+                const pos = new Float32Array(count * 3);
+                const sizes = new Float32Array(count);
+                const speeds = new Float32Array(count);
+                const offsets = new Float32Array(count);
+                for (let i = 0; i < count; i++) {
+                    pos[i * 3] = (Math.random() - 0.5) * 300;
+                    pos[i * 3 + 1] = Math.random() * 80 + 10;
+                    pos[i * 3 + 2] = (Math.random() - 0.5) * 500 - 50;
+                    sizes[i] = 0.3 + Math.random() * 0.8;
+                    speeds[i] = 0.3 + Math.random() * 0.7;
+                    offsets[i] = Math.random() * 100;
+                }
+                geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+                geo.setAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
+                geo.setAttribute('speed', new THREE.Float32BufferAttribute(speeds, 1));
+                geo.setAttribute('offset', new THREE.Float32BufferAttribute(offsets, 1));
+
+                const mat = new THREE.PointsMaterial({
+                    color: 0xffffff,
+                    size: 0.6,
+                    transparent: true,
+                    opacity: 0.55,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false,
+                    sizeAttenuation: true
+                });
+                snowParticles = new THREE.Points(geo, mat);
+                snowParticles.position.y = 0;
+                scene.add(snowParticles);
+            }
+
+            // ───────────────────────────────────────────────
+            //  SLED
+            // ───────────────────────────────────────────────
+
+            function createSled() {
+                sledGroup = new THREE.Group();
+
+                const skin = SKIN_COLORS[settings.skin] || SKIN_COLORS[0];
+
+                // Base
+                const baseGeo = new THREE.BoxGeometry(1.6, 0.2, 2.8);
+                const baseMat = new THREE.MeshLambertMaterial({ color: skin.main, roughness: 0.4, metalness: 0.6 });
+                const base = new THREE.Mesh(baseGeo, baseMat);
+                base.position.y = 0.3;
+                base.castShadow = true;
+                base.receiveShadow = true;
+                sledGroup.add(base);
+
+                // Seat
+                const seatGeo = new THREE.BoxGeometry(1.2, 0.25, 0.8);
+                const seatMat = new THREE.MeshLambertMaterial({ color: 0x222233, roughness: 0.7 });
+                const seat = new THREE.Mesh(seatGeo, seatMat);
+                seat.position.set(0, 0.6, -0.5);
+                seat.castShadow = true;
+                seat.receiveShadow = true;
+                sledGroup.add(seat);
+
+                // Backrest
+                const backGeo = new THREE.BoxGeometry(1.0, 0.5, 0.15);
+                const backMat = new THREE.MeshLambertMaterial({ color: 0x333344, roughness: 0.7 });
+                const back = new THREE.Mesh(backGeo, backMat);
+                back.position.set(0, 0.8, -1.0);
+                back.castShadow = true;
+                back.receiveShadow = true;
+                sledGroup.add(back);
+
+                // Runners (skis)
+                const runnerMat = new THREE.MeshLambertMaterial({ color: 0x8899aa, metalness: 0.8, roughness: 0.2 });
+                for (let side = -1; side <= 1; side += 2) {
+                    const rGeo = new THREE.BoxGeometry(0.08, 0.04, 2.6);
+                    const r = new THREE.Mesh(rGeo, runnerMat);
+                    r.position.set(side * 0.8, 0.04, 0);
+                    r.castShadow = true;
+                    r.receiveShadow = true;
+                    sledGroup.add(r);
+                    // tip
+                    const tipGeo = new THREE.BoxGeometry(0.08, 0.08, 0.3);
+                    const tip = new THREE.Mesh(tipGeo, runnerMat);
+                    tip.position.set(side * 0.8, 0.08, 1.4);
+                    tip.rotation.x = -0.25;
+                    tip.castShadow = true;
+                    sledGroup.add(tip);
+                }
+
+                // Glow accent
+                const glowMat = new THREE.MeshLambertMaterial({
+                    color: skin.glow,
+                    emissive: skin.glow,
+                    emissiveIntensity: 0.3,
+                    transparent: true,
+                    opacity: 0.3
+                });
+                const glow = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.05, 2.4), glowMat);
+                glow.position.y = 0.15;
+                sledGroup.add(glow);
+
+                // Headlight
+                const hlMat = new THREE.MeshLambertMaterial({
+                    color: 0xffffcc,
+                    emissive: 0xffdd44,
+                    emissiveIntensity: 0.5
+                });
+                const hl = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), hlMat);
+                hl.position.set(0, 0.25, 1.5);
+                sledGroup.add(hl);
+
+                sledGroup.position.set(0, 0, 0);
+                sledGroup.scale.set(0.8, 0.8, 0.8);
+                scene.add(sledGroup);
+            }
+
+            // ───────────────────────────────────────────────
+            //  PHYSICS (Cannon.js)
+            // ───────────────────────────────────────────────
+
+            function initPhysics() {
+                world = new CANNON.World();
+                world.gravity.set(0, -18, 0);
+                world.broadphase = new CANNON.NaiveBroadphase();
+                world.solver.iterations = 8;
+
+                // Ground
+                const groundShape = new CANNON.Plane();
+                groundBody = new CANNON.Body({ mass: 0 });
+                groundBody.addShape(groundShape);
+                groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), 0);
+                groundBody.position.y = -0.5;
+                world.addBody(groundBody);
+
+                // Sled body
+                const sledShape = new CANNON.Box(new CANNON.Vec3(0.7, 0.25, 1.2));
+                sledBody = new CANNON.Body({ mass: 3 });
+                sledBody.addShape(sledShape);
+                sledBody.position.set(0, 2, 0);
+                // Slight tilt
+                sledBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -0.02);
+                world.addBody(sledBody);
+
+                // Friction
+                sledBody.linearDamping = 0.08;
+                sledBody.angularDamping = 0.95;
+
+                // Collision filter
+                sledBody.collisionFilterGroup = 1;
+                sledBody.collisionFilterMask = 1;
+
+                // Contact material
+                const groundMat = new CANNON.Material('ground');
+                const sledMat = new CANNON.Material('sled');
+                const contact = new CANNON.ContactMaterial(groundMat, sledMat, {
+                    friction: 0.3,
+                    restitution: 0.05
+                });
+                world.addContactMaterial(contact);
+                groundBody.material = groundMat;
+                sledBody.material = sledMat;
+            }
+
+            // ───────────────────────────────────────────────
+            //  OBSTACLES & GIFTS (spawning)
+            // ───────────────────────────────────────────────
+
+            function spawnObstacles() {
+                const diff = DIFFICULTY[state.difficulty];
+                const count = Math.floor(4 + diff.obstacleRate * 3);
+                const halfW = 60;
+
+                for (let i = 0; i < count; i++) {
+                    const z = -30 - Math.random() * 120;
+                    const t = (z + 250) / 500;
+                    const pathW = 8 + t * 6;
+                    let x;
+                    let attempts = 0;
+                    do {
+                        x = (Math.random() - 0.5) * halfW * 1.6;
+                        attempts++;
+                    } while (Math.abs(x) < pathW && attempts < 30);
+
+                    const h = getTerrainHeight(x, z);
+                    if (h < -20) continue;
+
+                    const type = Math.random() > 0.55 ? 'tree' : 'rock';
+                    const obj = { x, z, type, height: h, active: true, mesh: null };
+
+                    if (type === 'tree') {
+                        const trunk = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.2, 0.3, 1.2, 5),
+                            new THREE.MeshLambertMaterial({ color: 0x5a3d2b })
+                        );
+                        trunk.position.set(x, h + 0.6, z);
+                        trunk.castShadow = true;
+                        trunk.receiveShadow = true;
+                        scene.add(trunk);
+                        obj.mesh = trunk;
+                        const top = new THREE.Mesh(
+                            new THREE.ConeGeometry(0.7, 1.4, 6),
+                            new THREE.MeshLambertMaterial({ color: 0x2a6a3a })
+                        );
+                        top.position.set(x, h + 1.4, z);
+                        top.castShadow = true;
+                        top.receiveShadow = true;
+                        scene.add(top);
+                        obj.mesh2 = top;
+                        obstacleMeshes.push(trunk, top);
+                    } else {
+                        const rock = new THREE.Mesh(
+                            new THREE.DodecahedronGeometry(0.5 + Math.random() * 0.7, 1),
+                            new THREE.MeshLambertMaterial({ color: 0x6a7a8a, roughness: 0.9 })
+                        );
+                        rock.position.set(x, h + 0.3, z);
+                        rock.rotation.set(Math.random() * 6, Math.random() * 6, 0);
+                        rock.castShadow = true;
+                        rock.receiveShadow = true;
+                        scene.add(rock);
+                        obj.mesh = rock;
+                        obstacleMeshes.push(rock);
+                    }
+                    obstacles.push(obj);
+                }
+            }
+
+            function spawnGifts() {
+                const diff = DIFFICULTY[state.difficulty];
+                const count = Math.floor(2 + diff.giftRate * 2.5);
+                const halfW = 50;
+
+                for (let i = 0; i < count; i++) {
+                    const z = -20 - Math.random() * 100;
+                    const t = (z + 250) / 500;
+                    const pathW = 6 + t * 5;
+                    let x = (Math.random() - 0.5) * pathW * 1.4;
+                    // keep on path
+                    x = Math.max(-pathW * 0.7, Math.min(pathW * 0.7, x));
+
+                    const h = getTerrainHeight(x, z);
+                    if (h < -18) continue;
+
+                    const gift = new THREE.Group();
+                    const box = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.6, 0.5, 0.6),
+                        new THREE.MeshLambertMaterial({
+                            color: 0xffd166,
+                            emissive: 0xff8800,
+                            emissiveIntensity: 0.08
+                        })
+                    );
+                    box.castShadow = true;
+                    box.receiveShadow = true;
+                    gift.add(box);
+                    const ribbon = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.65, 0.08, 0.08),
+                        new THREE.MeshLambertMaterial({ color: 0xff4466, emissive: 0xff2244, emissiveIntensity: 0.1 })
+                    );
+                    ribbon.position.y = 0.25;
+                    gift.add(ribbon);
+                    const ribbon2 = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.08, 0.08, 0.65),
+                        new THREE.MeshLambertMaterial({ color: 0xff4466, emissive: 0xff2244, emissiveIntensity: 0.1 })
+                    );
+                    ribbon2.position.y = 0.25;
+                    gift.add(ribbon2);
+                    // glow
+                    const glow = new THREE.Mesh(
+                        new THREE.SphereGeometry(0.5, 8, 8),
+                        new THREE.MeshBasicMaterial({
+                            color: 0xffcc44,
+                            transparent: true,
+                            opacity: 0.08,
+                            depthWrite: false
+                        })
+                    );
+                    gift.add(glow);
+
+                    gift.position.set(x, h + 0.6, z);
+                    gift.userData = { bobSpeed: 0.8 + Math.random() * 0.6, bobOffset: Math.random() * 6 };
+                    scene.add(gift);
+                    giftMeshes.push(gift);
+
+                    giftItems.push({
+                        x,
+                        z,
+                        height: h,
+                        active: true,
+                        mesh: gift,
+                        collected: false
+                    });
+                }
+            }
+
+            // ───────────────────────────────────────────────
+            //  GAME LOOP
+            // ───────────────────────────────────────────────
+
+            let spawnTimer = 0;
+            let giftSpawnTimer = 0;
+            let gameTime = 0;
+
+            function updateGame(delta) {
+                if (!state.playing || state.gameOver) return;
+
+                gameTime += delta;
+                const diff = DIFFICULTY[state.difficulty];
+                const speedBase = diff.speedBase + gameTime * 0.035;
+                const speed = Math.min(speedBase, diff.speedMax);
+                state.speed = speed;
+                state.distance += speed * delta * 2.2;
+                state.score = Math.floor(state.distance);
+                state.time = gameTime;
+
+                // Update HUD
+                hudScore.textContent = state.score;
+                hudSpeed.textContent = Math.floor(speed * 3.6);
+
+                // Move sled forward (physics)
+                const forward = new CANNON.Vec3(0, 0, -1);
+                const vel = sledBody.velocity;
+                const targetSpeed = speed * 1.2;
+                const currentZ = -vel.z;
+                const diffZ = targetSpeed - currentZ;
+                vel.z -= diffZ * delta * 2.5;
+
+                // Steering
+                const sens = settings.sensitivity * 0.6;
+                let steer = 0;
+                if (keys.left) steer = -1;
+                if (keys.right) steer = 1;
+                const maxSteer = 2.2 + speed * 0.012;
+                moveX += (steer * sens * 6 - moveX) * delta * 8;
+                moveX = Math.max(-maxSteer, Math.min(maxSteer, moveX));
+
+                const pos = sledBody.position;
+                pos.x += moveX * delta * 1.2;
+
+                // Clamp x
+                const limit = 38 + state.distance * 0.003;
+                pos.x = Math.max(-limit, Math.min(limit, pos.x));
+
+                // Terrain height following
+                const terrainH = getTerrainHeight(pos.x, pos.z);
+                if (terrainH > -30) {
+                    pos.y = terrainH + 0.6;
+                }
+
+                // Jump
+                if (keys.jump && !isJumping && jumpCooldown <= 0) {
+                    vel.y = 6.5;
+                    isJumping = true;
+                    jumpCooldown = 0.3;
+                }
+                if (jumpCooldown > 0) jumpCooldown -= delta;
+                if (pos.y < terrainH + 0.5) {
+                    isJumping = false;
+                    pos.y = terrainH + 0.6;
+                    vel.y = 0;
+                }
+
+                // Update sled group position
+                sledGroup.position.copy(pos);
+                sledGroup.position.y = pos.y;
+                // Slight tilt based on steering
+                sledGroup.rotation.z = -moveX * 0.06;
+                sledGroup.rotation.x = Math.sin(gameTime * 0.3) * 0.005;
+
+                // Camera follow
+                const camDist = 12 + speed * 0.04;
+                const camHeight = 7 + speed * 0.03;
+                const targetCam = new THREE.Vector3(
+                    pos.x * 0.3,
+                    pos.y + camHeight,
+                    pos.z + camDist
+                );
+                camera.position.lerp(targetCam, delta * 2.5);
+                camera.lookAt(pos.x * 0.2, pos.y + 1.5, pos.z - 6);
+
+                // Update snow particles
+                const ppos = snowParticles.geometry.attributes.position.array;
+                for (let i = 0; i < ppos.length / 3; i++) {
+                    ppos[i * 3 + 1] -= delta * (0.4 + 0.3 * (i % 5) / 5);
+                    ppos[i * 3] += Math.sin(gameTime * 0.2 + i) * delta * 0.04;
+                    ppos[i * 3 + 2] += delta * (0.8 + (i % 3) * 0.2);
+                    if (ppos[i * 3 + 1] < -5) {
+                        ppos[i * 3 + 1] = 50 + Math.random() * 30;
+                        ppos[i * 3] = (Math.random() - 0.5) * 300;
+                        ppos[i * 3 + 2] = (Math.random() - 0.5) * 500 - 100;
+                    }
+                }
+                snowParticles.geometry.attributes.position.needsUpdate = true;
+
+                // Update clouds
+                cloudMeshes.forEach(c => {
+                    c.position.x += Math.sin(gameTime * c.userData.speed + c.userData.angle) * delta * 0.15;
+                    c.position.z += Math.cos(gameTime * c.userData.speed * 0.7 + c.userData.angle) * delta * 0.1;
+                });
+
+                // Spawn obstacles & gifts
+                spawnTimer += delta;
+                giftSpawnTimer += delta;
+                const spawnInterval = 2.2 / (1 + speed * 0.01);
+                if (spawnTimer > spawnInterval) {
+                    spawnTimer = 0;
+                    spawnObstacles();
+                }
+                if (giftSpawnTimer > 1.8 / (1 + speed * 0.005)) {
+                    giftSpawnTimer = 0;
+                    spawnGifts();
+                }
+
+                // Check collisions with obstacles
+                const sledPos = sledBody.position;
+                const halfW = 0.8;
+                const halfD = 1.2;
+                for (let i = obstacles.length - 1; i >= 0; i--) {
+                    const ob = obstacles[i];
+                    if (!ob.active) continue;
+                    const dx = sledPos.x - ob.x;
+                    const dz = sledPos.z - ob.z;
+                    const dist = Math.sqrt(dx * dx + dz * dz);
+                    const hitRadius = ob.type === 'tree' ? 1.4 : 1.0;
+                    if (dist < hitRadius && sledPos.y < ob.height + 1.8) {
+                        // CRASH!
+                        gameOver();
+                        return;
+                    }
+                    // Remove far behind
+                    if (ob.z > sledPos.z + 10) {
+                        ob.active = false;
+                        if (ob.mesh) scene.remove(ob.mesh);
+                        if (ob.mesh2) scene.remove(ob.mesh2);
+                        obstacles.splice(i, 1);
+                    }
+                }
+
+                // Check gifts
+                for (let i = giftItems.length - 1; i >= 0; i--) {
+                    const g = giftItems[i];
+                    if (g.collected) continue;
+                    const dx = sledPos.x - g.x;
+                    const dz = sledPos.z - g.z;
+                    if (Math.abs(dx) < 0.9 && Math.abs(dz) < 0.9) {
+                        g.collected = true;
+                        state.gifts++;
+                        hudGifts.textContent = state.gifts;
+                        // scale animation
+                        g.mesh.scale.set(0.01, 0.01, 0.01);
+                        setTimeout(() => {
+                            scene.remove(g.mesh);
+                        }, 200);
+                        giftItems.splice(i, 1);
+                    }
+                    // Remove far behind
+                    if (g.z > sledPos.z + 10) {
+                        scene.remove(g.mesh);
+                        giftItems.splice(i, 1);
+                    }
+                }
+
+                // Gift bob
+                giftItems.forEach(g => {
+                    if (!g.collected) {
+                        const bob = Math.sin(gameTime * g.mesh.userData.bobSpeed + g.mesh.userData.bobOffset) * 0.06;
+                        g.mesh.position.y = g.height + 0.6 + bob;
+                        g.mesh.rotation.y += delta * 1.2;
+                    }
+                });
+
+                // Update physics
+                world.step(1 / 60, delta, 3);
+
+                // ── Trail particles ──
+                if (Math.random() < 0.15) {
+                    const trailMat = new THREE.MeshBasicMaterial({
+                        color: 0xccddff,
+                        transparent: true,
+                        opacity: 0.2,
+                        depthWrite: false
+                    });
+                    const trail = new THREE.Mesh(new THREE.SphereGeometry(0.08, 4, 4), trailMat);
+                    trail.position.set(
+                        sledPos.x + (Math.random() - 0.5) * 0.6,
+                        sledPos.y - 0.1,
+                        sledPos.z + 1.0 + Math.random() * 0.5
+                    );
+                    scene.add(trail);
+                    trailParticles.push({ mesh: trail, life: 1.0 });
+                }
+                for (let i = trailParticles.length - 1; i >= 0; i--) {
+                    const tp = trailParticles[i];
+                    tp.life -= delta * 1.2;
+                    tp.mesh.material.opacity = tp.life * 0.2;
+                    tp.mesh.scale.setScalar(1 + (1 - tp.life) * 2);
+                    if (tp.life <= 0) {
+                        scene.remove(tp.mesh);
+                        trailParticles.splice(i, 1);
+                    }
+                }
+
+                // Update best
+                if (state.score > state.best) {
+                    state.best = state.score;
+                    localStorage.setItem('snowrider_best', String(state.best));
+                    hudBest.textContent = state.best;
+                }
+            }
+
+            // ───────────────────────────────────────────────
+            //  GAME OVER
+            // ───────────────────────────────────────────────
+
+            function gameOver() {
+                if (state.gameOver) return;
+                state.gameOver = true;
+                state.playing = false;
+                hud.classList.remove('visible');
+
+                finalDist.textContent = state.score + ' m';
+                finalGifts.textContent = state.gifts;
+                finalSpeed.textContent = Math.floor(state.speed * 3.6) + ' km/h';
+
+                setTimeout(() => {
+                    gameoverOverlay.classList.remove('hidden');
+                }, 400);
+
+                if (animFrameId) {
+                    cancelAnimationFrame(animFrameId);
+                    animFrameId = null;
+                }
+            }
+
+            // ───────────────────────────────────────────────
+            //  GAME START
+            // ───────────────────────────────────────────────
+
+            function startGame(difficulty) {
+                // Reset state
+                state.playing = false;
+                state.gameOver = false;
+                state.score = 0;
+                state.gifts = 0;
+                state.distance = 0;
+                state.time = 0;
+                state.speed = 0;
+                state.difficulty = difficulty || 'medium';
+
+                // Clear old objects
+                obstacleMeshes.forEach(m => scene.remove(m));
+                giftMeshes.forEach(m => scene.remove(m));
+                trailParticles.forEach(tp => scene.remove(tp.mesh));
+                obstacleMeshes = [];
+                giftMeshes = [];
+                trailParticles = [];
+                obstacles = [];
+                giftItems = [];
+
+                // Reset sled
+                if (sledBody) {
+                    sledBody.position.set(0, 2, 0);
+                    sledBody.velocity.set(0, 0, 0);
+                    sledBody.angularVelocity.set(0, 0, 0);
+                }
+                if (sledGroup) {
+                    sledGroup.position.set(0, 2, 0);
+                    sledGroup.rotation.set(0, 0, 0);
+                }
+
+                // Camera
+                camera.position.set(0, 8, 14);
+                camera.lookAt(0, 0, 0);
+
+                // Hide menus
+                menuOverlay.classList.add('hidden');
+                gameoverOverlay.classList.add('hidden');
+
+                // Show HUD
+                hud.classList.add('visible');
+                hudGifts.textContent = '0';
+                hudScore.textContent = '0';
+                hudSpeed.textContent = '0';
+                hudBest.textContent = state.best;
+
+                state.playing = true;
+                state.gameOver = false;
+                spawnTimer = 0;
+                giftSpawnTimer = 0;
+                gameTime = 0;
+                isJumping = false;
+                jumpCooldown = 0;
+                moveX = 0;
+
+                // Start loop
+                if (animFrameId) cancelAnimationFrame(animFrameId);
+                animate();
+            }
+
+            // ───────────────────────────────────────────────
+            //  ANIMATION LOOP
+            // ───────────────────────────────────────────────
+
+            function animate() {
+                if (!state.playing && !state.gameOver) return;
+
+                const delta = Math.min(clock.getDelta(), 0.05);
+
+                if (state.playing && !state.gameOver) {
+                    updateGame(delta);
+                }
+
+                renderer.render(scene, camera);
+                animFrameId = requestAnimationFrame(animate);
+            }
+
+            // ───────────────────────────────────────────────
+            //  RESIZE
+            // ───────────────────────────────────────────────
+
+            function onResize() {
+                const w = window.innerWidth,
+                    h = window.innerHeight;
+                camera.aspect = w / h;
+                camera.updateProjectionMatrix();
+                renderer.setSize(w, h);
+            }
+
+            // ───────────────────────────────────────────────
+            //  KEYBOARD
+            // ───────────────────────────────────────────────
+
+            document.addEventListener('keydown', (e) => {
+                const key = e.key;
+                if (key === 'a' || key === 'A' || key === 'ArrowLeft') keys.left = true;
+                if (key === 'd' || key === 'D' || key === 'ArrowRight') keys.right = true;
+                if (key === ' ' || key === 'Space' || key === 'ArrowUp') {
+                    e.preventDefault();
+                    keys.jump = true;
+                }
+            });
+            document.addEventListener('keyup', (e) => {
+                const key = e.key;
+                if (key === 'a' || key === 'A' || key === 'ArrowLeft') keys.left = false;
+                if (key === 'd' || key === 'D' || key === 'ArrowRight') keys.right = false;
+                if (key === ' ' || key === 'Space' || key === 'ArrowUp') {
+                    e.preventDefault();
+                    keys.jump = false;
+                }
+            });
+
+            // ───────────────────────────────────────────────
+            //  UI EVENTS
+            // ───────────────────────────────────────────────
+
+            function initUI() {
+                // Tabs
+                document.querySelectorAll('.tab-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        const tab = btn.dataset.tab;
+                        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+                        const target = document.getElementById('panel-' + tab);
+                        if (target) target.classList.add('active');
+                    });
+                });
+
+                // Difficulty cards
+                document.querySelectorAll('[data-diff]').forEach(card => {
+                    card.addEventListener('click', () => {
+                        const diff = card.dataset.diff;
+                        startGame(diff);
+                    });
+                });
+
+                // Skin selection
+                document.querySelectorAll('[data-skin]').forEach(card => {
+                    card.addEventListener('click', () => {
+                        const skin = parseInt(card.dataset.skin);
+                        settings.skin = skin;
+                        state.skin = skin;
+                        // Update sled
+                        const colors = SKIN_COLORS[skin];
+                        sledGroup.children.forEach(child => {
+                            if (child.material && child.material.color) {
+                                const hex = child.material.color.getHex();
+                                // Rough heuristic: main body parts
+                                if (hex === 0xcc2233 || hex === 0x2288dd || hex === 0x33cc55) {
+                                    child.material.color.setHex(colors.main);
+                                }
+                                if (child.material.emissive) {
+                                    if (hex === 0xff4433 || hex === 0x44aaff || hex === 0x66ff88) {
+                                        child.material.emissive.setHex(colors.glow);
+                                    }
+                                }
+                            }
+                        });
+                        document.querySelectorAll('[data-skin]').forEach(c => c.style.borderColor = 'transparent');
+                        card.style.borderColor = '#55d7ff';
+                        localStorage.setItem('snowrider_skin', String(skin));
+                    });
+                });
+
+                // Settings
+                const sensSlider = document.getElementById('sens-slider');
+                const fovSlider = document.getElementById('fov-slider');
+                const volSlider = document.getElementById('vol-slider');
+                const gfxSelect = document.getElementById('gfx-quality');
+
+                sensSlider.addEventListener('input', () => {
+                    settings.sensitivity = parseFloat(sensSlider.value);
+                });
+                fovSlider.addEventListener('input', () => {
+                    settings.fov = parseFloat(fovSlider.value);
+                    camera.fov = settings.fov;
+                    camera.updateProjectionMatrix();
+                });
+                volSlider.addEventListener('input', () => {
+                    settings.volume = parseFloat(volSlider.value);
+                });
+                gfxSelect.addEventListener('change', () => {
+                    settings.graphics = gfxSelect.value;
+                    // Adjust renderer quality
+                    const q = settings.graphics;
+                    if (q === 'low') {
+                        renderer.setPixelRatio(1);
+                        renderer.shadowMap.enabled = false;
+                    } else if (q === 'medium') {
+                        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+                        renderer.shadowMap.enabled = true;
+                    } else {
+                        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                        renderer.shadowMap.enabled = true;
+                    }
+                });
+
+                // Retry
+                document.getElementById('retry-btn').addEventListener('click', () => {
+                    startGame(state.difficulty);
+                });
+
+                // Menu
+                document.getElementById('menu-btn').addEventListener('click', () => {
+                    gameoverOverlay.classList.add('hidden');
+                    menuOverlay.classList.remove('hidden');
+                    hud.classList.remove('visible');
+                    if (animFrameId) {
+                        cancelAnimationFrame(animFrameId);
+                        animFrameId = null;
+                    }
+                });
+
+                // Load saved skin
+                const savedSkin = localStorage.getItem('snowrider_skin');
+                if (savedSkin) {
+                    const sk = parseInt(savedSkin);
+                    if (sk >= 0 && sk < 3) {
+                        settings.skin = sk;
+                        state.skin = sk;
+                        document.querySelectorAll('[data-skin]').forEach(c => c.style.borderColor = 'transparent');
+                        const target = document.querySelector(`[data-skin="${sk}"]`);
+                        if (target) target.style.borderColor = '#55d7ff';
+                    }
+                }
+
+                // Garage gifts
+                garageGifts.textContent = state.gifts;
+            }
+
+            // ───────────────────────────────────────────────
+            //  INIT
+            // ───────────────────────────────────────────────
+
+            function init() {
+                initScene();
+                initUI();
+
+                // Hide loader
+                setTimeout(() => {
+                    loader.style.opacity = '0';
+                    setTimeout(() => {
+                        loader.style.display = 'none';
+                    }, 600);
+                }, 800);
+
+                // Start render loop (idle)
+                animate();
+            }
+
+            // Expose to window for debugging
+            window.game = {
+                start: startGame,
+                setSkin: (idx) => {
+                    settings.skin = idx;
+                    state.skin = idx;
+                    const colors = SKIN_COLORS[idx];
+                    sledGroup.children.forEach(child => {
+                        if (child.material && child.material.color) {
+                            const hex = child.material.color.getHex();
+                            if (hex === 0xcc2233 || hex === 0x2288dd || hex === 0x33cc55) {
+                                child.material.color.setHex(colors.main);
+                            }
+                        }
+                    });
+                },
+                updateSetting: (key, val) => {
+                    settings[key] = val;
+                },
+                retry: () => startGame(state.difficulty),
+                toMenu: () => {
+                    gameoverOverlay.classList.add('hidden');
+                    menuOverlay.classList.remove('hidden');
+                    hud.classList.remove('visible');
+                    if (animFrameId) {
+                        cancelAnimationFrame(animFrameId);
+                        animFrameId = null;
+                    }
+                }
+            };
+
+            // Start
+            init();
+
+        })();
+    </script>
 </body>
 </html>
