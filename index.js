@@ -1,12 +1,24 @@
-let scene, camera, renderer, world;
+let scene, camera, renderer, world, ground;
 let player, playerBody, obstacles = [], debris = [], snowflakes, hills = [];
 let trailParticles = [], speedLines = [], landParticles = [];
-let score = 0, giftCount = 0, gameActive = false, currentSpeed = 0, startTime;
+let score = 0, giftCount = 0, gameActive = false, currentSpeed = 0, startTime, terrainDistance = 0;
 let WORLD_WIDTH = 65;
 let keys = {};
-let playerX = 0, playerY = 1.5, playerVelX = 0, playerVelY = 0;
+const RIDE_HEIGHT = 0.58;
+let playerX = 0, playerY = RIDE_HEIGHT, playerVelX = 0, playerVelY = 0;
 let isJumping = false;
 let sounds = {};
+let sky;
+
+function setText(id, value) {
+    const element = document.getElementById(id);
+    if (element) element.innerText = value;
+}
+
+function setVisible(id, visible, display = 'block') {
+    const element = document.getElementById(id);
+    if (element) element.style.display = visible ? display : 'none';
+}
 
 const game = {
     config: {
@@ -25,9 +37,18 @@ const game = {
         this.setupUI();
         this.setupControls();
         
-        if(document.getElementById('loader')) {
-            document.getElementById('loader').style.opacity = '0';
-            setTimeout(() => { if(document.getElementById('loader')) document.getElementById('loader').remove(); }, 500);
+        // Hide loader with a smooth fade after a short delay
+        const loader = document.getElementById('loader');
+        if(loader) {
+            setTimeout(() => {
+                loader.style.transition = 'opacity 0.5s ease';
+                loader.style.opacity = '0';
+                setTimeout(() => { 
+                    if(loader && loader.parentNode) {
+                        loader.parentNode.removeChild(loader);
+                    }
+                }, 500);
+            }, 300); // Short delay to ensure scene is rendered
         }
         
         this.animate();
@@ -35,16 +56,18 @@ const game = {
 
     setupThree() {
         scene = new THREE.Scene();
-        scene.background = new THREE.Color(0xd0f4ff);
-        scene.fog = new THREE.FogExp2(0xd0f4ff, 0.0008);
+        scene.background = new THREE.Color(0x102f52);
+        scene.fog = new THREE.FogExp2(0x102f52, 0.00042);
 
         camera = new THREE.PerspectiveCamera(this.config.fov, window.innerWidth / window.innerHeight, 0.1, 15000);
-        camera.position.set(0, 15, 45);
+        camera.position.set(0, 9, 30);
 
         renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.outputEncoding = THREE.sRGBEncoding;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.12;
         
         if(this.config.graphics === 'high') {
             renderer.shadowMap.enabled = true;
@@ -52,9 +75,9 @@ const game = {
         }
         document.body.appendChild(renderer.domElement);
 
-        scene.add(new THREE.AmbientLight(0xffffff, 0.8));
-        const sun = new THREE.DirectionalLight(0xffffff, 1.4);
-        sun.position.set(200, 500, 200);
+        scene.add(new THREE.HemisphereLight(0xd7efff, 0x183555, 1.15));
+        const sun = new THREE.DirectionalLight(0xfff4dc, 1.8);
+        sun.position.set(-180, 420, 260);
         if(this.config.graphics === 'high') sun.castShadow = true;
         scene.add(sun);
     },
@@ -62,21 +85,36 @@ const game = {
     setupPhysics() {
         world = new CANNON.World();
         world.gravity.set(0, -9.82, 0);
+        world.defaultContactMaterial.friction = 0.35;
+        world.defaultContactMaterial.restitution = 0;
+
+        // The visual slope is flat through the ride lane; this physical snow plane
+        // prevents the kinematic sled from ever falling through the world.
+        const snowBody = new CANNON.Body({ mass: 0 });
+        snowBody.addShape(new CANNON.Plane());
+        snowBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+        world.addBody(snowBody);
+    },
+
+
+    getSnowHeight(x, z) {
+        const rollingSlope = Math.sin(z * .008) * 2.2 + Math.sin(z * .021 + x * .02) * .65;
+        const sideBank = Math.max(0, Math.abs(x) - 31);
+        return rollingSlope + sideBank * sideBank * .011 + Math.sin(x * .055) * Math.min(sideBank, 42) * .28;
     },
 
     createWorld() {
+        this.createSky();
         const gGeo = new THREE.PlaneGeometry(6000, 25000, 80, 80);
         const pos = gGeo.attributes.position.array;
         for(let i=0; i<pos.length; i+=3) {
             const x = pos[i];
-            const y = pos[i+1];
-            if(Math.abs(x) > 65) {
-                pos[i+2] = Math.sin(x*0.04) * 25 + Math.cos(y*0.01) * 20;
-            }
+            const z = -pos[i + 1];
+            pos[i + 2] = this.getSnowHeight(x, z);
         }
         gGeo.computeVertexNormals();
-        const gMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85, metalness: 0.1 });
-        const ground = new THREE.Mesh(gGeo, gMat);
+        const gMat = new THREE.MeshStandardMaterial({ color: 0xd8edf6, roughness: 0.94, metalness: 0.01 });
+        ground = new THREE.Mesh(gGeo, gMat);
         ground.rotation.x = -Math.PI / 2;
         ground.receiveShadow = true;
         scene.add(ground);
@@ -105,7 +143,16 @@ const game = {
         sled.castShadow = true;
         const seat = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.5, 1.2), new THREE.MeshStandardMaterial({color: 0x111111}));
         seat.position.y = 0.5;
-        group.add(sled, seat);
+        const runnerMaterial = new THREE.MeshStandardMaterial({ color: 0xb9e9ff, metalness: .9, roughness: .18 });
+        [-.82, .82].forEach(x => {
+            const runner = new THREE.Mesh(new THREE.BoxGeometry(.18, .16, 4.7), runnerMaterial);
+            runner.position.set(x, -.31, 0);
+            runner.castShadow = true;
+            group.add(runner);
+        });
+        const noseStripe = new THREE.Mesh(new THREE.BoxGeometry(.22, .12, 3.7), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x28465b, emissiveIntensity: .45 }));
+        noseStripe.position.set(0, .23, -.08);
+        group.add(sled, seat, noseStripe);
         
         const glow = new THREE.PointLight([0xffffff, 0x2980b9, 0x27ae60][this.config.skin], 1.5, 15);
         glow.position.y = 2;
@@ -116,19 +163,88 @@ const game = {
         player.renderOrder = 999;
         scene.add(player);
 
-        playerBody = new CANNON.Body({ mass: 1, isTrigger: true });
+        playerBody = new CANNON.Body({ mass: 1, type: CANNON.Body.KINEMATIC, collisionResponse: false });
         playerBody.addShape(new CANNON.Box(new CANNON.Vec3(1.2, 1, 2.1)));
         playerBody.position.set(0, playerY, 0);
         world.addBody(playerBody);
 
         for(let i=0; i<300; i++) this.spawnObstacle(-600 - i * 45);
         
-        for(let i=0; i<150; i++) {
+        for(let i=0; i<55; i++) {
             const side = i % 2 === 0 ? 1 : -1;
-            const hill = new THREE.Mesh(new THREE.SphereGeometry(60 + Math.random()*120, 16, 12), new THREE.MeshStandardMaterial({color: 0xfafafa}));
-            hill.position.set(side * (300 + Math.random()*500), -50, -i * 180);
+            const hill = new THREE.Mesh(new THREE.ConeGeometry(95 + Math.random()*120, 210 + Math.random()*170, 7), new THREE.MeshStandardMaterial({color: 0x244d72, roughness: 1}));
+            hill.position.set(side * (260 + Math.random()*300), 70, -i * 360 - 500);
+            hill.rotation.y = Math.random() * Math.PI;
             scene.add(hill);
         }
+
+        this.createScenery();
+    },
+
+    createSky() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 16;
+        canvas.height = 512;
+        const context = canvas.getContext('2d');
+        const gradient = context.createLinearGradient(0, 0, 0, canvas.height);
+        gradient.addColorStop(0, '#071a35');
+        gradient.addColorStop(0.48, '#174a75');
+        gradient.addColorStop(1, '#b8ddec');
+        context.fillStyle = gradient;
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        const texture = new THREE.CanvasTexture(canvas);
+        const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide, depthWrite: false });
+        sky = new THREE.Mesh(new THREE.PlaneGeometry(5000, 1800), material);
+        sky.position.set(0, 420, -1050);
+        sky.renderOrder = -10;
+        scene.add(sky);
+
+        const sunDisc = new THREE.Mesh(new THREE.CircleGeometry(52, 32), new THREE.MeshBasicMaterial({ color: 0xffe7a8, transparent: true, opacity: 0.9 }));
+        sunDisc.position.set(-430, 510, -1000);
+        scene.add(sunDisc);
+    },
+
+    createScenery() {
+        const trunk = new THREE.MeshStandardMaterial({ color: 0x4a2d1b, roughness: 1 });
+        const needles = new THREE.MeshStandardMaterial({ color: 0x0d4d38, roughness: .9 });
+        const ice = new THREE.MeshStandardMaterial({ color: 0xe8fbff, roughness: .45, metalness: .15 });
+        const marker = new THREE.MeshStandardMaterial({ color: 0x00d2ff, emissive: 0x007a9a, emissiveIntensity: .75 });
+
+        for (let i = 0; i < 110; i++) {
+            const side = i % 2 ? 1 : -1;
+            const tree = new THREE.Group();
+            const scale = .6 + Math.random() * 1.25;
+            const stem = new THREE.Mesh(new THREE.CylinderGeometry(.55 * scale, .8 * scale, 6 * scale, 7), trunk);
+            stem.position.y = 3 * scale;
+            tree.add(stem);
+            for (let tier = 0; tier < 3; tier++) {
+                const crown = new THREE.Mesh(new THREE.ConeGeometry((5.8 - tier) * scale, 8 * scale, 8), needles);
+                crown.position.y = (6 + tier * 3.4) * scale;
+                tree.add(crown);
+            }
+            tree.position.set(side * (95 + Math.random() * 330), 0, -i * 105 - 130);
+            tree.rotation.y = Math.random() * Math.PI;
+            scene.add(tree);
+        }
+
+        for (let i = 0; i < 70; i++) {
+            const side = i % 2 ? 1 : -1;
+            const post = new THREE.Group();
+            const pole = new THREE.Mesh(new THREE.CylinderGeometry(.18, .22, 6, 8), ice);
+            pole.position.y = 3;
+            const beacon = new THREE.Mesh(new THREE.SphereGeometry(.55, 10, 8), marker);
+            beacon.position.y = 6.1;
+            post.add(pole, beacon);
+            post.position.set(side * (48 + Math.random() * 20), 0, -i * 180 - 100);
+            scene.add(post);
+        }
+
+        const moon = new THREE.Mesh(new THREE.SphereGeometry(75, 24, 18), new THREE.MeshBasicMaterial({ color: 0xeafaff, transparent: true, opacity: .82 }));
+        moon.position.set(-420, 340, -1300);
+        scene.add(moon);
+        const moonGlow = new THREE.PointLight(0x9adfff, 1.4, 1300);
+        moonGlow.position.copy(moon.position);
+        scene.add(moonGlow);
     },
 
     spawnObstacle(z) {
@@ -184,7 +300,7 @@ const game = {
             if(isPlayer) {
                 if(type < 0.1) { // Gift
                     giftCount++;
-                    document.getElementById('gifts-hud').innerText = giftCount;
+                    setText('gifts-hud', giftCount);
                     localStorage.setItem('sr3d_gifts', (parseInt(localStorage.getItem('sr3d_gifts') || 0) + 1));
                     this.playSound('gift');
                     scene.remove(mesh); world.removeBody(body);
@@ -206,11 +322,19 @@ const game = {
     start(diff) {
         const dMap = { easy: 70, medium: 110, hard: 160 };
         currentSpeed = dMap[diff];
-        score = 0; giftCount = 0;
-        document.getElementById('gifts-hud').innerText = '0';
-        document.getElementById('score-hud').innerText = '0';
-        document.getElementById('menu').style.display = 'none';
-        document.getElementById('hud').style.visibility = 'visible';
+        score = 0;
+        giftCount = 0;
+        terrainDistance = 0;
+        playerX = 0;
+        playerVelX = 0;
+        playerVelY = 0;
+        playerY = RIDE_HEIGHT;
+        isJumping = false;
+        setText('gifts-hud', '0');
+        setText('score-hud', '0');
+        setVisible('menu', false);
+        const hud = document.getElementById('hud');
+        if (hud) hud.style.visibility = 'visible';
         
         gameActive = true;
         startTime = Date.now();
@@ -235,9 +359,15 @@ const game = {
             debris.push({mesh: m, body: b});
         }
         scene.remove(player);
-        document.getElementById('game-over').style.display = 'flex';
-        document.getElementById('final-time').innerText = Math.floor(score) + 's';
-        document.getElementById('final-gifts').innerText = giftCount;
+        setVisible('game-over', true, 'flex');
+        setText('final-time', Math.floor(score) + 's');
+        setText('final-gifts', giftCount);
+        
+        // Save high score
+        const best = parseInt(localStorage.getItem('sr3d_hs') || 0);
+        if(score > best) {
+            localStorage.setItem('sr3d_hs', Math.floor(score));
+        }
     },
 
     retry() { location.reload(); },
@@ -269,8 +399,16 @@ const game = {
                 document.getElementById(btn.dataset.tab).classList.add('active');
             };
         });
-        document.getElementById('best-hud').innerText = localStorage.getItem('sr3d_hs') || 0;
-        document.getElementById('garage-gifts').innerText = localStorage.getItem('sr3d_gifts') || 0;
+        setText('best-hud', localStorage.getItem('sr3d_hs') || 0);
+        setText('garage-gifts', localStorage.getItem('sr3d_gifts') || 0);
+        const gfx = document.getElementById('gfx-quality');
+        const sens = document.getElementById('sens');
+        const fov = document.getElementById('fov-range');
+        const volume = document.getElementById('audio-vol');
+        if (gfx) gfx.value = this.config.graphics;
+        if (sens) sens.value = this.config.sensitivity;
+        if (fov) fov.value = this.config.fov;
+        if (volume) volume.value = this.config.volume;
     },
 
     setupControls() {
@@ -300,7 +438,7 @@ const game = {
         const dt = 0.016;
 
         if(!gameActive) {
-            if(playerBody) { playerBody.velocity.set(0,0,0); playerBody.position.set(0, playerY, 0); }
+            if(playerBody) { playerBody.velocity.set(0,0,0); playerBody.position.set(playerX, playerY, 0); }
             if(player) player.position.set(0, playerY, 0);
             debris.forEach(d => { d.mesh.position.copy(d.body.position); d.mesh.quaternion.copy(d.body.quaternion); });
             world.step(dt);
@@ -316,14 +454,23 @@ const game = {
             playerX += playerVelX * dt;
             playerX = Math.max(-WORLD_WIDTH/2 - 20, Math.min(WORLD_WIDTH/2 + 20, playerX));
 
-            if((keys[' '] || keys['w'] || keys['arrowup']) && !isJumping) {
+            terrainDistance += currentSpeed * dt;
+            const surfaceAtSled = this.getSnowHeight(playerX, -terrainDistance);
+            const surfaceAtOrigin = this.getSnowHeight(playerX, 0);
+            // Shift the generated snow so the rendered surface and sled share one height.
+            if (ground) ground.position.y = surfaceAtSled - surfaceAtOrigin;
+            const rideSurface = surfaceAtSled + RIDE_HEIGHT;
+
+            if((keys[" "] || keys["w"] || keys["arrowup"]) && !isJumping) {
                 isJumping = true; playerVelY = 32;
-                this.playSound('boost');
+                this.playSound("boost");
             }
             if(isJumping) {
                 playerVelY -= 65 * dt;
                 playerY += playerVelY * dt;
-                if(playerY <= 0.75) { playerY = 0.75; isJumping = false; }
+                if(playerY <= rideSurface) { playerY = rideSurface; isJumping = false; }
+            } else {
+                playerY = rideSurface;
             }
 
             player.position.set(playerX, playerY, 0);
@@ -332,8 +479,8 @@ const game = {
             playerBody.position.copy(player.position);
 
             score = (Date.now() - startTime) / 1000;
-            document.getElementById('score-hud').innerText = Math.floor(score);
-            document.getElementById('speed-val').innerText = Math.floor(currentSpeed * 1.5);
+            setText('score-hud', Math.floor(score));
+            setText('speed-val', Math.floor(currentSpeed * 1.5));
             currentSpeed += 0.4 * dt;
 
             const speedFOV = parseInt(this.config.fov) + (currentSpeed - 60) * 0.3;
@@ -361,8 +508,9 @@ const game = {
             snowflakes.geometry.attributes.position.needsUpdate = true;
 
             camera.position.x += (playerX * 0.85 - camera.position.x) * 0.08;
-            camera.position.y += (13 + (currentSpeed-60)*0.15 - camera.position.y) * 0.07;
-            camera.lookAt(playerX * 0.4, 4, -150);
+            camera.position.y += (playerY + 8 + (currentSpeed-60)*0.06 - camera.position.y) * 0.07;
+            camera.position.z += (30 - camera.position.z) * 0.06;
+            camera.lookAt(playerX * 0.4, playerY + 1.2, -90);
 
             world.step(dt);
         }
@@ -370,9 +518,54 @@ const game = {
     }
 };
 
-window.addEventListener('load', () => game.init());
-window.onWindowResize = () => {
+let booted = false;
+
+function setLoaderStatus(message, isError = false) {
+    let status = document.getElementById("loader-status");
+    if (!status) {
+        status = document.createElement("div");
+        status.id = "loader-status";
+        status.style.cssText = "margin-top:14px;max-width:330px;color:rgba(255,255,255,.6);font:13px Rajdhani,sans-serif;letter-spacing:1px;text-align:center";
+        const loader = document.getElementById("loader");
+        if (loader) loader.appendChild(status);
+    }
+    status.textContent = message;
+    status.style.color = isError ? "#ff8a80" : "";
+}
+
+function hideLoader() {
+    const loader = document.getElementById("loader");
+    if (!loader) return;
+    loader.style.opacity = "0";
+    loader.style.pointerEvents = "none";
+    setTimeout(() => loader.remove(), 520);
+}
+
+function bootGame() {
+    if (booted) return;
+    if (!window.THREE || !window.CANNON) {
+        setLoaderStatus("Unable to load the 3D engine. Check your internet connection, then reload.", true);
+        return;
+    }
+    booted = true;
+    try {
+        setLoaderStatus("Building snowy terrain · almost ready");
+        game.init();
+        hideLoader();
+    } catch (error) {
+        console.error("Snow Ansher failed to start:", error);
+        booted = false;
+        setLoaderStatus("World setup hit an error. Reload to try again.", true);
+    }
+}
+
+// DOMContentLoaded does not wait for fonts, audio, or slow third-party assets.
+document.addEventListener("DOMContentLoaded", bootGame);
+window.addEventListener("load", bootGame);
+setTimeout(bootGame, 1800);
+window.addEventListener("resize", () => {
+    if (!camera || !renderer) return;
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
-};
+});
