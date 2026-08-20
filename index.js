@@ -1,240 +1,647 @@
-let scene;
-let camera;
-let renderer;
-let player;
-let playerBody;
-let ground;
-let world;
-let snowflakes;
-let obstacles = [];
-let keys = {};
-let sounds = {};
-let playerX = 0;
-let playerY = 0.7;
-let speed = 0;
-let score = 0;
-let gifts = 0;
-let running = false;
-let jumping = false;
-let jumpVelocity = 0;
-let lastTime = 0;
+// ============================================================
+//  SNOW RIDER – Complete Game Logic
+//  Controls: A/D or ←/→ to steer | SPACE to jump
+// ============================================================
 
-function text(id, value) {
-	const element = document.getElementById(id);
-	if (element) element.textContent = value;
+// ─── Canvas setup ──────────────────────────────────────────────
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let W, H;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
 }
+resize();
+window.addEventListener('resize', resize);
 
-function visible(id, value, display = 'block') {
-	const element = document.getElementById(id);
-	if (element) element.style.display = value ? display : 'none';
-}
+// ─── DOM refs ──────────────────────────────────────────────────
+const hudGifts = document.getElementById('gifts');
+const hudDistance = document.getElementById('distance');
+const hudBest = document.getElementById('best');
+const hudSpeed = document.getElementById('speed');
+const menu = document.getElementById('menu');
+const gameover = document.getElementById('gameover');
+const finalDist = document.getElementById('final-dist');
+const finalGifts = document.getElementById('final-gifts');
+const finalSpeed = document.getElementById('final-speed');
+const retryBtn = document.getElementById('retry');
 
-const game = {
-	config: {
-		graphics: localStorage.getItem('sr3d_gfx') || 'medium',
-		sensitivity: Number(localStorage.getItem('sr3d_sens')) || 1.2,
-		volume: Number(localStorage.getItem('sr3d_vol')) || 0.5,
-		skin: Number(localStorage.getItem('sr3d_skin')) || 0,
-		fov: Number(localStorage.getItem('sr3d_fov')) || 70
-	},
+// ─── State ────────────────────────────────────────────────────
+let best = parseInt(localStorage.getItem('snowrider_best')) || 0;
+hudBest.textContent = best;
 
-	init() {
-		this.setupScene();
-		this.setupUI();
-		this.setupControls();
-		this.setupAudio();
-		const loader = document.getElementById('loader');
-		if (loader) setTimeout(() => loader.remove(), 700);
-		requestAnimationFrame((time) => this.animate(time));
-	},
-
-	setupScene() {
-		scene = new THREE.Scene();
-		scene.background = new THREE.Color(0x12365a);
-		scene.fog = new THREE.Fog(0x12365a, 160, 1000);
-		camera = new THREE.PerspectiveCamera(this.config.fov, innerWidth / innerHeight, 0.1, 3000);
-		camera.position.set(0, 8, 24);
-		renderer = new THREE.WebGLRenderer({ antialias: true });
-		renderer.setSize(innerWidth, innerHeight);
-		renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-		renderer.outputEncoding = THREE.sRGBEncoding;
-		renderer.shadowMap.enabled = this.config.graphics !== 'low';
-		const host = document.getElementById('game-canvas') || document.body;
-		host.appendChild(renderer.domElement);
-
-		scene.add(new THREE.HemisphereLight(0xdff4ff, 0x163657, 1.5));
-		const sun = new THREE.DirectionalLight(0xfff0cf, 2.1);
-		sun.position.set(-180, 300, 140);
-		sun.castShadow = renderer.shadowMap.enabled;
-		scene.add(sun);
-
-		const skyMaterial = new THREE.MeshBasicMaterial({
-			color: 0x397eaa,
-			side: THREE.BackSide
-		});
-		const sky = new THREE.Mesh(new THREE.SphereGeometry(1200, 24, 16), skyMaterial);
-		scene.add(sky);
-
-		const terrainGeometry = new THREE.PlaneGeometry(900, 3000, 100, 160);
-		const positions = terrainGeometry.attributes.position.array;
-		for (let i = 0; i < positions.length; i += 3) {
-			const x = positions[i];
-			const z = -positions[i + 1];
-			positions[i + 2] = this.snowHeight(x, z);
-		}
-		terrainGeometry.computeVertexNormals();
-		ground = new THREE.Mesh(terrainGeometry, new THREE.MeshStandardMaterial({
-			color: 0xd9edf6,
-			roughness: 0.92,
-			metalness: 0
-		}));
-		ground.rotation.x = -Math.PI / 2;
-		ground.receiveShadow = true;
-		scene.add(ground);
-
-		const snowGeometry = new THREE.BufferGeometry();
-		const particles = [];
-		for (let i = 0; i < 1800; i++) particles.push((Math.random() - 0.5) * 500, Math.random() * 90, -Math.random() * 900);
-		snowGeometry.setAttribute('position', new THREE.Float32BufferAttribute(particles, 3));
-		snowflakes = new THREE.Points(snowGeometry, new THREE.PointsMaterial({ color: 0xffffff, size: 0.45, transparent: true, opacity: 0.55, depthWrite: false }));
-		scene.add(snowflakes);
-
-		this.createPlayer();
-		world = new CANNON.World();
-		world.gravity.set(0, -22, 0);
-		playerBody = new CANNON.Body({ mass: 1, type: CANNON.Body.KINEMATIC, collisionResponse: false });
-		playerBody.addShape(new CANNON.Box(new CANNON.Vec3(1.15, 0.45, 2))); 
-		world.addBody(playerBody);
-	},
-
-	snowHeight(x, z) {
-		return Math.sin(z * 0.012) * 1.8 + Math.sin(z * 0.031 + x * 0.02) * 0.35 + Math.max(0, Math.abs(x) - 30) * 0.025;
-	},
-
-	createPlayer() {
-		player = new THREE.Group();
-		const colors = [0xc0392b, 0x2980b9, 0x27ae60];
-		const body = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.42, 4), new THREE.MeshStandardMaterial({ color: colors[this.config.skin], metalness: 0.45, roughness: 0.3 }));
-		body.castShadow = true;
-		player.add(body);
-		const seat = new THREE.Mesh(new THREE.BoxGeometry(1.35, 1.15, 1.1), new THREE.MeshStandardMaterial({ color: 0x182337, roughness: 0.8 }));
-		seat.position.set(0, 0.65, -0.45);
-		player.add(seat);
-		const runnerMaterial = new THREE.MeshStandardMaterial({ color: 0xaed8ed, metalness: 0.8, roughness: 0.22 });
-		for (const x of [-0.82, 0.82]) {
-			const runner = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.14, 4.6), runnerMaterial);
-			runner.position.set(x, -0.3, 0);
-			runner.castShadow = true;
-			player.add(runner);
-		}
-		player.position.set(0, playerY, 0);
-		scene.add(player);
-	},
-
-	setupUI() {
-		document.querySelectorAll('.tab-btn').forEach((button) => button.addEventListener('click', () => {
-			document.querySelectorAll('.tab-btn, .panel').forEach((item) => item.classList.remove('active'));
-			button.classList.add('active');
-			const panel = document.getElementById(button.dataset.tab);
-			if (panel) panel.classList.add('active');
-		}));
-		text('best-hud', localStorage.getItem('sr3d_best') || 0);
-		text('garage-gifts', localStorage.getItem('sr3d_gifts') || 0);
-		const values = [['gfx-quality', this.config.graphics], ['sens', this.config.sensitivity], ['fov-range', this.config.fov], ['audio-vol', this.config.volume]];
-		values.forEach(([id, value]) => { const element = document.getElementById(id); if (element) element.value = value; });
-	},
-
-	setupControls() {
-		addEventListener('keydown', (event) => { keys[event.key.toLowerCase()] = true; });
-		addEventListener('keyup', (event) => { keys[event.key.toLowerCase()] = false; });
-		addEventListener('resize', () => {
-			if (!renderer || !camera) return;
-			camera.aspect = innerWidth / innerHeight;
-			camera.updateProjectionMatrix();
-			renderer.setSize(innerWidth, innerHeight);
-		});
-	},
-
-	setupAudio() {
-		const volume = this.config.volume;
-		['bg', 'crash', 'gift', 'slide', 'boost'].forEach((key) => { sounds[key] = new Audio(); sounds[key].volume = volume; });
-	},
-
-	start(difficulty) {
-		speed = { easy: 70, medium: 110, hard: 160 }[difficulty] || 110;
-		score = 0;
-		gifts = 0;
-		playerX = 0;
-		playerY = this.snowHeight(0, 0) + 0.72;
-		jumping = false;
-		jumpVelocity = 0;
-		player.position.set(playerX, playerY, 0);
-		player.rotation.set(0, 0, 0);
-		playerBody.position.set(playerX, playerY, 0);
-		text('gifts-hud', 0);
-		text('score-hud', 0);
-		text('speed-val', Math.floor(speed * 1.5));
-		visible('menu', false);
-		visible('game-over', false);
-		const hud = document.getElementById('hud');
-		if (hud) hud.style.visibility = 'visible';
-		running = true;
-		lastTime = 0;
-	},
-
-	setSkin(id) {
-		this.config.skin = id;
-		localStorage.setItem('sr3d_skin', id);
-		if (player && player.children[0]) player.children[0].material.color.set([0xc0392b, 0x2980b9, 0x27ae60][id]);
-	},
-
-	updateSetting(key, value) {
-		this.config[key] = key === 'graphics' ? value : Number(value);
-		localStorage.setItem('sr3d_' + key, value);
-		if (key === 'fov' && camera) { camera.fov = Number(value); camera.updateProjectionMatrix(); }
-		if (key === 'volume') Object.values(sounds).forEach((sound) => { sound.volume = Number(value); });
-		if (key === 'graphics') location.reload();
-	},
-
-	animate(time) {
-		requestAnimationFrame((nextTime) => this.animate(nextTime));
-		const delta = Math.min((time - (lastTime || time)) / 1000, 0.04);
-		lastTime = time;
-		if (running) this.update(delta);
-		renderer.render(scene, camera);
-	},
-
-	update(delta) {
-		let steer = 0;
-		if (keys.a || keys.arrowleft) steer -= 1;
-		if (keys.d || keys.arrowright) steer += 1;
-		playerX += steer * this.config.sensitivity * delta * 24;
-		playerX = Math.max(-30, Math.min(30, playerX));
-		const surface = this.snowHeight(playerX, -score * 2.2);
-		if ((keys[' '] || keys.w || keys.arrowup) && !jumping) { jumping = true; jumpVelocity = 14; }
-		if (jumping) { jumpVelocity -= 28 * delta; playerY += jumpVelocity * delta; if (playerY <= surface + 0.72) { playerY = surface + 0.72; jumping = false; } } else playerY = surface + 0.72;
-		score += speed * delta * 0.02;
-		player.position.set(playerX, playerY, 0);
-		player.rotation.z += (-steer * 0.25 - player.rotation.z) * 0.12;
-		playerBody.position.copy(player.position);
-		text('score-hud', Math.floor(score));
-		text('speed-val', Math.floor(speed * 1.5));
-		camera.position.x += (playerX * 0.6 - camera.position.x) * 0.08;
-		camera.position.y += (playerY + 8 - camera.position.y) * 0.08;
-		camera.lookAt(playerX * 0.35, playerY, -65);
-		const positions = snowflakes.geometry.attributes.position.array;
-		for (let i = 1; i < positions.length; i += 3) { positions[i] -= delta * 10; if (positions[i] < 0) positions[i] = 90; }
-		snowflakes.geometry.attributes.position.needsUpdate = true;
-	},
-
-	retry() { location.reload(); },
-	toMenu() { location.reload(); }
+let game = {
+  playing: false,
+  score: 0,
+  gifts: 0,
+  distance: 0,
+  speed: 0,
+  difficulty: 'medium',
+  health: 100,
+  maxHealth: 100,
+  gameOver: false
 };
 
-window.game = game;
+// ─── Player ──────────────────────────────────────────────────
+const player = {
+  x: W / 2,
+  y: H - 120,
+  width: 40,
+  height: 20,
+  vy: 0,
+  grounded: true,
+  speed: 0
+};
 
-function boot() {
-	if (window.THREE && window.CANNON) game.init();
+// ─── World ────────────────────────────────────────────────────
+let obstacles = [];
+let gifts = [];
+let particles = [];
+let trees = [];
+let stars = [];
+
+// ─── Keys ────────────────────────────────────────────────────
+const keys = { left: false, right: false, jump: false };
+
+// ─── Difficulty ──────────────────────────────────────────────
+const DIFFICULTY = {
+  easy: { speed: 3, maxSpeed: 8, obstacleRate: 60, giftRate: 40, gravity: 0.5, jumpPower: -10 },
+  medium: { speed: 5, maxSpeed: 12, obstacleRate: 45, giftRate: 35, gravity: 0.6, jumpPower: -11 },
+  hard: { speed: 7, maxSpeed: 16, obstacleRate: 30, giftRate: 30, gravity: 0.7, jumpPower: -12 }
+};
+
+// ─── Generate stars ──────────────────────────────────────────
+function generateStars() {
+  stars = [];
+  for (let i = 0; i < 200; i++) {
+    stars.push({
+      x: Math.random() * W,
+      y: Math.random() * H * 0.7,
+      size: Math.random() * 2 + 1,
+      speed: Math.random() * 0.5 + 0.2
+    });
+  }
+}
+generateStars();
+
+// ─── Generate trees ──────────────────────────────────────────
+function generateTrees() {
+  trees = [];
+  for (let i = 0; i < 50; i++) {
+    const x = Math.random() * W;
+    const y = Math.random() * (H * 0.3) + H * 0.5;
+    trees.push({
+      x: x,
+      y: y,
+      size: 10 + Math.random() * 20,
+      type: Math.floor(Math.random() * 3)
+    });
+  }
+}
+generateTrees();
+
+// ─── Snow particles ──────────────────────────────────────────
+let snowflakes = [];
+function generateSnow() {
+  snowflakes = [];
+  for (let i = 0; i < 150; i++) {
+    snowflakes.push({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      r: Math.random() * 2 + 1,
+      speed: Math.random() * 1 + 0.5,
+      drift: Math.random() * 0.5 - 0.25
+    });
+  }
+}
+generateSnow();
+
+// ─── Ground ──────────────────────────────────────────────────
+const groundY = H - 80;
+const groundHeight = 80;
+
+// ─── Game functions ──────────────────────────────────────────
+
+function getDiff() {
+  return DIFFICULTY[game.difficulty] || DIFFICULTY.medium;
 }
 
-document.addEventListener('DOMContentLoaded', boot);
+function resetGame() {
+  game.playing = true;
+  game.gameOver = false;
+  game.score = 0;
+  game.gifts = 0;
+  game.distance = 0;
+  game.speed = 0;
+  game.health = 100;
+
+  player.x = W / 2;
+  player.y = groundY - 30;
+  player.vy = 0;
+  player.grounded = true;
+
+  obstacles = [];
+  gifts = [];
+  particles = [];
+
+  hudGifts.textContent = '0';
+  hudDistance.textContent = '0';
+  hudSpeed.textContent = '0';
+
+  gameover.classList.remove('show');
+}
+
+function spawnObstacle() {
+  const diff = getDiff();
+  const x = W + 50;
+  const y = groundY - 30;
+  const type = Math.random() > 0.5 ? 'tree' : 'rock';
+  const size = type === 'tree' ? 25 + Math.random() * 15 : 15 + Math.random() * 10;
+  obstacles.push({
+    x: x,
+    y: y - size / 2,
+    width: size * 0.8,
+    height: size,
+    type: type,
+    size: size
+  });
+}
+
+function spawnGift() {
+  const x = W + 50;
+  const y = groundY - 50 - Math.random() * 60;
+  gifts.push({
+    x: x,
+    y: y,
+    width: 20,
+    height: 20,
+    bob: Math.random() * Math.PI * 2,
+    collected: false
+  });
+}
+
+function addParticles(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = Math.random() * 4 + 1;
+    particles.push({
+      x: x,
+      y: y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 2,
+      life: 30 + Math.random() * 30,
+      maxLife: 60,
+      size: Math.random() * 4 + 2,
+      color: color
+    });
+  }
+}
+
+function gameOverHandler() {
+  game.playing = false;
+  game.gameOver = true;
+
+  finalDist.textContent = Math.floor(game.distance);
+  finalGifts.textContent = game.gifts;
+  finalSpeed.textContent = Math.floor(game.speed * 3.6);
+
+  if (game.distance > best) {
+    best = game.distance;
+    localStorage.setItem('snowrider_best', String(best));
+    hudBest.textContent = best;
+  }
+
+  gameover.classList.add('show');
+}
+
+// ─── Update ──────────────────────────────────────────────────
+
+function update() {
+  if (!game.playing || game.gameOver) return;
+
+  const diff = getDiff();
+
+  // Speed
+  game.speed += (diff.speed - game.speed) * 0.01;
+  game.speed = Math.min(game.speed, diff.maxSpeed);
+
+  // Distance
+  game.distance += game.speed * 0.5;
+
+  // Steering
+  const moveSpeed = 6;
+  if (keys.left) player.x -= moveSpeed;
+  if (keys.right) player.x += moveSpeed;
+
+  // Boundaries
+  player.x = Math.max(30, Math.min(W - 30, player.x));
+
+  // Gravity
+  player.vy += diff.gravity * 0.5;
+  player.y += player.vy;
+
+  // Ground collision
+  if (player.y + player.height / 2 >= groundY) {
+    player.y = groundY - player.height / 2;
+    player.vy = 0;
+    player.grounded = true;
+  } else {
+    player.grounded = false;
+  }
+
+  // Jump
+  if (keys.jump && player.grounded) {
+    player.vy = diff.jumpPower;
+    player.grounded = false;
+    addParticles(player.x, groundY, '#55d7ff', 10);
+  }
+
+  // Player speed (for HUD)
+  const speedKmh = Math.floor(game.speed * 3.6);
+  hudSpeed.textContent = speedKmh;
+
+  // ─── Spawn obstacles ──────────────────────────────────────
+  if (Math.random() < 1 / diff.obstacleRate) {
+    spawnObstacle();
+  }
+  if (Math.random() < 1 / diff.giftRate) {
+    spawnGift();
+  }
+
+  // ─── Update obstacles ─────────────────────────────────────
+  for (let i = obstacles.length - 1; i >= 0; i--) {
+    const ob = obstacles[i];
+    ob.x -= game.speed * 1.5;
+
+    // Collision with player
+    const dx = player.x - ob.x;
+    const dy = player.y - ob.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const hitRadius = ob.size * 0.6;
+
+    if (dist < hitRadius + 20) {
+      // Crash!
+      addParticles(player.x, player.y, '#ff6b6b', 30);
+      gameOverHandler();
+      return;
+    }
+
+    // Remove off screen
+    if (ob.x < -50) {
+      obstacles.splice(i, 1);
+    }
+  }
+
+  // ─── Update gifts ─────────────────────────────────────────
+  for (let i = gifts.length - 1; i >= 0; i--) {
+    const g = gifts[i];
+    g.x -= game.speed * 1.5;
+    g.bob += 0.05;
+    g.y += Math.sin(g.bob) * 0.3;
+
+    // Collision with player
+    const dx = player.x - g.x;
+    const dy = player.y - g.y;
+    if (Math.abs(dx) < 30 && Math.abs(dy) < 30 && !g.collected) {
+      g.collected = true;
+      game.gifts++;
+      hudGifts.textContent = game.gifts;
+      addParticles(g.x, g.y, '#ffd166', 15);
+      gifts.splice(i, 1);
+    }
+
+    // Remove off screen
+    if (g.x < -30) {
+      gifts.splice(i, 1);
+    }
+  }
+
+  // ─── Update particles ─────────────────────────────────────
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.1;
+    p.life--;
+    if (p.life <= 0) {
+      particles.splice(i, 1);
+    }
+  }
+
+  // ─── Update snow ──────────────────────────────────────────
+  for (const s of snowflakes) {
+    s.y += s.speed;
+    s.x += s.drift;
+    if (s.y > H) {
+      s.y = -10;
+      s.x = Math.random() * W;
+    }
+    if (s.x > W) s.x = 0;
+    if (s.x < 0) s.x = W;
+  }
+
+  // ─── Update stars ─────────────────────────────────────────
+  for (const s of stars) {
+    s.y += s.speed * 0.2;
+    if (s.y > H * 0.7) {
+      s.y = -10;
+      s.x = Math.random() * W;
+    }
+  }
+
+  // ─── HUD ──────────────────────────────────────────────────
+  hudDistance.textContent = Math.floor(game.distance);
+}
+
+// ─── Draw ────────────────────────────────────────────────────
+
+function draw() {
+  // Clear
+  const gradient = ctx.createLinearGradient(0, 0, 0, H);
+  gradient.addColorStop(0, '#0a1628');
+  gradient.addColorStop(0.5, '#1a2a4a');
+  gradient.addColorStop(1, '#2a4a6a');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, W, H);
+
+  // Stars
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  for (const s of stars) {
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Snow
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  for (const s of snowflakes) {
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Ground
+  const groundGrad = ctx.createLinearGradient(0, groundY, 0, H);
+  groundGrad.addColorStop(0, '#4a7a9a');
+  groundGrad.addColorStop(0.3, '#3a6a8a');
+  groundGrad.addColorStop(1, '#2a4a6a');
+  ctx.fillStyle = groundGrad;
+  ctx.fillRect(0, groundY, W, groundHeight);
+
+  // Ground line
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, groundY);
+  ctx.lineTo(W, groundY);
+  ctx.stroke();
+
+  // Trees (background)
+  for (const t of trees) {
+    const size = t.size;
+    // Trunk
+    ctx.fillStyle = '#3a2a1a';
+    ctx.fillRect(t.x - size * 0.1, t.y - size * 0.3, size * 0.2, size * 0.3);
+    // Leaves
+    ctx.fillStyle = '#1a4a2a';
+    ctx.beginPath();
+    ctx.moveTo(t.x, t.y - size);
+    ctx.lineTo(t.x - size * 0.6, t.y - size * 0.3);
+    ctx.lineTo(t.x + size * 0.6, t.y - size * 0.3);
+    ctx.fill();
+    ctx.fillStyle = '#2a5a3a';
+    ctx.beginPath();
+    ctx.moveTo(t.x, t.y - size * 0.7);
+    ctx.lineTo(t.x - size * 0.5, t.y - size * 0.1);
+    ctx.lineTo(t.x + size * 0.5, t.y - size * 0.1);
+    ctx.fill();
+    // Snow
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.beginPath();
+    ctx.arc(t.x, t.y - size * 0.7, size * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Obstacles
+  for (const ob of obstacles) {
+    if (ob.type === 'tree') {
+      // Tree
+      ctx.fillStyle = '#3a2a1a';
+      ctx.fillRect(ob.x - 4, ob.y + ob.size * 0.1, 8, ob.size * 0.4);
+      ctx.fillStyle = '#1a4a2a';
+      ctx.beginPath();
+      ctx.moveTo(ob.x, ob.y - ob.size * 0.2);
+      ctx.lineTo(ob.x - ob.size * 0.5, ob.y + ob.size * 0.2);
+      ctx.lineTo(ob.x + ob.size * 0.5, ob.y + ob.size * 0.2);
+      ctx.fill();
+      ctx.fillStyle = '#2a5a3a';
+      ctx.beginPath();
+      ctx.moveTo(ob.x, ob.y - ob.size * 0.6);
+      ctx.lineTo(ob.x - ob.size * 0.4, ob.y - ob.size * 0.1);
+      ctx.lineTo(ob.x + ob.size * 0.4, ob.y - ob.size * 0.1);
+      ctx.fill();
+    } else {
+      // Rock
+      ctx.fillStyle = '#5a6a7a';
+      ctx.beginPath();
+      ctx.ellipse(ob.x, ob.y + ob.size * 0.2, ob.size * 0.5, ob.size * 0.4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#6a7a8a';
+      ctx.beginPath();
+      ctx.ellipse(ob.x - ob.size * 0.1, ob.y + ob.size * 0.1, ob.size * 0.3, ob.size * 0.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Gifts
+  for (const g of gifts) {
+    if (g.collected) continue;
+    // Glow
+    ctx.shadowColor = '#ffd166';
+    ctx.shadowBlur = 15;
+    // Box
+    ctx.fillStyle = '#ffd166';
+    ctx.fillRect(g.x - g.width / 2, g.y - g.height / 2, g.width, g.height);
+    // Ribbon
+    ctx.fillStyle = '#ff4466';
+    ctx.fillRect(g.x - 2, g.y - g.height / 2, 4, g.height);
+    ctx.fillRect(g.x - g.width / 2, g.y - 2, g.width, 4);
+    ctx.shadowBlur = 0;
+    // Shine
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.fillRect(g.x - g.width / 4, g.y - g.height / 3, g.width / 3, g.height / 6);
+  }
+
+  // Player (sled)
+  // Shadow
+  ctx.shadowColor = 'rgba(0,0,0,0.3)';
+  ctx.shadowBlur = 10;
+  // Body
+  ctx.fillStyle = '#55d7ff';
+  ctx.shadowColor = 'rgba(85,215,255,0.3)';
+  ctx.shadowBlur = 15;
+  // Sled shape
+  ctx.beginPath();
+  ctx.roundRect(player.x - 25, player.y - 8, 50, 16, 5);
+  ctx.fill();
+  // Seat
+  ctx.fillStyle = '#1a3a5a';
+  ctx.shadowBlur = 0;
+  ctx.fillRect(player.x - 15, player.y - 16, 15, 10);
+  // Headlight
+  ctx.fillStyle = '#ffffaa';
+  ctx.shadowColor = 'rgba(255,255,200,0.5)';
+  ctx.shadowBlur = 20;
+  ctx.beginPath();
+  ctx.arc(player.x + 20, player.y - 2, 4, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Skis
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#8899aa';
+  ctx.fillRect(player.x - 22, player.y + 6, 10, 3);
+  ctx.fillRect(player.x + 12, player.y + 6, 10, 3);
+
+  // Glow trail
+  if (game.speed > 3) {
+    ctx.shadowColor = 'rgba(85,215,255,0.15)';
+    ctx.shadowBlur = 30;
+    ctx.fillStyle = 'rgba(85,215,255,0.05)';
+    ctx.fillRect(player.x - 30, player.y - 15, 10, 30);
+    ctx.shadowBlur = 0;
+  }
+
+  // Particles
+  for (const p of particles) {
+    const alpha = p.life / p.maxLife;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = p.color || '#ffffff';
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // ─── Speed lines ──────────────────────────────────────────
+  if (game.speed > 4) {
+    const intensity = (game.speed - 4) / 10;
+    ctx.strokeStyle = `rgba(255,255,255,${intensity * 0.05})`;
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 20; i++) {
+      const x = Math.random() * W;
+      const y = Math.random() * groundY;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x - game.speed * 2, y);
+      ctx.stroke();
+    }
+  }
+
+  // Health bar
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.fillRect(20, H - 40, 150, 10);
+  ctx.fillStyle = game.health > 50 ? '#4ecdc4' : '#ff6b6b';
+  ctx.fillRect(22, H - 38, (game.health / game.maxHealth) * 146, 6);
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.font = '9px Arial';
+  ctx.fillText('HP', 8, H - 32);
+}
+
+// ─── RoundRect polyfill for canvas ──────────────────────────
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+    if (r > w / 2) r = w / 2;
+    if (r > h / 2) r = h / 2;
+    this.moveTo(x + r, y);
+    this.arcTo(x + w, y, x + w, y + h, r);
+    this.arcTo(x + w, y + h, x, y + h, r);
+    this.arcTo(x, y + h, x, y, r);
+    this.arcTo(x, y, x + w, y, r);
+    return this;
+  };
+}
+
+// ─── Game loop ──────────────────────────────────────────────
+
+function gameLoop() {
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+// ─── Keyboard ────────────────────────────────────────────────
+
+document.addEventListener('keydown', function(e) {
+  const key = e.key;
+  if (key === 'a' || key === 'A' || key === 'ArrowLeft') {
+    e.preventDefault();
+    keys.left = true;
+  }
+  if (key === 'd' || key === 'D' || key === 'ArrowRight') {
+    e.preventDefault();
+    keys.right = true;
+  }
+  if (key === ' ' || key === 'Space' || key === 'ArrowUp') {
+    e.preventDefault();
+    keys.jump = true;
+  }
+});
+
+document.addEventListener('keyup', function(e) {
+  const key = e.key;
+  if (key === 'a' || key === 'A' || key === 'ArrowLeft') {
+    e.preventDefault();
+    keys.left = false;
+  }
+  if (key === 'd' || key === 'D' || key === 'ArrowRight') {
+    e.preventDefault();
+    keys.right = false;
+  }
+  if (key === ' ' || key === 'Space' || key === 'ArrowUp') {
+    e.preventDefault();
+    keys.jump = false;
+  }
+});
+
+// ─── Start game ──────────────────────────────────────────────
+
+function startGame(difficulty) {
+  game.difficulty = difficulty || 'medium';
+  menu.classList.add('hidden');
+  resetGame();
+}
+
+// Menu buttons
+document.querySelectorAll('.diff-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    startGame(this.dataset.diff);
+  });
+});
+
+retryBtn.addEventListener('click', function() {
+  startGame(game.difficulty);
+});
+
+// ─── Init ────────────────────────────────────────────────────
+
+// Show initial state
+resetGame();
+game.playing = false;
+menu.classList.remove('hidden');
+
+// Start loop
+gameLoop();
+
+// Handle resize
+window.addEventListener('resize', function() {
+  resize();
+  generateStars();
+  generateTrees();
+  generateSnow();
+  // Update ground position
+  groundY = H - 80;
+});
+
+console.log('❄️ Snow Rider loaded! Controls: A/D to steer, SPACE to jump');
