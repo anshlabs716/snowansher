@@ -9,6 +9,7 @@ let playerX = 0, playerY = RIDE_HEIGHT, playerVelX = 0, playerVelY = 0;
 let isJumping = false;
 let sounds = {};
 let sky;
+let sledMesh;
 
 function setText(id, value) {
     const element = document.getElementById(id);
@@ -24,7 +25,7 @@ const game = {
     config: {
         graphics: localStorage.getItem('sr3d_gfx') || 'medium',
         sensitivity: parseFloat(localStorage.getItem('sr3d_sens')) || 1.2,
-        volume: parseFloat(localStorage.getItem('sr3d_vol')) || 0.8,
+        volume: parseFloat(localStorage.getItem('sr3d_vol')) || 0.5,
         skin: parseInt(localStorage.getItem('sr3d_skin')) || 0,
         fov: parseInt(localStorage.getItem('sr3d_fov')) || 70
     },
@@ -73,7 +74,8 @@ const game = {
             renderer.shadowMap.enabled = true;
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         }
-        document.body.appendChild(renderer.domElement);
+        const renderHost = document.getElementById('game-canvas') || document.body;
+        renderHost.appendChild(renderer.domElement);
 
         scene.add(new THREE.HemisphereLight(0xd7efff, 0x183555, 1.15));
         const sun = new THREE.DirectionalLight(0xfff4dc, 1.8);
@@ -140,6 +142,7 @@ const game = {
             emissive: [0xc0392b, 0x2980b9, 0x27ae60][this.config.skin],
             emissiveIntensity: 0.2
         }));
+        sledMesh = sled;
         sled.castShadow = true;
         const seat = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.5, 1.2), new THREE.MeshStandardMaterial({color: 0x111111}));
         seat.position.y = 0.5;
@@ -330,9 +333,12 @@ const game = {
         playerVelY = 0;
         playerY = RIDE_HEIGHT;
         isJumping = false;
+        if (player) player.position.set(playerX, playerY, 0);
+        if (playerBody) playerBody.position.set(playerX, playerY, 0);
         setText('gifts-hud', '0');
         setText('score-hud', '0');
         setVisible('menu', false);
+        setVisible('game-over', false);
         const hud = document.getElementById('hud');
         if (hud) hud.style.visibility = 'visible';
         
@@ -347,6 +353,8 @@ const game = {
         gameActive = false;
         this.stopSound('slide');
         this.playSound('crash');
+        const hud = document.getElementById('hud');
+        if (hud) hud.style.visibility = 'hidden';
         
         for(let i=0; i<40; i++) {
             const size = 0.3 + Math.random() * 0.7;
@@ -396,7 +404,8 @@ const game = {
             btn.onclick = (e) => {
                 document.querySelectorAll('.tab-btn, .panel').forEach(el => el.classList.remove('active'));
                 btn.classList.add('active');
-                document.getElementById(btn.dataset.tab).classList.add('active');
+                const panel = document.getElementById(btn.dataset.tab);
+                if (panel) panel.classList.add('active');
             };
         });
         setText('best-hud', localStorage.getItem('sr3d_hs') || 0);
@@ -427,9 +436,10 @@ const game = {
     setSkin(id) {
         this.config.skin = id;
         localStorage.setItem('sr3d_skin', id);
-        if(player) {
-            player.children[0].material.color.set([0xc0392b, 0x2980b9, 0x27ae60][id]);
-            player.children[0].material.emissive.set([0xc0392b, 0x2980b9, 0x27ae60][id]);
+        if(sledMesh) {
+            const color = [0xc0392b, 0x2980b9, 0x27ae60][id];
+            sledMesh.material.color.set(color);
+            sledMesh.material.emissive.set(color);
         }
     },
 
@@ -439,7 +449,7 @@ const game = {
 
         if(!gameActive) {
             if(playerBody) { playerBody.velocity.set(0,0,0); playerBody.position.set(playerX, playerY, 0); }
-            if(player) player.position.set(0, playerY, 0);
+            if(player) player.position.set(playerX, playerY, 0);
             debris.forEach(d => { d.mesh.position.copy(d.body.position); d.mesh.quaternion.copy(d.body.quaternion); });
             world.step(dt);
         }
