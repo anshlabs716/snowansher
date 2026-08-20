@@ -1,20 +1,7 @@
 // ============================================================
-//  SNOW RIDER – Complete Game Logic
+//  SNOW RIDER 3D – Full Game Logic
 //  Controls: A/D or ←/→ to steer | SPACE to jump
 // ============================================================
-
-// ─── Canvas setup ──────────────────────────────────────────────
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-
-let W, H;
-
-function resize() {
-  W = canvas.width = window.innerWidth;
-  H = canvas.height = window.innerHeight;
-}
-resize();
-window.addEventListener('resize', resize);
 
 // ─── DOM refs ──────────────────────────────────────────────────
 const hudGifts = document.getElementById('gifts');
@@ -32,616 +19,672 @@ const retryBtn = document.getElementById('retry');
 let best = parseInt(localStorage.getItem('snowrider_best')) || 0;
 hudBest.textContent = best;
 
-let game = {
-  playing: false,
-  score: 0,
-  gifts: 0,
-  distance: 0,
-  speed: 0,
-  difficulty: 'medium',
-  health: 100,
-  maxHealth: 100,
-  gameOver: false
+const state = {
+    playing: false,
+    gameOver: false,
+    score: 0,
+    gifts: 0,
+    distance: 0,
+    speed: 0,
+    difficulty: 'medium',
+    health: 100,
+    maxHealth: 100
 };
-
-// ─── Player ──────────────────────────────────────────────────
-const player = {
-  x: W / 2,
-  y: H - 120,
-  width: 40,
-  height: 20,
-  vy: 0,
-  grounded: true,
-  speed: 0
-};
-
-// ─── World ────────────────────────────────────────────────────
-let obstacles = [];
-let gifts = [];
-let particles = [];
-let trees = [];
-let stars = [];
 
 // ─── Keys ────────────────────────────────────────────────────
 const keys = { left: false, right: false, jump: false };
 
 // ─── Difficulty ──────────────────────────────────────────────
 const DIFFICULTY = {
-  easy: { speed: 3, maxSpeed: 8, obstacleRate: 60, giftRate: 40, gravity: 0.5, jumpPower: -10 },
-  medium: { speed: 5, maxSpeed: 12, obstacleRate: 45, giftRate: 35, gravity: 0.6, jumpPower: -11 },
-  hard: { speed: 7, maxSpeed: 16, obstacleRate: 30, giftRate: 30, gravity: 0.7, jumpPower: -12 }
+    easy: { speed: 4, maxSpeed: 10, obstacleRate: 50, gravity: -0.5, jumpPower: 8 },
+    medium: { speed: 6, maxSpeed: 14, obstacleRate: 35, gravity: -0.6, jumpPower: 9 },
+    hard: { speed: 8, maxSpeed: 18, obstacleRate: 25, gravity: -0.7, jumpPower: 10 }
 };
 
-// ─── Generate stars ──────────────────────────────────────────
-function generateStars() {
-  stars = [];
-  for (let i = 0; i < 200; i++) {
-    stars.push({
-      x: Math.random() * W,
-      y: Math.random() * H * 0.7,
-      size: Math.random() * 2 + 1,
-      speed: Math.random() * 0.5 + 0.2
-    });
-  }
-}
-generateStars();
+// ─── Three.js Setup ──────────────────────────────────────────
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a2a4a);
+scene.fog = new THREE.Fog(0x1a2a4a, 80, 200);
 
-// ─── Generate trees ──────────────────────────────────────────
-function generateTrees() {
-  trees = [];
-  for (let i = 0; i < 50; i++) {
-    const x = Math.random() * W;
-    const y = Math.random() * (H * 0.3) + H * 0.5;
-    trees.push({
-      x: x,
-      y: y,
-      size: 10 + Math.random() * 20,
-      type: Math.floor(Math.random() * 3)
-    });
-  }
-}
-generateTrees();
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 300);
+camera.position.set(0, 8, 14);
+camera.lookAt(0, 0, 0);
 
-// ─── Snow particles ──────────────────────────────────────────
-let snowflakes = [];
-function generateSnow() {
-  snowflakes = [];
-  for (let i = 0; i < 150; i++) {
-    snowflakes.push({
-      x: Math.random() * W,
-      y: Math.random() * H,
-      r: Math.random() * 2 + 1,
-      speed: Math.random() * 1 + 0.5,
-      drift: Math.random() * 0.5 - 0.25
-    });
-  }
-}
-generateSnow();
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+document.body.prepend(renderer.domElement);
+
+// ─── Lights ──────────────────────────────────────────────────
+const ambientLight = new THREE.AmbientLight(0x6688cc, 0.6);
+scene.add(ambientLight);
+
+const sunLight = new THREE.DirectionalLight(0xffeedd, 1.4);
+sunLight.position.set(50, 80, 30);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.width = 1024;
+sunLight.shadow.mapSize.height = 1024;
+sunLight.shadow.camera.near = 0.5;
+sunLight.shadow.camera.far = 150;
+sunLight.shadow.camera.left = -50;
+sunLight.shadow.camera.right = 50;
+sunLight.shadow.camera.top = 50;
+sunLight.shadow.camera.bottom = -50;
+scene.add(sunLight);
+
+const hemiLight = new THREE.HemisphereLight(0x88ccff, 0x445566, 0.4);
+scene.add(hemiLight);
+
+// ─── Sky ──────────────────────────────────────────────────────
+const skyGeo = new THREE.SphereGeometry(200, 20, 20);
+const skyMat = new THREE.ShaderMaterial({
+    side: THREE.BackSide,
+    uniforms: {
+        uTop: { value: new THREE.Color(0x1a3a6a) },
+        uBottom: { value: new THREE.Color(0x7ac4e8) }
+    },
+    vertexShader: `
+        varying vec3 vPos;
+        void main() {
+            vPos = position;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `,
+    fragmentShader: `
+        uniform vec3 uTop;
+        uniform vec3 uBottom;
+        varying vec3 vPos;
+        void main() {
+            float h = normalize(vPos).y;
+            vec3 col = mix(uBottom, uTop, max(0.0, h * 0.7 + 0.3));
+            gl_FragColor = vec4(col, 1.0);
+        }
+    `
+});
+const skyMesh = new THREE.Mesh(skyGeo, skyMat);
+scene.add(skyMesh);
 
 // ─── Ground ──────────────────────────────────────────────────
-const groundY = H - 80;
-const groundHeight = 80;
+const groundWidth = 80;
+const groundLength = 200;
+const groundGeo = new THREE.PlaneGeometry(groundWidth, groundLength, 80, 160);
+const groundMat = new THREE.MeshLambertMaterial({
+    color: 0x4a8a9a,
+    roughness: 0.9,
+    metalness: 0.0
+});
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.position.z = -30;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// ─── Snow particles ──────────────────────────────────────────
+const snowCount = 3000;
+const snowGeo = new THREE.BufferGeometry();
+const snowPos = new Float32Array(snowCount * 3);
+for (let i = 0; i < snowCount * 3; i++) {
+    snowPos[i] = (Math.random() - 0.5) * 200;
+    if (i % 3 === 1) snowPos[i] = Math.random() * 60 + 10;
+    if (i % 3 === 2) snowPos[i] = (Math.random() - 0.5) * 200;
+}
+snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
+const snowMat = new THREE.PointsMaterial({
+    color: 0xffffff,
+    size: 0.2,
+    transparent: true,
+    opacity: 0.6,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+});
+const snowParticles = new THREE.Points(snowGeo, snowMat);
+scene.add(snowParticles);
+
+// ─── Trees ──────────────────────────────────────────────────
+const treeGroup = new THREE.Group();
+const trunkMat = new THREE.MeshLambertMaterial({ color: 0x5a3d2b });
+const leafMat = new THREE.MeshLambertMaterial({ color: 0x2a6a3a });
+const leafMat2 = new THREE.MeshLambertMaterial({ color: 0x3a7a4a });
+
+for (let i = 0; i < 120; i++) {
+    const x = (Math.random() - 0.5) * 70;
+    const z = (Math.random() - 0.5) * 180 - 10;
+    if (Math.abs(x) < 6) continue;
+
+    const size = 0.5 + Math.random() * 1.2;
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.08 * size, 0.12 * size, 0.8 * size, 5), trunkMat);
+    trunk.position.set(x, 0.4 * size, z);
+    trunk.castShadow = true;
+    trunk.receiveShadow = true;
+    treeGroup.add(trunk);
+
+    const leaf1 = new THREE.Mesh(new THREE.ConeGeometry(0.5 * size, 0.8 * size, 6), leafMat);
+    leaf1.position.set(x, 0.8 * size + 0.4 * size, z);
+    leaf1.castShadow = true;
+    leaf1.receiveShadow = true;
+    treeGroup.add(leaf1);
+
+    const leaf2 = new THREE.Mesh(new THREE.ConeGeometry(0.4 * size, 0.6 * size, 6), leafMat2);
+    leaf2.position.set(x, 0.8 * size + 0.8 * size, z);
+    leaf2.castShadow = true;
+    leaf2.receiveShadow = true;
+    treeGroup.add(leaf2);
+}
+scene.add(treeGroup);
+
+// ─── Sled ──────────────────────────────────────────────────
+const sledGroup = new THREE.Group();
+
+// Body
+const bodyMat = new THREE.MeshLambertMaterial({ color: 0x55d7ff, roughness: 0.3, metalness: 0.6 });
+const body = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.2, 2.0), bodyMat);
+body.position.y = 0.2;
+body.castShadow = true;
+body.receiveShadow = true;
+sledGroup.add(body);
+
+// Seat
+const seatMat = new THREE.MeshLambertMaterial({ color: 0x222244, roughness: 0.7 });
+const seat = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.2, 0.6), seatMat);
+seat.position.set(0, 0.4, -0.3);
+seat.castShadow = true;
+seat.receiveShadow = true;
+sledGroup.add(seat);
+
+// Back
+const backMat = new THREE.MeshLambertMaterial({ color: 0x333355, roughness: 0.7 });
+const back = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.4, 0.1), backMat);
+back.position.set(0, 0.5, -0.8);
+back.castShadow = true;
+back.receiveShadow = true;
+sledGroup.add(back);
+
+// Skis
+const skiMat = new THREE.MeshLambertMaterial({ color: 0x8899aa, metalness: 0.8, roughness: 0.2 });
+for (let side = -1; side <= 1; side += 2) {
+    const ski = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, 1.8), skiMat);
+    ski.position.set(side * 0.6, 0.02, 0);
+    ski.castShadow = true;
+    ski.receiveShadow = true;
+    sledGroup.add(ski);
+}
+
+// Headlight
+const hlMat = new THREE.MeshLambertMaterial({ color: 0xffffaa, emissive: 0xffdd44, emissiveIntensity: 0.3 });
+const hl = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), hlMat);
+hl.position.set(0, 0.2, 1.1);
+sledGroup.add(hl);
+
+// Glow
+const glowMat = new THREE.MeshLambertMaterial({
+    color: 0x55d7ff,
+    emissive: 0x55d7ff,
+    emissiveIntensity: 0.1,
+    transparent: true,
+    opacity: 0.15
+});
+const glow = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.04, 1.6), glowMat);
+glow.position.y = 0.1;
+sledGroup.add(glow);
+
+sledGroup.position.set(0, 0.6, 0);
+sledGroup.userData.vy = 0;
+scene.add(sledGroup);
+
+// ─── Obstacles ──────────────────────────────────────────────
+const obstacles = [];
+
+// ─── Gifts ──────────────────────────────────────────────────
+const gifts = [];
+
+// ─── Particles ──────────────────────────────────────────────
+const particles = [];
 
 // ─── Game functions ──────────────────────────────────────────
 
+let gameTime = 0;
+let spawnTimer = 0;
+
 function getDiff() {
-  return DIFFICULTY[game.difficulty] || DIFFICULTY.medium;
+    return DIFFICULTY[state.difficulty] || DIFFICULTY.medium;
 }
 
 function resetGame() {
-  game.playing = true;
-  game.gameOver = false;
-  game.score = 0;
-  game.gifts = 0;
-  game.distance = 0;
-  game.speed = 0;
-  game.health = 100;
+    state.playing = true;
+    state.gameOver = false;
+    state.score = 0;
+    state.gifts = 0;
+    state.distance = 0;
+    state.speed = 0;
+    state.health = 100;
 
-  player.x = W / 2;
-  player.y = groundY - 30;
-  player.vy = 0;
-  player.grounded = true;
+    sledGroup.position.set(0, 0.6, 0);
+    sledGroup.rotation.set(0, 0, 0);
+    sledGroup.userData.vy = 0;
 
-  obstacles = [];
-  gifts = [];
-  particles = [];
+    // Clear obstacles
+    obstacles.forEach(o => scene.remove(o.mesh));
+    obstacles.length = 0;
 
-  hudGifts.textContent = '0';
-  hudDistance.textContent = '0';
-  hudSpeed.textContent = '0';
+    // Clear gifts
+    gifts.forEach(g => scene.remove(g.mesh));
+    gifts.length = 0;
 
-  gameover.classList.remove('show');
+    // Clear particles
+    particles.forEach(p => scene.remove(p));
+    particles.length = 0;
+
+    gameTime = 0;
+    spawnTimer = 0;
+
+    hudGifts.textContent = '0';
+    hudDistance.textContent = '0';
+    hudSpeed.textContent = '0';
+    gameover.classList.remove('show');
 }
 
 function spawnObstacle() {
-  const diff = getDiff();
-  const x = W + 50;
-  const y = groundY - 30;
-  const type = Math.random() > 0.5 ? 'tree' : 'rock';
-  const size = type === 'tree' ? 25 + Math.random() * 15 : 15 + Math.random() * 10;
-  obstacles.push({
-    x: x,
-    y: y - size / 2,
-    width: size * 0.8,
-    height: size,
-    type: type,
-    size: size
-  });
+    const diff = getDiff();
+    const x = (Math.random() - 0.5) * 8;
+    const z = -30 - Math.random() * 30;
+    const type = Math.random() > 0.5 ? 'tree' : 'rock';
+
+    const group = new THREE.Group();
+    let size = 0.6 + Math.random() * 0.6;
+
+    if (type === 'tree') {
+        const trunk = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.08 * size, 0.12 * size, 0.8 * size, 5),
+            new THREE.MeshLambertMaterial({ color: 0x5a3d2b })
+        );
+        trunk.position.y = 0.4 * size;
+        trunk.castShadow = true;
+        trunk.receiveShadow = true;
+        group.add(trunk);
+
+        const leaf1 = new THREE.Mesh(
+            new THREE.ConeGeometry(0.5 * size, 0.7 * size, 6),
+            new THREE.MeshLambertMaterial({ color: 0x2a6a3a })
+        );
+        leaf1.position.y = 0.8 * size + 0.35 * size;
+        leaf1.castShadow = true;
+        leaf1.receiveShadow = true;
+        group.add(leaf1);
+
+        const leaf2 = new THREE.Mesh(
+            new THREE.ConeGeometry(0.4 * size, 0.5 * size, 6),
+            new THREE.MeshLambertMaterial({ color: 0x3a7a4a })
+        );
+        leaf2.position.y = 0.8 * size + 0.7 * size;
+        leaf2.castShadow = true;
+        leaf2.receiveShadow = true;
+        group.add(leaf2);
+    } else {
+        const rock = new THREE.Mesh(
+            new THREE.DodecahedronGeometry(0.4 * size + 0.2, 0),
+            new THREE.MeshLambertMaterial({ color: 0x6a7a8a, roughness: 0.9 })
+        );
+        rock.position.y = 0.3 * size;
+        rock.rotation.set(Math.random() * 6, Math.random() * 6, 0);
+        rock.castShadow = true;
+        rock.receiveShadow = true;
+        group.add(rock);
+    }
+
+    group.position.set(x, 0, z);
+    scene.add(group);
+
+    obstacles.push({
+        mesh: group,
+        x: x,
+        z: z,
+        radius: type === 'tree' ? 0.6 * size : 0.5 * size + 0.2,
+        type: type,
+        active: true
+    });
 }
 
 function spawnGift() {
-  const x = W + 50;
-  const y = groundY - 50 - Math.random() * 60;
-  gifts.push({
-    x: x,
-    y: y,
-    width: 20,
-    height: 20,
-    bob: Math.random() * Math.PI * 2,
-    collected: false
-  });
+    const x = (Math.random() - 0.5) * 6;
+    const z = -25 - Math.random() * 35;
+
+    const group = new THREE.Group();
+
+    // Box
+    const boxMat = new THREE.MeshLambertMaterial({
+        color: 0xffd166,
+        emissive: 0xff8800,
+        emissiveIntensity: 0.05
+    });
+    const box = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.5), boxMat);
+    box.castShadow = true;
+    box.receiveShadow = true;
+    group.add(box);
+
+    // Ribbon
+    const ribbonMat = new THREE.MeshLambertMaterial({
+        color: 0xff4466,
+        emissive: 0xff2244,
+        emissiveIntensity: 0.05
+    });
+    const ribbon1 = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.05, 0.05), ribbonMat);
+    ribbon1.position.y = 0.2;
+    group.add(ribbon1);
+
+    const ribbon2 = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.55), ribbonMat);
+    ribbon2.position.y = 0.2;
+    group.add(ribbon2);
+
+    // Glow
+    const glowGift = new THREE.Mesh(
+        new THREE.SphereGeometry(0.4, 6, 6),
+        new THREE.MeshBasicMaterial({ color: 0xffcc44, transparent: true, opacity: 0.06 })
+    );
+    group.add(glowGift);
+
+    group.position.set(x, 0.5, z);
+    group.userData = { bobSpeed: 0.8 + Math.random() * 0.4, bobOffset: Math.random() * 6 };
+    scene.add(group);
+
+    gifts.push({
+        mesh: group,
+        x: x,
+        z: z,
+        collected: false
+    });
 }
 
-function addParticles(x, y, color, count) {
-  for (let i = 0; i < count; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const speed = Math.random() * 4 + 1;
-    particles.push({
-      x: x,
-      y: y,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed - 2,
-      life: 30 + Math.random() * 30,
-      maxLife: 60,
-      size: Math.random() * 4 + 2,
-      color: color
+function addParticles(x, y, z, color, count) {
+    const mat = new THREE.MeshBasicMaterial({
+        color: color,
+        transparent: true,
+        opacity: 0.6
     });
-  }
+    for (let i = 0; i < count; i++) {
+        const size = 0.05 + Math.random() * 0.1;
+        const mesh = new THREE.Mesh(new THREE.SphereGeometry(size, 4, 4), mat.clone());
+        mesh.position.set(
+            x + (Math.random() - 0.5) * 0.5,
+            y + (Math.random() - 0.5) * 0.5,
+            z + (Math.random() - 0.5) * 0.5
+        );
+        mesh.userData = {
+            vx: (Math.random() - 0.5) * 4,
+            vy: (Math.random() - 0.5) * 4 + 2,
+            vz: (Math.random() - 0.5) * 4,
+            life: 30 + Math.random() * 30,
+            maxLife: 60
+        };
+        scene.add(mesh);
+        particles.push(mesh);
+    }
 }
 
 function gameOverHandler() {
-  game.playing = false;
-  game.gameOver = true;
+    state.playing = false;
+    state.gameOver = true;
 
-  finalDist.textContent = Math.floor(game.distance);
-  finalGifts.textContent = game.gifts;
-  finalSpeed.textContent = Math.floor(game.speed * 3.6);
+    finalDist.textContent = Math.floor(state.distance);
+    finalGifts.textContent = state.gifts;
+    finalSpeed.textContent = Math.floor(state.speed * 3.6);
 
-  if (game.distance > best) {
-    best = game.distance;
-    localStorage.setItem('snowrider_best', String(best));
-    hudBest.textContent = best;
-  }
+    if (state.distance > best) {
+        best = state.distance;
+        localStorage.setItem('snowrider_best', String(best));
+        hudBest.textContent = best;
+    }
 
-  gameover.classList.add('show');
+    addParticles(sledGroup.position.x, 0.5, sledGroup.position.z, 0xff6b6b, 40);
+    gameover.classList.add('show');
 }
 
 // ─── Update ──────────────────────────────────────────────────
 
-function update() {
-  if (!game.playing || game.gameOver) return;
+function update(delta) {
+    if (!state.playing || state.gameOver) return;
 
-  const diff = getDiff();
+    gameTime += delta;
+    const diff = getDiff();
 
-  // Speed
-  game.speed += (diff.speed - game.speed) * 0.01;
-  game.speed = Math.min(game.speed, diff.maxSpeed);
+    // Speed
+    state.speed += (diff.speed - state.speed) * 0.02;
+    state.speed = Math.min(state.speed, diff.maxSpeed);
 
-  // Distance
-  game.distance += game.speed * 0.5;
+    // Distance
+    state.distance += state.speed * delta * 2;
 
-  // Steering
-  const moveSpeed = 6;
-  if (keys.left) player.x -= moveSpeed;
-  if (keys.right) player.x += moveSpeed;
+    // Steering
+    const steerSpeed = 4;
+    if (keys.left) sledGroup.position.x -= steerSpeed * delta * 5;
+    if (keys.right) sledGroup.position.x += steerSpeed * delta * 5;
 
-  // Boundaries
-  player.x = Math.max(30, Math.min(W - 30, player.x));
+    // Boundaries
+    const limit = 15;
+    sledGroup.position.x = Math.max(-limit, Math.min(limit, sledGroup.position.x));
 
-  // Gravity
-  player.vy += diff.gravity * 0.5;
-  player.y += player.vy;
+    // Sled tilt
+    const targetRot = -sledGroup.position.x * 0.03;
+    sledGroup.rotation.z += (targetRot - sledGroup.rotation.z) * delta * 5;
 
-  // Ground collision
-  if (player.y + player.height / 2 >= groundY) {
-    player.y = groundY - player.height / 2;
-    player.vy = 0;
-    player.grounded = true;
-  } else {
-    player.grounded = false;
-  }
-
-  // Jump
-  if (keys.jump && player.grounded) {
-    player.vy = diff.jumpPower;
-    player.grounded = false;
-    addParticles(player.x, groundY, '#55d7ff', 10);
-  }
-
-  // Player speed (for HUD)
-  const speedKmh = Math.floor(game.speed * 3.6);
-  hudSpeed.textContent = speedKmh;
-
-  // ─── Spawn obstacles ──────────────────────────────────────
-  if (Math.random() < 1 / diff.obstacleRate) {
-    spawnObstacle();
-  }
-  if (Math.random() < 1 / diff.giftRate) {
-    spawnGift();
-  }
-
-  // ─── Update obstacles ─────────────────────────────────────
-  for (let i = obstacles.length - 1; i >= 0; i--) {
-    const ob = obstacles[i];
-    ob.x -= game.speed * 1.5;
-
-    // Collision with player
-    const dx = player.x - ob.x;
-    const dy = player.y - ob.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    const hitRadius = ob.size * 0.6;
-
-    if (dist < hitRadius + 20) {
-      // Crash!
-      addParticles(player.x, player.y, '#ff6b6b', 30);
-      gameOverHandler();
-      return;
+    // Jump
+    if (keys.jump && sledGroup.position.y < 0.7) {
+        sledGroup.position.y = 0.6;
+        sledGroup.userData.vy = diff.jumpPower;
+        addParticles(sledGroup.position.x, 0.1, sledGroup.position.z, 0x55d7ff, 10);
     }
 
-    // Remove off screen
-    if (ob.x < -50) {
-      obstacles.splice(i, 1);
-    }
-  }
-
-  // ─── Update gifts ─────────────────────────────────────────
-  for (let i = gifts.length - 1; i >= 0; i--) {
-    const g = gifts[i];
-    g.x -= game.speed * 1.5;
-    g.bob += 0.05;
-    g.y += Math.sin(g.bob) * 0.3;
-
-    // Collision with player
-    const dx = player.x - g.x;
-    const dy = player.y - g.y;
-    if (Math.abs(dx) < 30 && Math.abs(dy) < 30 && !g.collected) {
-      g.collected = true;
-      game.gifts++;
-      hudGifts.textContent = game.gifts;
-      addParticles(g.x, g.y, '#ffd166', 15);
-      gifts.splice(i, 1);
-    }
-
-    // Remove off screen
-    if (g.x < -30) {
-      gifts.splice(i, 1);
-    }
-  }
-
-  // ─── Update particles ─────────────────────────────────────
-  for (let i = particles.length - 1; i >= 0; i--) {
-    const p = particles[i];
-    p.x += p.vx;
-    p.y += p.vy;
-    p.vy += 0.1;
-    p.life--;
-    if (p.life <= 0) {
-      particles.splice(i, 1);
-    }
-  }
-
-  // ─── Update snow ──────────────────────────────────────────
-  for (const s of snowflakes) {
-    s.y += s.speed;
-    s.x += s.drift;
-    if (s.y > H) {
-      s.y = -10;
-      s.x = Math.random() * W;
-    }
-    if (s.x > W) s.x = 0;
-    if (s.x < 0) s.x = W;
-  }
-
-  // ─── Update stars ─────────────────────────────────────────
-  for (const s of stars) {
-    s.y += s.speed * 0.2;
-    if (s.y > H * 0.7) {
-      s.y = -10;
-      s.x = Math.random() * W;
-    }
-  }
-
-  // ─── HUD ──────────────────────────────────────────────────
-  hudDistance.textContent = Math.floor(game.distance);
-}
-
-// ─── Draw ────────────────────────────────────────────────────
-
-function draw() {
-  // Clear
-  const gradient = ctx.createLinearGradient(0, 0, 0, H);
-  gradient.addColorStop(0, '#0a1628');
-  gradient.addColorStop(0.5, '#1a2a4a');
-  gradient.addColorStop(1, '#2a4a6a');
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, W, H);
-
-  // Stars
-  ctx.fillStyle = 'rgba(255,255,255,0.5)';
-  for (const s of stars) {
-    ctx.beginPath();
-    ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // Snow
-  ctx.fillStyle = 'rgba(255,255,255,0.6)';
-  for (const s of snowflakes) {
-    ctx.beginPath();
-    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // Ground
-  const groundGrad = ctx.createLinearGradient(0, groundY, 0, H);
-  groundGrad.addColorStop(0, '#4a7a9a');
-  groundGrad.addColorStop(0.3, '#3a6a8a');
-  groundGrad.addColorStop(1, '#2a4a6a');
-  ctx.fillStyle = groundGrad;
-  ctx.fillRect(0, groundY, W, groundHeight);
-
-  // Ground line
-  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(0, groundY);
-  ctx.lineTo(W, groundY);
-  ctx.stroke();
-
-  // Trees (background)
-  for (const t of trees) {
-    const size = t.size;
-    // Trunk
-    ctx.fillStyle = '#3a2a1a';
-    ctx.fillRect(t.x - size * 0.1, t.y - size * 0.3, size * 0.2, size * 0.3);
-    // Leaves
-    ctx.fillStyle = '#1a4a2a';
-    ctx.beginPath();
-    ctx.moveTo(t.x, t.y - size);
-    ctx.lineTo(t.x - size * 0.6, t.y - size * 0.3);
-    ctx.lineTo(t.x + size * 0.6, t.y - size * 0.3);
-    ctx.fill();
-    ctx.fillStyle = '#2a5a3a';
-    ctx.beginPath();
-    ctx.moveTo(t.x, t.y - size * 0.7);
-    ctx.lineTo(t.x - size * 0.5, t.y - size * 0.1);
-    ctx.lineTo(t.x + size * 0.5, t.y - size * 0.1);
-    ctx.fill();
-    // Snow
-    ctx.fillStyle = 'rgba(255,255,255,0.15)';
-    ctx.beginPath();
-    ctx.arc(t.x, t.y - size * 0.7, size * 0.2, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // Obstacles
-  for (const ob of obstacles) {
-    if (ob.type === 'tree') {
-      // Tree
-      ctx.fillStyle = '#3a2a1a';
-      ctx.fillRect(ob.x - 4, ob.y + ob.size * 0.1, 8, ob.size * 0.4);
-      ctx.fillStyle = '#1a4a2a';
-      ctx.beginPath();
-      ctx.moveTo(ob.x, ob.y - ob.size * 0.2);
-      ctx.lineTo(ob.x - ob.size * 0.5, ob.y + ob.size * 0.2);
-      ctx.lineTo(ob.x + ob.size * 0.5, ob.y + ob.size * 0.2);
-      ctx.fill();
-      ctx.fillStyle = '#2a5a3a';
-      ctx.beginPath();
-      ctx.moveTo(ob.x, ob.y - ob.size * 0.6);
-      ctx.lineTo(ob.x - ob.size * 0.4, ob.y - ob.size * 0.1);
-      ctx.lineTo(ob.x + ob.size * 0.4, ob.y - ob.size * 0.1);
-      ctx.fill();
+    // Gravity
+    if (sledGroup.position.y > 0.6) {
+        sledGroup.userData.vy += diff.gravity * delta * 8;
+        sledGroup.position.y += sledGroup.userData.vy * delta;
     } else {
-      // Rock
-      ctx.fillStyle = '#5a6a7a';
-      ctx.beginPath();
-      ctx.ellipse(ob.x, ob.y + ob.size * 0.2, ob.size * 0.5, ob.size * 0.4, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#6a7a8a';
-      ctx.beginPath();
-      ctx.ellipse(ob.x - ob.size * 0.1, ob.y + ob.size * 0.1, ob.size * 0.3, ob.size * 0.2, 0, 0, Math.PI * 2);
-      ctx.fill();
+        sledGroup.position.y = 0.6;
+        sledGroup.userData.vy = 0;
     }
-  }
 
-  // Gifts
-  for (const g of gifts) {
-    if (g.collected) continue;
-    // Glow
-    ctx.shadowColor = '#ffd166';
-    ctx.shadowBlur = 15;
-    // Box
-    ctx.fillStyle = '#ffd166';
-    ctx.fillRect(g.x - g.width / 2, g.y - g.height / 2, g.width, g.height);
-    // Ribbon
-    ctx.fillStyle = '#ff4466';
-    ctx.fillRect(g.x - 2, g.y - g.height / 2, 4, g.height);
-    ctx.fillRect(g.x - g.width / 2, g.y - 2, g.width, 4);
-    ctx.shadowBlur = 0;
-    // Shine
-    ctx.fillStyle = 'rgba(255,255,255,0.2)';
-    ctx.fillRect(g.x - g.width / 4, g.y - g.height / 3, g.width / 3, g.height / 6);
-  }
+    // Move forward
+    sledGroup.position.z -= state.speed * delta * 1.5;
 
-  // Player (sled)
-  // Shadow
-  ctx.shadowColor = 'rgba(0,0,0,0.3)';
-  ctx.shadowBlur = 10;
-  // Body
-  ctx.fillStyle = '#55d7ff';
-  ctx.shadowColor = 'rgba(85,215,255,0.3)';
-  ctx.shadowBlur = 15;
-  // Sled shape
-  ctx.beginPath();
-  ctx.roundRect(player.x - 25, player.y - 8, 50, 16, 5);
-  ctx.fill();
-  // Seat
-  ctx.fillStyle = '#1a3a5a';
-  ctx.shadowBlur = 0;
-  ctx.fillRect(player.x - 15, player.y - 16, 15, 10);
-  // Headlight
-  ctx.fillStyle = '#ffffaa';
-  ctx.shadowColor = 'rgba(255,255,200,0.5)';
-  ctx.shadowBlur = 20;
-  ctx.beginPath();
-  ctx.arc(player.x + 20, player.y - 2, 4, 0, Math.PI * 2);
-  ctx.fill();
+    // Camera follow
+    const camDist = 10 + state.speed * 0.03;
+    const camHeight = 6 + state.speed * 0.02;
+    const targetCam = new THREE.Vector3(
+        sledGroup.position.x * 0.3,
+        sledGroup.position.y + camHeight,
+        sledGroup.position.z + camDist
+    );
+    camera.position.lerp(targetCam, delta * 2);
+    camera.lookAt(sledGroup.position.x * 0.2, sledGroup.position.y + 0.5, sledGroup.position.z - 5);
 
-  // Skis
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = '#8899aa';
-  ctx.fillRect(player.x - 22, player.y + 6, 10, 3);
-  ctx.fillRect(player.x + 12, player.y + 6, 10, 3);
-
-  // Glow trail
-  if (game.speed > 3) {
-    ctx.shadowColor = 'rgba(85,215,255,0.15)';
-    ctx.shadowBlur = 30;
-    ctx.fillStyle = 'rgba(85,215,255,0.05)';
-    ctx.fillRect(player.x - 30, player.y - 15, 10, 30);
-    ctx.shadowBlur = 0;
-  }
-
-  // Particles
-  for (const p of particles) {
-    const alpha = p.life / p.maxLife;
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = p.color || '#ffffff';
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.globalAlpha = 1;
-
-  // ─── Speed lines ──────────────────────────────────────────
-  if (game.speed > 4) {
-    const intensity = (game.speed - 4) / 10;
-    ctx.strokeStyle = `rgba(255,255,255,${intensity * 0.05})`;
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 20; i++) {
-      const x = Math.random() * W;
-      const y = Math.random() * groundY;
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x - game.speed * 2, y);
-      ctx.stroke();
+    // ─── Spawn obstacles ──────────────────────────────────
+    spawnTimer += delta;
+    if (spawnTimer > 1.5 / (1 + state.speed * 0.02)) {
+        spawnTimer = 0;
+        if (Math.random() < 0.6) spawnObstacle();
+        if (Math.random() < 0.4) spawnGift();
     }
-  }
 
-  // Health bar
-  ctx.fillStyle = 'rgba(0,0,0,0.4)';
-  ctx.fillRect(20, H - 40, 150, 10);
-  ctx.fillStyle = game.health > 50 ? '#4ecdc4' : '#ff6b6b';
-  ctx.fillRect(22, H - 38, (game.health / game.maxHealth) * 146, 6);
-  ctx.fillStyle = 'rgba(255,255,255,0.3)';
-  ctx.font = '9px Arial';
-  ctx.fillText('HP', 8, H - 32);
+    // ─── Update obstacles ─────────────────────────────────
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+        const ob = obstacles[i];
+        if (!ob.active) continue;
+
+        // Move with world
+        ob.z -= state.speed * delta * 1.5;
+
+        // Collision
+        const dx = sledGroup.position.x - ob.x;
+        const dz = sledGroup.position.z - ob.z;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+
+        if (dist < ob.radius + 0.5 && sledGroup.position.y < 1.2) {
+            addParticles(sledGroup.position.x, 0.5, sledGroup.position.z, 0xff6b6b, 30);
+            gameOverHandler();
+            return;
+        }
+
+        // Remove if behind
+        if (ob.z > 15) {
+            scene.remove(ob.mesh);
+            obstacles.splice(i, 1);
+        }
+    }
+
+    // ─── Update gifts ─────────────────────────────────────
+    for (let i = gifts.length - 1; i >= 0; i--) {
+        const g = gifts[i];
+        if (g.collected) continue;
+
+        g.z -= state.speed * delta * 1.5;
+
+        // Bob
+        const bob = Math.sin(gameTime * g.mesh.userData.bobSpeed + g.mesh.userData.bobOffset) * 0.05;
+        g.mesh.position.y = 0.5 + bob;
+
+        // Collision
+        const dx = sledGroup.position.x - g.x;
+        const dz = sledGroup.position.z - g.z;
+        if (Math.abs(dx) < 0.6 && Math.abs(dz) < 0.6) {
+            g.collected = true;
+            state.gifts++;
+            hudGifts.textContent = state.gifts;
+            addParticles(g.x, 0.5, g.z, 0xffd166, 20);
+            scene.remove(g.mesh);
+            gifts.splice(i, 1);
+        }
+
+        // Remove if behind
+        if (g.z > 15) {
+            scene.remove(g.mesh);
+            gifts.splice(i, 1);
+        }
+    }
+
+    // ─── Update particles ─────────────────────────────────
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.position.x += p.userData.vx * delta;
+        p.position.y += p.userData.vy * delta;
+        p.position.z += p.userData.vz * delta;
+        p.userData.vy -= 2 * delta;
+        p.userData.life--;
+        const alpha = p.userData.life / p.userData.maxLife;
+        p.material.opacity = alpha * 0.6;
+        p.scale.setScalar(alpha);
+        if (p.userData.life <= 0) {
+            scene.remove(p);
+            particles.splice(i, 1);
+        }
+    }
+
+    // ─── Update snow ──────────────────────────────────────
+    const snowPositions = snowParticles.geometry.attributes.position.array;
+    for (let i = 0; i < snowPositions.length / 3; i++) {
+        snowPositions[i * 3 + 1] -= delta * 0.3;
+        snowPositions[i * 3] += Math.sin(gameTime + i) * delta * 0.02;
+        if (snowPositions[i * 3 + 1] < -2) {
+            snowPositions[i * 3 + 1] = 30 + Math.random() * 20;
+            snowPositions[i * 3] = (Math.random() - 0.5) * 200;
+            snowPositions[i * 3 + 2] = (Math.random() - 0.5) * 200;
+        }
+    }
+    snowParticles.geometry.attributes.position.needsUpdate = true;
+
+    // ─── HUD ──────────────────────────────────────────────
+    hudDistance.textContent = Math.floor(state.distance);
+    hudSpeed.textContent = Math.floor(state.speed * 3.6);
+
+    // ─── Ground follow ────────────────────────────────────
+    ground.position.z = Math.round(sledGroup.position.z / 10) * 10 - 10;
 }
-
-// ─── RoundRect polyfill for canvas ──────────────────────────
-if (!CanvasRenderingContext2D.prototype.roundRect) {
-  CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
-    if (r > w / 2) r = w / 2;
-    if (r > h / 2) r = h / 2;
-    this.moveTo(x + r, y);
-    this.arcTo(x + w, y, x + w, y + h, r);
-    this.arcTo(x + w, y + h, x, y + h, r);
-    this.arcTo(x, y + h, x, y, r);
-    this.arcTo(x, y, x + w, y, r);
-    return this;
-  };
-}
-
-// ─── Game loop ──────────────────────────────────────────────
-
-function gameLoop() {
-  update();
-  draw();
-  requestAnimationFrame(gameLoop);
-}
-
-// ─── Keyboard ────────────────────────────────────────────────
-
-document.addEventListener('keydown', function(e) {
-  const key = e.key;
-  if (key === 'a' || key === 'A' || key === 'ArrowLeft') {
-    e.preventDefault();
-    keys.left = true;
-  }
-  if (key === 'd' || key === 'D' || key === 'ArrowRight') {
-    e.preventDefault();
-    keys.right = true;
-  }
-  if (key === ' ' || key === 'Space' || key === 'ArrowUp') {
-    e.preventDefault();
-    keys.jump = true;
-  }
-});
-
-document.addEventListener('keyup', function(e) {
-  const key = e.key;
-  if (key === 'a' || key === 'A' || key === 'ArrowLeft') {
-    e.preventDefault();
-    keys.left = false;
-  }
-  if (key === 'd' || key === 'D' || key === 'ArrowRight') {
-    e.preventDefault();
-    keys.right = false;
-  }
-  if (key === ' ' || key === 'Space' || key === 'ArrowUp') {
-    e.preventDefault();
-    keys.jump = false;
-  }
-});
 
 // ─── Start game ──────────────────────────────────────────────
 
 function startGame(difficulty) {
-  game.difficulty = difficulty || 'medium';
-  menu.classList.add('hidden');
-  resetGame();
+    state.difficulty = difficulty || 'medium';
+    menu.classList.add('hidden');
+    resetGame();
 }
 
-// Menu buttons
-document.querySelectorAll('.diff-btn').forEach(function(btn) {
-  btn.addEventListener('click', function() {
-    startGame(this.dataset.diff);
-  });
+// ─── Menu buttons ─────────────────────────────────────────────
+
+document.querySelectorAll('.diff-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        startGame(this.dataset.diff);
+    });
 });
 
 retryBtn.addEventListener('click', function() {
-  startGame(game.difficulty);
+    startGame(state.difficulty);
 });
+
+// ─── Keyboard ────────────────────────────────────────────────
+
+document.addEventListener('keydown', function(e) {
+    const key = e.key;
+    if (key === 'a' || key === 'A' || key === 'ArrowLeft') {
+        e.preventDefault();
+        keys.left = true;
+    }
+    if (key === 'd' || key === 'D' || key === 'ArrowRight') {
+        e.preventDefault();
+        keys.right = true;
+    }
+    if (key === ' ' || key === 'Space' || key === 'ArrowUp') {
+        e.preventDefault();
+        keys.jump = true;
+    }
+});
+
+document.addEventListener('keyup', function(e) {
+    const key = e.key;
+    if (key === 'a' || key === 'A' || key === 'ArrowLeft') {
+        e.preventDefault();
+        keys.left = false;
+    }
+    if (key === 'd' || key === 'D' || key === 'ArrowRight') {
+        e.preventDefault();
+        keys.right = false;
+    }
+    if (key === ' ' || key === 'Space' || key === 'ArrowUp') {
+        e.preventDefault();
+        keys.jump = false;
+    }
+});
+
+// ─── Resize ──────────────────────────────────────────────────
+
+window.addEventListener('resize', function() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ─── Game Loop ──────────────────────────────────────────────
+
+let lastTime = 0;
+
+function gameLoop(time) {
+    const delta = Math.min((time - lastTime) / 1000, 0.05);
+    lastTime = time;
+
+    update(delta);
+    renderer.render(scene, camera);
+    requestAnimationFrame(gameLoop);
+}
 
 // ─── Init ────────────────────────────────────────────────────
 
-// Show initial state
+// Reset game, show menu
 resetGame();
-game.playing = false;
+state.playing = false;
 menu.classList.remove('hidden');
 
 // Start loop
-gameLoop();
+requestAnimationFrame(gameLoop);
 
-// Handle resize
-window.addEventListener('resize', function() {
-  resize();
-  generateStars();
-  generateTrees();
-  generateSnow();
-  // Update ground position
-  groundY = H - 80;
-});
-
-console.log('❄️ Snow Rider loaded! Controls: A/D to steer, SPACE to jump');
+console.log('❄️ Snow Rider 3D loaded! Controls: A/D to steer, SPACE to jump');
