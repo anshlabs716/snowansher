@@ -17,6 +17,42 @@
 
 ---
 
+## 📑 Table of Contents
+
+  - [❄️ A Fast-Paced 3D Snowboarding Game in Your Browser](#-a-fast-paced-3d-snowboarding-game-in-your-browser)
+- [❄️ About](#-about)
+- [✨ Features](#-features)
+  - [🏂 Gameplay](#-gameplay)
+  - [⚙️ Physics](#-physics)
+  - [🛷 Unlockable Sleds](#-unlockable-sleds)
+- [🎛️ Performance Settings](#-performance-settings)
+  - [Graphics](#graphics)
+  - [Controls](#controls)
+- [🔊 Audio](#-audio)
+- [🖥️ Cyber HUD](#-cyber-hud)
+  - [HUD includes:](#hud-includes)
+- [🎮 Controls](#-controls)
+- [🧱 Built With](#-built-with)
+  - [🌐 HTML5 & CSS3](#-html5-css3)
+  - [⚡ Vanilla JavaScript](#-vanilla-javascript)
+  - [🎮 Three.js](#-threejs)
+  - [💥 Cannon.js](#-cannonjs)
+- [🚀 Getting Started](#-getting-started)
+  - [1. Clone the repository](#1-clone-the-repository)
+  - [2. Launch the game](#2-launch-the-game)
+- [🌐 Browser Compatibility](#-browser-compatibility)
+- [📁 Project Structure](#-project-structure)
+- [🧩 Architecture](#-architecture)
+- [🗺️ Roadmap](#-roadmap)
+- [🤝 Contributing](#-contributing)
+- [🐛 Bug Reports](#-bug-reports)
+- [👨‍💻 Credits](#-credits)
+  - [🎬 Director](#-director)
+  - [🤖 Development Assistance](#-development-assistance)
+- [📜 License](#-license)
+- [⭐ Support](#-support)
+- [❄️ SnowAnsher](#-snowansher)
+
 ## ❄️ About
 
 **SnowAnsher** is a browser-based 3D snowboarding game inspired by classic snow-riding games.
