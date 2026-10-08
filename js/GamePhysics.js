@@ -23,15 +23,15 @@ class GamePhysics {
         this.baseSpeed = 70.0;
         this.maxSpeed = 165.0;
 
-        // Jump & Airtime State (HIGH JUMP ENGINE)
+        // Jump & Airtime State (TUNED JUMP ENGINE)
         this.isGrounded = true;
         this.isGrinding = false;
         this.grindRailRef = null;
         this.airTime = 0.0;
         this.jumpHoldTime = 0.0;
-        this.jumpImpulse = 38.0;      // ELEVATED JUMP POWER: Soars high into the sky!
-        this.gravity = 42.0;           // Tuned for majestic floaty hang-time
-        this.hangTimeMultiplier = 0.72; // Floatiness at jump apex
+        this.jumpImpulse = 26.0;      // Lower, snappy jump — still leaves room for mid-air dances
+        this.gravity = 42.0;           // Responsive gravity
+        this.hangTimeMultiplier = 0.72; // Light floatiness at jump apex
 
         // Lateral steering & drift
         this.steerInput = 0.0;
@@ -54,7 +54,7 @@ class GamePhysics {
         this.speed = this.baseSpeed;
 
         const jumpStat = (sledStats.jump || 85) / 80;
-        this.jumpImpulse = 42.0 * jumpStat * diffConfig.jumpMult; // Massive jump height!
+        this.jumpImpulse = 26.0 * jumpStat * diffConfig.jumpMult; // Lower jump height (dance tricks still fit in the airtime)
 
         this.position.set(0, 0, 0);
         this.velocity.set(0, 0, 0);

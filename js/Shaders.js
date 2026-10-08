@@ -18,6 +18,7 @@ const SnowShaders = {
             uShadowColor: { value: new THREE.Color(0x4a7599) },
             uSparkleScale: { value: 45.0 },
             uSparkleIntensity: { value: 1.8 },
+            uDaylight: { value: 1.0 },
             uFogColor: { value: new THREE.Color(0x9bd8f5) },
             uFogDensity: { value: 0.0025 }
         },
@@ -46,6 +47,7 @@ const SnowShaders = {
             uniform vec3 uShadowColor;
             uniform float uSparkleScale;
             uniform float uSparkleIntensity;
+            uniform float uDaylight;
             uniform vec3 uFogColor;
             uniform float uFogDensity;
 
@@ -99,6 +101,10 @@ const SnowShaders = {
                 // Subtle blue subsurface scattering simulation on slopes
                 float rim = 1.0 - clamp(dot(viewDir, normal), 0.0, 1.0);
                 litColor += uSkyColor * pow(rim, 3.0) * 0.25;
+
+                // Time-of-day response: golden sunsets & cool moonlit nights
+                vec3 nightColor = litColor * vec3(0.30, 0.40, 0.72);
+                litColor = mix(nightColor, litColor, uDaylight);
 
                 // Distance Exponential Fog
                 float depth = length(vViewPosition);

@@ -137,20 +137,29 @@ class WorldEnvironment {
         const geo = new THREE.PlaneGeometry(width, length, segX, segZ);
 
         const pos = geo.attributes.position;
+        // Chunk anchors lie exactly on the shared slope line y = -z * tan(SLOPE_ANGLE)
+        // (same line used by GamePhysics.getGroundHeightAt and the ski-lift pylons)
+        const centerY = index * (length * Math.sin(this.SLOPE_ANGLE));
+        const centerZ = -index * (length * Math.cos(this.SLOPE_ANGLE));
+        const slopeCos = Math.cos(this.SLOPE_ANGLE);
+
         for (let i = 0; i < pos.count; i++) {
             const x = pos.getX(i);
-            const z = pos.getY(i); // Local Y before slope rotation
+            const zLocal = pos.getY(i); // Local Y before slope rotation
 
-            // Banked halfpipe outer rims
+            // World-space Z of this row so moguls line up with physics across chunk seams
+            const worldZ = centerZ - zLocal * slopeCos;
+
+            // Banked halfpipe outer rims (identical formula to GamePhysics.getGroundHeightAt)
             const absX = Math.abs(x);
             let yDisplacement = 0;
-            if (absX > this.TRACK_WIDTH * 0.45) {
-                const rim = (absX - this.TRACK_WIDTH * 0.45);
+            if (absX > this.TRACK_WIDTH * 0.44) {
+                const rim = (absX - this.TRACK_WIDTH * 0.44);
                 yDisplacement = Math.pow(rim * 0.22, 1.85);
             }
 
             // Natural terrain moguls and ripples
-            yDisplacement += Math.sin(x * 0.1) * Math.cos(z * 0.07) * 0.75;
+            yDisplacement += Math.sin(x * 0.1) * Math.cos(worldZ * 0.07) * 0.75;
             pos.setZ(i, yDisplacement);
         }
 
@@ -160,9 +169,7 @@ class WorldEnvironment {
         mesh.rotation.x = -Math.PI / 2 + this.SLOPE_ANGLE;
         mesh.receiveShadow = (this.config.graphics === 'ultra');
 
-        const zPos = -index * (length * Math.cos(this.SLOPE_ANGLE));
-        const yPos = -index * (length * Math.sin(this.SLOPE_ANGLE));
-        mesh.position.set(0, yPos, zPos);
+        mesh.position.set(0, centerY, centerZ);
 
         this.scene.add(mesh);
         this.terrainChunks.push({ mesh, index });
@@ -262,6 +269,40 @@ class WorldEnvironment {
         this.skyMaterial.uniforms.uTime.value += dt;
         this.terrainMat.uniforms.uTime.value += dt;
 
+        // Keep the snow shader atmosphere in sync with biome fog & time-of-day
+        const tu = this.terrainMat.uniforms;
+        if (this.scene.fog) {
+            tu.uFogColor.value.copy(this.scene.fog.color);
+            tu.uFogDensity.value = this.scene.fog.density;
+        }
+
+        const sunAngle = this.timeOfDay * Math.PI * 2.0;
+        tu.uSunDirection.value.set(
+            Math.cos(sunAngle) * 0.7,
+            Math.max(0.25, Math.sin(sunAngle)),
+            -0.45
+        ).normalize();
+
+        if (this.timeOfDay > 0.7) {
+            // Moonlit aurora night
+            tu.uDaylight.value = 0.35;
+            tu.uSunColor.value.setHex(0x9bb8e8);
+            tu.uSkyColor.value.setHex(0x35486e);
+            tu.uGroundColor.value.setHex(0xbcd0ee);
+        } else if (this.timeOfDay > 0.5) {
+            // Golden sunset
+            tu.uDaylight.value = 0.8;
+            tu.uSunColor.value.setHex(0xffc9a3);
+            tu.uSkyColor.value.setHex(0xe8a87c);
+            tu.uGroundColor.value.setHex(0xf6e7d8);
+        } else {
+            // Bright alpine daylight
+            tu.uDaylight.value = 1.0;
+            tu.uSunColor.value.setHex(0xfff5e6);
+            tu.uSkyColor.value.setHex(0x89c7eb);
+            tu.uGroundColor.value.setHex(0xe8f4fc);
+        }
+
         // Dynamic Sun & Sky Lighting based on time
         if (this.timeOfDay > 0.7) {
             // Polar Aurora Night
@@ -286,22 +327,20 @@ class WorldEnvironment {
         // Sky dome follows player
         this.skyDome.position.copy(playerPos);
 
-        // Recycle terrain chunks seamlessly
+        // Recycle terrain chunks seamlessly along the slope line y = -z * tan(SLOPE)
         const chunkCos = this.CHUNK_LENGTH * Math.cos(this.SLOPE_ANGLE);
-        const chunkSin = this.CHUNK_LENGTH * Math.sin(this.SLOPE_ANGLE);
 
         this.terrainChunks.forEach(chunk => {
             if (chunk.mesh.position.z > playerPos.z + chunkCos) {
                 let minZ = Infinity;
-                let minY = Infinity;
                 this.terrainChunks.forEach(c => {
                     if (c.mesh.position.z < minZ) {
                         minZ = c.mesh.position.z;
-                        minY = c.mesh.position.y;
                     }
                 });
                 chunk.mesh.position.z = minZ - chunkCos;
-                chunk.mesh.position.y = minY - chunkSin;
+                // Keep the recycled chunk exactly on the shared slope surface
+                chunk.mesh.position.y = -chunk.mesh.position.z * Math.tan(this.SLOPE_ANGLE);
             }
         });
 
