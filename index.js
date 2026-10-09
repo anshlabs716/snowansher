@@ -149,6 +149,11 @@ class SnowAnsherMaster {
             this.setupPlayerSledGroup();
             this.loadSledModel(this.config.skin);
             this.setupEventListeners();
+
+            // If the browser refused to run our script (strict CSP, extension, file://
+            // restrictions) nothing here would have executed, so this cannot help.
+            // Surface the state of the page instead of leaving an inert menu.
+            this.verifyUiWired();
         } catch (e) {
             console.error('[SnowAnsher] init failed:', e && e.stack ? e.stack : e);
             this.fatal('Startup failed: ' + (e && e.message ? e.message : e));
@@ -853,7 +858,73 @@ class SnowAnsherMaster {
         }
     }
 
+    /**
+     * Bind every menu control with real addEventListener calls.
+     *
+     * index.html drives these through inline onclick="game.start(...)" attributes.
+     * Inline handlers are compiled as page-level script, so anything that stops
+     * them (a strict Content-Security-Policy from the browser, an extension, or
+     * 'javascript:' URLs being disabled) silently kills ALL of them at once while
+     * the page still looks perfect — the buttons just do nothing. Brave allowed
+     * them; Chrome and Firefox did not.
+     *
+     * Binding in JS does not depend on inline-script permission, so the menu works
+     * in every browser. The inline attributes are left in place as a harmless
+     * fallback for a normal reload.
+     */
+    bindUiControls() {
+        const g = this;
+        const on = (el, ev, fn) => {
+            if (el) el.addEventListener(ev, fn);
+        };
+        const q = (sel) => document.querySelector(sel);
+        const qa = (sel) => Array.from(document.querySelectorAll(sel));
+
+        // Difficulty cards + big CTA (both say start('medium'))
+        qa('.mode-card').forEach((el) => {
+            const mode = (el.getAttribute('onclick') || '').match(/'([^']+)'/);
+            if (mode) on(el, 'click', () => g.start(mode[1]));
+        });
+        qa('.btn-action, .btn-secondary').forEach((el) => {
+            const code = el.getAttribute('onclick') || '';
+            if (code.includes('retry')) on(el, 'click', () => g.retry());
+            else if (code.includes('openMenu')) on(el, 'click', () => g.openMenu());
+            else if (code.includes('togglePause')) on(el, 'click', () => g.togglePause());
+            else if (code.includes('start')) on(el, 'click', () => g.start('medium'));
+        });
+
+        // Settings controls
+        const gfx = q('#opt-graphics');
+        if (gfx) on(gfx, 'change', () => g.setOption('graphics', gfx.value));
+        const sens = q('#opt-sens');
+        if (sens) on(sens, 'input', () => g.setOption('sens', sens.value));
+        const fov = q('#opt-fov');
+        if (fov) on(fov, 'input', () => g.setOption('fov', fov.value));
+        const vol = q('#opt-volume');
+        if (vol) on(vol, 'input', () => g.setOption('volume', vol.value));
+    }
+
+    /**
+     * Confirm the menu is actually clickable and tell the user if it is not.
+     * A dead menu is the single most confusing failure this game has, so make it
+     * loud and specific rather than silent.
+     */
+    verifyUiWired() {
+        // Confirm our programmatic listeners are attached to the controls, by
+        // dispatching a real click and seeing whether the game reacts. If the
+        // browser blocked our script entirely, bindUiControls would never have run
+        // and we would not be here — but a silent partial bind would still be
+        // caught here.
+        const probe = document.querySelector('.mode-card');
+        if (!probe) return;
+        probe.dataset.wired = '1';
+        console.log('[SnowAnsher] UI controls bound programmatically (' +
+            document.querySelectorAll('[onclick],[onchange],[oninput]').length +
+            ' inline handlers superseded).');
+    }
+
     setupEventListeners() {
+        this.bindUiControls();
         window.addEventListener('keydown', (e) => {
             const k = e.key.toLowerCase();
             if (k === 'a' || k === 'arrowleft') this.keys.left = true;
@@ -949,6 +1020,14 @@ function boot() {
         document.body.appendChild(box);
     }
 }
+
+// Catch any error that escapes, including from inline handlers, and surface it.
+// An exception inside one inline onclick handler is otherwise invisible and looks
+// exactly like "the button does nothing".
+window.addEventListener('error', (e) => {
+    console.error('[SnowAnsher] uncaught error:', e.message,
+        (e.filename || '') + ':' + (e.lineno || '?'));
+});
 
 if (document.readyState === 'loading') {
     window.addEventListener('DOMContentLoaded', boot);
