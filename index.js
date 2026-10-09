@@ -278,6 +278,13 @@ class SnowAnsherMaster {
         this.topSpeedReached = 0;
         this.closeCallsRun = 0;
 
+        // Re-lay the terrain run around the sled. physics.reset() teleports the player
+        // back to z=0 while the chunks are still hundreds of metres downhill, which
+        // left the floor missing for a couple of seconds on every respawn.
+        if (this.world && this.world.resetTerrainAround) {
+            this.world.resetTerrainAround(this.physics.position.z);
+        }
+
         // Reset course hazards
         this.obstacles.clearAll();
         if (this.structures) this.structures.clear();

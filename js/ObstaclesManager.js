@@ -588,17 +588,19 @@ class ObstaclesManager {
             }
         });
 
-        // Rotate gifts and powerups
-        const hoverTime = Date.now() * 0.004;
+        // Rotate gifts and powerups in place.
+        // They used to bob on a sine wave, which moved the collision mesh while the
+        // pickup test sampled pos.y — so the visual and the hitbox drifted apart and
+        // near-misses felt unfair. Spin only; y stays exactly where it was spawned.
         this.gifts.forEach(g => {
             g.mesh.rotation.y += 2.2 * dt;
-            g.mesh.position.y = g.pos.y + Math.sin(hoverTime + g.pos.x) * 0.35;
+            g.mesh.position.y = g.pos.y;
         });
 
         this.powerups.forEach(p => {
             p.mesh.rotation.y += 3.0 * dt;
             p.core.rotation.x += 4.0 * dt;
-            p.mesh.position.y = p.pos.y + Math.sin(hoverTime * 1.5 + p.pos.x) * 0.4;
+            p.mesh.position.y = p.pos.y;
         });
 
         // Update grind rails rainbow shader

@@ -171,6 +171,24 @@ class WorldEnvironment {
         }
     }
 
+    /**
+     * Re-lay the terrain run around the player.
+     *
+     * On respawn the sled teleports from wherever it crashed back to z = 0, but the
+     * chunks keep their old world positions hundreds of metres downhill. Until the
+     * per-frame recycler catches up there is no ground under the player, which shows
+     * up as the floor blinking out for a couple of seconds. Call this on every run
+     * start so the run of chunks is centred on the player immediately.
+     */
+    resetTerrainAround(playerZ) {
+        const start = playerZ + this.CHUNK_LENGTH * 0.5; // one chunk behind the sled
+        this.terrainChunks.forEach((chunk, i) => {
+            const z = start - i * this.CHUNK_LENGTH * Math.cos(this.SLOPE_ANGLE);
+            chunk.mesh.position.z = z;
+            chunk.mesh.position.y = -z * Math.tan(this.SLOPE_ANGLE);
+        });
+    }
+
     createTerrainChunk(index) {
         const width = 160;
         const length = this.CHUNK_LENGTH;

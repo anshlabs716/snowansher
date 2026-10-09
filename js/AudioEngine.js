@@ -104,6 +104,14 @@ class AudioEngine {
             this.setupContinuousThruster();
 
             this.initialized = true;
+            // Firefox (and Safari) create AudioContexts in the 'suspended' state until
+            // a real user gesture unlocks them. We are already inside a click handler
+            // here, but the first-init path never called resume(), so on Firefox the
+            // context stayed suspended and every sound was silent.
+            if (this.ctx.state === 'suspended') {
+                const p = this.ctx.resume();
+                if (p && typeof p.catch === 'function') p.catch(() => {});
+            }
             console.log('❄️ AudioEngine initialized with Web Audio API');
         } catch (e) {
             console.warn('Web Audio initialization error:', e);
