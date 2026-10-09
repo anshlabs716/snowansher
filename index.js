@@ -125,7 +125,7 @@ class SnowAnsherMaster {
             if (!box) {
                 box = document.createElement('div');
                 box.id = 'fatal-message';
-                box.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;'
+                box.style.cssText = 'position:fixed;inset:0;z-index:2147483647;display:flex;'
                     + 'align-items:center;justify-content:center;padding:24px;'
                     + 'background:rgba(3,10,20,0.95);color:#e8f1ff;'
                     + 'font:15px/1.6 system-ui,sans-serif;text-align:center;';
@@ -1000,6 +1000,103 @@ class SnowAnsherMaster {
 let game;
 window.game = null;
 
+// ---- Diagnostics ----------------------------------------------------------
+// A tiny always-available panel so a dead or blocked menu is never a mystery.
+// Press ` (backtick) / F3, or click the ⚙ badge. It is bound with
+// addEventListener and sits at the maximum z-index, so it still works when
+// something else (an extension overlay, a strict CSP, a stuck layer) is
+// swallowing the normal menu. The FORCE START button drives the game directly.
+window.__snowErrs = [];
+window.__snowDiag = function () {
+    const existing = document.getElementById('snow-diag');
+    if (existing) { existing.remove(); return; }
+    const g = window.game;
+
+    let glInfo = 'probe failed';
+    try {
+        const c = document.createElement('canvas');
+        const gl = c.getContext('webgl2') || c.getContext('webgl');
+        if (!gl) {
+            glInfo = 'NO WebGL CONTEXT — 3D cannot run here';
+        } else {
+            const ext = gl.getExtension('WEBGL_debug_renderer_info');
+            glInfo = ext
+                ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)
+                : 'WebGL available';
+        }
+    } catch (e) { glInfo = 'WebGL threw: ' + (e && e.message ? e.message : e); }
+
+    let ls = 'ok';
+    try {
+        localStorage.setItem('__snowprobe', '1');
+        localStorage.removeItem('__snowprobe');
+    } catch (e) { ls = 'BLOCKED: ' + (e && e.message ? e.message : e); }
+
+    const errList = window.__snowErrs.length
+        ? window.__snowErrs.slice(-8).map((e) => '• ' + e).join('\n')
+        : 'none recorded';
+
+    const d = document.createElement('div');
+    d.id = 'snow-diag';
+    d.style.cssText = 'position:fixed;top:10px;left:10px;z-index:2147483647;'
+        + 'max-width:440px;background:rgba(4,12,24,.97);color:#dff0ff;'
+        + 'border:1px solid #2b4a6b;border-radius:10px;padding:14px 16px;'
+        + 'font:12px/1.55 system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.6);'
+        + 'white-space:pre-wrap;word-break:break-word;';
+    d.innerHTML =
+        '<div style="font-weight:700;font-size:14px;margin-bottom:8px">❄ Snow Ansher diagnostics</div>'
+        + 'boot:        ' + (g ? 'OK — game object exists' : 'FAILED — no game object') + '\n'
+        + 'state:       dead=' + (g ? g.dead : '?') + '  running=' + (g ? g.running : '?') + '\n'
+        + 'three.js:    ' + (typeof THREE !== 'undefined' ? 'loaded' : 'NOT LOADED (CDN blocked?)') + '\n'
+        + 'WebGL:       ' + glInfo + '\n'
+        + 'localStorage: ' + ls + '\n'
+        + 'browser:     ' + navigator.userAgent + '\n\n'
+        + 'errors (' + window.__snowErrs.length + '):\n' + errList;
+
+    const bar = document.createElement('div');
+    bar.style.cssText = 'margin-top:12px;display:flex;gap:8px;flex-wrap:wrap';
+    const mkBtn = (id, label, bg, fn) => {
+        const b = document.createElement('button');
+        b.id = id;
+        b.textContent = label;
+        b.style.cssText = 'cursor:pointer;background:' + bg + ';color:#fff;border:0;'
+            + 'border-radius:6px;padding:8px 14px;font-weight:700;font-size:12px';
+        b.addEventListener('click', fn);
+        return b;
+    };
+    bar.appendChild(mkBtn('snow-diag-start', '▶ FORCE START', '#2f7dff', () => { if (g) g.start('easy'); }));
+    bar.appendChild(mkBtn('snow-diag-reload', '↻ hard reload', '#33475f', () => location.reload()));
+    bar.appendChild(mkBtn('snow-diag-close', '✕ close', '#33475f', () => d.remove()));
+    d.appendChild(bar);
+    document.body.appendChild(d);
+};
+
+// Record every escaped error so the panel can show what actually broke.
+window.addEventListener('error', (e) => {
+    const line = (e && e.message ? e.message : String(e))
+        + ' @ ' + (e && e.filename ? e.filename : '') + ':' + (e && e.lineno ? e.lineno : '?');
+    window.__snowErrs.push(line);
+    if (window.__snowErrs.length > 40) window.__snowErrs.shift();
+    console.error('[SnowAnsher] uncaught error:', line);
+});
+
+// Hotkey + badge. The script is the last in <body>, so document.body exists.
+window.addEventListener('keydown', (e) => {
+    if (e.key === '`' || e.key === 'F3') { e.preventDefault(); window.__snowDiag(); }
+});
+(function addDiagBadge() {
+    if (!document.body) return;
+    const badge = document.createElement('button');
+    badge.textContent = '⚙';
+    badge.title = 'Snow Ansher diagnostics (or press `)';
+    badge.style.cssText = 'position:fixed;bottom:10px;right:10px;z-index:2147483647;'
+        + 'width:34px;height:34px;border-radius:50%;border:1px solid #2b4a6b;'
+        + 'background:rgba(4,12,24,.9);color:#9fd0ff;cursor:pointer;font-size:16px;'
+        + 'line-height:1;opacity:.7;padding:0;';
+    badge.addEventListener('click', () => window.__snowDiag());
+    document.body.appendChild(badge);
+})();
+
 function boot() {
     if (window.game) return;            // already booted
     try {
@@ -1011,7 +1108,7 @@ function boot() {
         window.game = null;
         const box = document.createElement('div');
         box.id = 'fatal-message';
-        box.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;'
+        box.style.cssText = 'position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;'
             + 'justify-content:center;padding:24px;background:rgba(3,10,20,0.95);color:#e8f1ff;'
             + 'font:15px/1.6 system-ui,sans-serif;text-align:center;';
         box.innerHTML = '<div><div style="font-size:22px;font-weight:700;margin-bottom:10px">'
