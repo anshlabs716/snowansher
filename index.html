@@ -4,10 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>SNOW ANSHER 3D - Ultimate Snow Rider Experience</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+    
     <style>
         :root {
             --primary: #00d2ff;
@@ -33,7 +30,7 @@
             height: 100%;
             overflow: hidden;
             background-color: #050b14;
-            font-family: 'Rajdhani', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             color: #ffffff;
         }
 
@@ -169,7 +166,7 @@
         }
 
         .hud-val {
-            font-family: 'Orbitron', monospace;
+            font-family: 'Orbitron', system-ui, sans-serif;
             font-size: 26px;
             font-weight: 700;
             color: #ffffff;
@@ -324,7 +321,7 @@
             border-radius: 6px;
             padding: 3px 8px;
             font-size: 12px;
-            font-family: 'Orbitron', monospace;
+            font-family: 'Orbitron', system-ui, sans-serif;
             color: #ffffff;
         }
 
@@ -544,7 +541,7 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            font-family: 'Orbitron', monospace;
+            font-family: 'Orbitron', system-ui, sans-serif;
             font-size: 22px;
             color: var(--accent);
             background: rgba(255, 209, 102, 0.12);
@@ -789,7 +786,7 @@
         <div class="hud-top">
             <div class="hud-card">
                 <div class="hud-icon-box gold">
-                    <i class="fas fa-gift"></i>
+                    🎁
                 </div>
                 <div>
                     <div class="hud-label">GIFTS</div>
@@ -806,16 +803,16 @@
 
                 <!-- Active Powerups Tray -->
                 <div id="powerup-tray">
-                    <div class="powerup-pill" id="pill-shield"><i class="fas fa-shield-alt"></i> SHIELD</div>
-                    <div class="powerup-pill" id="pill-magnet"><i class="fas fa-magnet"></i> MAGNET</div>
-                    <div class="powerup-pill" id="pill-rocket"><i class="fas fa-rocket"></i> HYPER BOOST</div>
-                    <div class="powerup-pill" id="pill-multiplier"><i class="fas fa-star"></i> 2X SCORE</div>
+                    <div class="powerup-pill" id="pill-shield">🛡 SHIELD</div>
+                    <div class="powerup-pill" id="pill-magnet">🧲 MAGNET</div>
+                    <div class="powerup-pill" id="pill-rocket">🚀 HYPER BOOST</div>
+                    <div class="powerup-pill" id="pill-multiplier">⭐ 2X SCORE</div>
                 </div>
             </div>
 
             <div class="hud-card">
                 <div class="hud-icon-box">
-                    <i class="fas fa-trophy"></i>
+                    🏆
                 </div>
                 <div>
                     <div class="hud-label">RECORD</div>
@@ -864,27 +861,27 @@
             </div>
 
             <div class="tabs">
-                <button class="tab-btn active" data-tab="tab-play"><i class="fas fa-play"></i> RIDE</button>
-                <button class="tab-btn" data-tab="tab-garage"><i class="fas fa-sleigh"></i> GARAGE (10)</button>
-                <button class="tab-btn" data-tab="tab-settings"><i class="fas fa-sliders-h"></i> OPTIONS</button>
-                <button class="tab-btn" data-tab="tab-controls"><i class="fas fa-gamepad"></i> STUNT GUIDE</button>
+                <button class="tab-btn active" data-tab="tab-play">▶ RIDE</button>
+                <button class="tab-btn" data-tab="tab-garage">🛷 GARAGE (10)</button>
+                <button class="tab-btn" data-tab="tab-settings">⚙ OPTIONS</button>
+                <button class="tab-btn" data-tab="tab-controls">🎮 STUNT GUIDE</button>
             </div>
 
             <!-- Tab: Play Modes -->
             <div id="tab-play" class="tab-panel active">
                 <div class="modes-grid">
                     <div class="mode-card" onclick="game.start('easy')">
-                        <i class="fas fa-snowflake"></i>
+                        ❄
                         <h3>POWDER CRUISE</h3>
                         <p>Gentle slopes & wide corridors. Perfect for relaxing glides.</p>
                     </div>
                     <div class="mode-card featured" onclick="game.start('medium')">
-                        <i class="fas fa-mountain"></i>
+                        ⛰
                         <h3>ALPINE RUSH</h3>
                         <p>The premier downhill run! Mega kickers, rolling avalanches & rainbow grind rails.</p>
                     </div>
                     <div class="mode-card" onclick="game.start('hard')">
-                        <i class="fas fa-bolt"></i>
+                        ⚡
                         <h3>BLIZZARD RUN</h3>
                         <p>Maximum speed, huge hang-time ramps, dense hazards, and polar auroras.</p>
                     </div>
@@ -892,7 +889,7 @@
 
                 <div style="text-align: center;">
                     <button class="btn-action" onclick="game.start('medium')">
-                        <i class="fas fa-play"></i> LAUNCH SLED
+                        ▶ LAUNCH SLED
                     </button>
                 </div>
             </div>
@@ -902,7 +899,7 @@
                 <div class="garage-header">
                     <h2 style="font-family: 'Orbitron'; font-size: 20px;">FLEET GARAGE</h2>
                     <div class="garage-currency">
-                        <i class="fas fa-gift"></i> <span id="garage-gifts-val">0</span>
+                        🎁 <span id="garage-gifts-val">0</span>
                     </div>
                 </div>
 
@@ -941,23 +938,23 @@
             <div id="tab-controls" class="tab-panel">
                 <div style="display: flex; flex-direction: column; gap: 12px; font-size: 15px; color: rgba(255,255,255,0.85); line-height: 1.5;">
                     <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px;">
-                        <span><i class="fas fa-arrows-alt-h" style="color: var(--primary); width: 24px;"></i> Steer Left / Right</span>
+                        <span>↔ Steer Left / Right</span>
                         <span><span class="kbd-badge">A</span> <span class="kbd-badge">D</span> or <span class="kbd-badge">←</span> <span class="kbd-badge">→</span></span>
                     </div>
                     <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px;">
-                        <span><i class="fas fa-rocket" style="color: var(--accent); width: 24px;"></i> High Jump / Mega Ramp Launch</span>
+                        <span>🚀 High Jump / Mega Ramp Launch</span>
                         <span><span class="kbd-badge">SPACE</span> (Hold for extra floaty height!)</span>
                     </div>
                     <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px;">
-                        <span><i class="fas fa-sync-alt" style="color: #2ed573; width: 24px;"></i> Aerial Stunts (While in air)</span>
+                        <span>🔄 Aerial Stunts (While in air)</span>
                         <span><span class="kbd-badge">W</span> Superman | <span class="kbd-badge">S</span> Backflip | <span class="kbd-badge">E</span> Method</span>
                     </div>
                     <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px;">
-                        <span><i class="fas fa-rainbow" style="color: #ff9ff3; width: 24px;"></i> Rainbow Grind Rails</span>
+                        <span>🌈 Rainbow Grind Rails</span>
                         <span>Land on elevated rails to grind with sparks!</span>
                     </div>
                     <div style="display: flex; align-items: center; justify-content: space-between;">
-                        <span><i class="fas fa-shield-alt" style="color: #00d2ff; width: 24px;"></i> Powerup Pickups</span>
+                        <span>🛡 Powerup Pickups</span>
                         <span>Shield (Absorbs crash) | Magnet | Hyper Rocket Boost</span>
                     </div>
                 </div>
@@ -989,10 +986,10 @@
 
             <div style="display: flex; justify-content: center; gap: 16px;">
                 <button class="btn-action" onclick="game.retry()">
-                    <i class="fas fa-redo"></i> RETRY RUN
+                    🔄 RETRY RUN
                 </button>
                 <button class="btn-secondary" onclick="game.openMenu()">
-                    <i class="fas fa-home"></i> HUB
+                    🏠 HUB
                 </button>
             </div>
         </div>
@@ -1004,20 +1001,20 @@
             <h1 style="font-family: 'Orbitron'; font-size: 36px; margin-bottom: 24px;">GAME PAUSED</h1>
             <div style="display: flex; flex-direction: column; gap: 14px;">
                 <button class="btn-action" onclick="game.togglePause()">
-                    <i class="fas fa-play"></i> RESUME
+                    ▶ RESUME
                 </button>
                 <button class="btn-secondary" onclick="game.retry()">
-                    <i class="fas fa-redo"></i> RESTART
+                    🔄 RESTART
                 </button>
                 <button class="btn-secondary" onclick="game.openMenu()">
-                    <i class="fas fa-home"></i> MAIN MENU
+                    🏠 MAIN MENU
                 </button>
             </div>
         </div>
     </div>
 
     <!-- Three.js Engine & Modular Subsystems -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="three.r128.min.js"></script>
     <script src="js/Shaders.js"></script>
     <script src="js/AudioEngine.js"></script>
     <script src="js/AudioSynthesizerBank.js"></script>
