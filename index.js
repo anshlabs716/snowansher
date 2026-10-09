@@ -326,7 +326,7 @@ class SnowAnsherMaster {
             return;
         }
         this.sound.init();
-        this.sound.startMusic();
+        this.sound.startMusic(); // restores music gain internally
 
         this.difficulty = difficulty;
         this.physics.reset(difficulty, this.currentSledData.stats);
