@@ -32,7 +32,7 @@ const SlopeTrackPatterns = {
             spawn: (manager, startZ) => {
                 const z1 = startZ - 25;
                 const y1 = -z1 * Math.tan(manager.SLOPE_ANGLE);
-                manager.createMegaRamp(0, y1, z1, true);
+                manager.createMegaRamp(0, y1, z1, true, (gx, gz) => manager.getGroundHeightAt(gx, gz));
 
                 // High floating gifts to catch during high airtime
                 manager.createGiftBox(0, y1 + 18, z1 - 35);
@@ -40,7 +40,7 @@ const SlopeTrackPatterns = {
 
                 const z2 = startZ - 105;
                 const y2 = -z2 * Math.tan(manager.SLOPE_ANGLE);
-                manager.createMegaRamp(0, y2, z2, false);
+                manager.createMegaRamp(0, y2, z2, false, (gx, gz) => manager.getGroundHeightAt(gx, gz));
             }
         },
 
@@ -65,12 +65,12 @@ const SlopeTrackPatterns = {
             spawn: (manager, startZ) => {
                 const z1 = startZ - 20;
                 const y1 = -z1 * Math.tan(manager.SLOPE_ANGLE);
-                manager.createMegaRamp(-8, y1, z1, false);
+                manager.createMegaRamp(-8, y1, z1, false, (gx, gz) => manager.getGroundHeightAt(gx, gz));
                 manager.createGrindRail(-8, y1, z1 - 15, 55);
 
                 const z2 = startZ - 85;
                 const y2 = -z2 * Math.tan(manager.SLOPE_ANGLE);
-                manager.createMegaRamp(8, y2, z2, false);
+                manager.createMegaRamp(8, y2, z2, false, (gx, gz) => manager.getGroundHeightAt(gx, gz));
                 manager.createGrindRail(8, y2, z2 - 15, 55);
             }
         },
@@ -138,6 +138,66 @@ const SlopeTrackPatterns = {
             }
         },
 
+        // ─── 11. GIANT CLIFF-JUMP CHALLENGE ───
+        // Huge ramps placed over a gap: the lip is far too high and the launch far
+        // too powerful to reach any other way, so the only way across is off the ramp.
+        {
+            name: "Giant Cliff-Jump Gauntlet",
+            length: 220,
+            spawn: (manager, startZ) => {
+                const gf = (gx, gz) => manager.getGroundHeightAt(gx, gz);
+
+                // Approach ramp, then a flight across the void, then the landing side.
+                const zRamp = startZ - 30;
+                const yRamp = -zRamp * Math.tan(manager.SLOPE_ANGLE);
+                manager.createCliffJumpRamp(0, yRamp, zRamp, gf, 1.0);
+
+                // Airborne gift arc spanning the gap so a clean jump is rewarded.
+                const gapZ = zRamp - 55;
+                const gapY = -gapZ * Math.tan(manager.SLOPE_ANGLE);
+                for (let i = 0; i < 5; i++) {
+                    const z = gapZ - i * 16;
+                    manager.createGiftBox((i % 2 === 0 ? -3.5 : 3.5), -z * Math.tan(manager.SLOPE_ANGLE) + 16, z);
+                }
+                manager.createPowerupOrb(0, gapY + 26, gapZ - 40, 'rocket');
+
+                // Second, bigger ramp further down the mountain.
+                const z2 = startZ - 140;
+                const y2 = -z2 * Math.tan(manager.SLOPE_ANGLE);
+                manager.createCliffJumpRamp(4, y2, z2, gf, 1.35);
+                manager.createGiftBox(-4, -z2 * Math.tan(manager.SLOPE_ANGLE) + 20, z2 - 50);
+            }
+        },
+
+        // ─── 12. SUPER-RAMP CLIFF CHAIN ───
+        // Three escalating ramps: ramp the sled can walk off, ramp it must jump from,
+        // ramp it can only clear at full speed.
+        {
+            name: "Super-Ramp Cliff Chain",
+            length: 240,
+            spawn: (manager, startZ) => {
+                const gf = (gx, gz) => manager.getGroundHeightAt(gx, gz);
+                const specs = [
+                    { off: 25, x: 0, scale: 0.75 },
+                    { off: 105, x: -6, scale: 1.1 },
+                    { off: 195, x: 6, scale: 1.5 }
+                ];
+                specs.forEach((s, i) => {
+                    const z = startZ - s.off;
+                    const y = -z * Math.tan(manager.SLOPE_ANGLE);
+                    manager.createCliffJumpRamp(s.x, y, z, gf, s.scale);
+                    // Rewards strung along each flight path
+                    for (let k = 0; k < 3; k++) {
+                        const gz = z - 30 - k * 22;
+                        manager.createGiftBox(s.x + (k % 2 ? 4 : -4), -gz * Math.tan(manager.SLOPE_ANGLE) + 14 + k * 3, gz);
+                    }
+                    if (i === 2) {
+                        manager.createPowerupOrb(s.x, -z * Math.tan(manager.SLOPE_ANGLE) + 30, z - 70, 'rocket');
+                    }
+                });
+            }
+        },
+
         // ─── 9. CHALET VILLAGE GAUNTLET ───
         {
             name: "Chalet Village Gauntlet",
@@ -148,7 +208,7 @@ const SlopeTrackPatterns = {
                 manager.createPineTree(-14, y1, z1);
                 manager.createPineTree(14, y1, z1);
                 manager.createSnowman(0, y1, z1 - 25);
-                manager.createMegaRamp(0, y1, z1 - 60, true);
+                manager.createMegaRamp(0, y1, z1 - 60, true, (gx, gz) => manager.getGroundHeightAt(gx, gz));
             }
         },
 

@@ -124,6 +124,20 @@ class AudioEngine {
         }
     }
 
+    /**
+     * Silence all continuous movement loops (wind / carve / grind / thruster).
+     * Required on crash, pause and return-to-hub — these loops are buffer
+     * sources that keep roaring at their last gain value forever otherwise.
+     */
+    stopMovementLoops() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        if (this.windGain) this.windGain.gain.setTargetAtTime(0, now, 0.08);
+        if (this.slideGain) this.slideGain.gain.setTargetAtTime(0, now, 0.08);
+        if (this.railGain) this.railGain.gain.setTargetAtTime(0, now, 0.08);
+        if (this.thrusterGain) this.thrusterGain.gain.setTargetAtTime(0, now, 0.08);
+    }
+
     // ─── CONTINUOUS PROCEDURAL LOOP GENERATORS ───
 
     setupContinuousWind() {
@@ -540,10 +554,44 @@ class AudioEngine {
         this.nextNoteTime = this.ctx ? this.ctx.currentTime + 0.1 : 0;
         this.currentStep = 0;
         this.chordIndex = 0;
+        // stopMusic() fades the bus to zero, so bring it back up on restart —
+        // otherwise a new run would start in silence after the first crash.
+        if (this.ctx && this.musicGain) {
+            this.musicGain.gain.cancelScheduledValues(this.ctx.currentTime);
+            this.musicGain.gain.setTargetAtTime(1, this.ctx.currentTime, 0.08);
+        }
     }
 
     stopMusic() {
         this.musicRunning = false;
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        // Fade the music bus out rather than cutting it: the sequencer has already
+        // scheduled notes up to 0.25s ahead, and those were still audible after death.
+        if (this.musicGain) {
+            this.musicGain.gain.cancelScheduledValues(now);
+            this.musicGain.gain.setTargetAtTime(0, now, 0.06);
+        }
+        this.nextNoteTime = now;
+    }
+
+    /** Kill any looping engine/boost noise (thrusters) that outlived the run. */
+    stopThrusterLoops() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        if (this.thrusterGain) {
+            this.thrusterGain.gain.cancelScheduledValues(now);
+            this.thrusterGain.gain.setTargetAtTime(0, now, 0.05);
+        }
+    }
+
+    /** Restore the buses for a fresh run. Called on (re)start, not on init. */
+    resumeAfterDeath() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const vol = this.musicRunning ? 1 : 0;
+        if (this.musicGain) this.musicGain.gain.setTargetAtTime(vol, now, 0.05);
+        this.nextNoteTime = now;
     }
 
     updateMusicSequencer() {

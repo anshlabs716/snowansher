@@ -36,18 +36,20 @@ class WorldEnvironment {
         this.setupLighting();
         this.setupSkyDome();
         this.setupMountains();
+        this.setupClouds();
         this.setupTerrainSystem();
-        this.setupSkiLiftPylons();
+        // Ski-lift pylons disabled — the reference look is pure forest + snow + sky
+        // this.setupSkiLiftPylons();
     }
 
     setupLighting() {
-        this.ambientLight = new THREE.AmbientLight(0xd4e9ff, 0.75);
+        this.ambientLight = new THREE.AmbientLight(0xffffff, 0.62);
         this.scene.add(this.ambientLight);
 
-        this.hemiLight = new THREE.HemisphereLight(0xffffff, 0x6495ed, 0.45);
+        this.hemiLight = new THREE.HemisphereLight(0xffffff, 0xe3eef7, 0.40);
         this.scene.add(this.hemiLight);
 
-        this.sunLight = new THREE.DirectionalLight(0xfff5e6, 1.35);
+        this.sunLight = new THREE.DirectionalLight(0xffffff, 1.0);
         this.sunLight.position.set(60, 100, -40);
 
         if (this.config.graphics === 'ultra') {
@@ -116,6 +118,46 @@ class WorldEnvironment {
         this.scene.add(this.mountainGroup);
     }
 
+    /**
+     * Flat-shaded low-poly cloud puffs drifting in the daytime sky
+     */
+    setupClouds() {
+        this.cloudGroup = new THREE.Group();
+        const cloudMat = new THREE.MeshStandardMaterial({
+            color: 0xf2f6fa,
+            roughness: 1.0,
+            metalness: 0.0,
+            flatShading: true,
+            fog: false // keep clouds crisp against the sky dome
+        });
+
+        for (let i = 0; i < 16; i++) {
+            const cloud = new THREE.Group();
+            const puffs = 3 + Math.floor(Math.random() * 3);
+
+            for (let p = 0; p < puffs; p++) {
+                const r = 9 + Math.random() * 12;
+                const puff = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), cloudMat);
+                puff.position.set(
+                    (p - (puffs - 1) * 0.5) * r * 0.95,
+                    (Math.random() - 0.5) * 5,
+                    (Math.random() - 0.5) * 10
+                );
+                puff.scale.y = 0.4 + Math.random() * 0.25; // squashed layered cloud slab
+                cloud.add(puff);
+            }
+
+            cloud.position.set(
+                (Math.random() - 0.5) * 560,
+                55 + Math.random() * 80,
+                260 - i * 72 - Math.random() * 46
+            );
+            this.cloudGroup.add(cloud);
+        }
+
+        this.scene.add(this.cloudGroup);
+    }
+
     setupTerrainSystem() {
         // High quality procedural snow terrain material
         this.terrainMat = new THREE.ShaderMaterial({
@@ -155,11 +197,11 @@ class WorldEnvironment {
             let yDisplacement = 0;
             if (absX > this.TRACK_WIDTH * 0.44) {
                 const rim = (absX - this.TRACK_WIDTH * 0.44);
-                yDisplacement = Math.pow(rim * 0.22, 1.85);
+                yDisplacement = 9.0 * Math.tanh(Math.pow(rim * 0.22, 1.85) / 9.0);
             }
 
             // Natural terrain moguls and ripples
-            yDisplacement += Math.sin(x * 0.1) * Math.cos(worldZ * 0.07) * 0.75;
+            yDisplacement += Math.sin(x * 0.1) * Math.cos(worldZ * 0.07) * 0.45;
             pos.setZ(i, yDisplacement);
         }
 
@@ -298,9 +340,9 @@ class WorldEnvironment {
         } else {
             // Bright alpine daylight
             tu.uDaylight.value = 1.0;
-            tu.uSunColor.value.setHex(0xfff5e6);
-            tu.uSkyColor.value.setHex(0x89c7eb);
-            tu.uGroundColor.value.setHex(0xe8f4fc);
+            tu.uSunColor.value.setHex(0xffffff);
+            tu.uSkyColor.value.setHex(0xcadcec);
+            tu.uGroundColor.value.setHex(0xdee9f1);
         }
 
         // Dynamic Sun & Sky Lighting based on time
@@ -317,28 +359,29 @@ class WorldEnvironment {
             this.sunLight.intensity = 1.1;
             this.sunLight.color.setHex(0xe17055);
         } else {
-            // Bright Alpine Daylight
-            this.ambientLight.color.setHex(0xd4e9ff);
-            this.ambientLight.intensity = 0.75;
-            this.sunLight.intensity = 1.35;
-            this.sunLight.color.setHex(0xfff5e6);
+            // Bright Alpine Daylight (neutral white for the flat low-poly look)
+            this.ambientLight.color.setHex(0xffffff);
+            this.ambientLight.intensity = 0.62;
+            this.sunLight.intensity = 1.0;
+            this.sunLight.color.setHex(0xffffff);
         }
 
         // Sky dome follows player
         this.skyDome.position.copy(playerPos);
 
         // Recycle terrain chunks seamlessly along the slope line y = -z * tan(SLOPE)
-        const chunkCos = this.CHUNK_LENGTH * Math.cos(this.SLOPE_ANGLE);
+        const chunkCos = this.CHUNK_LENGTH * Math.cos(this.SLOPE_ANGLE); // chunk footprint along Z
+
+        // Ground vanished under the sled at speed: the recycle test only fired once a
+        // chunk was a full chunk-length BEHIND the player, so the mesh lagged the sled
+        // and you outran the terrain. Recycle as soon as a chunk falls behind, and keep
+        // a generous run of ground ahead of the sled at all times.
+        const recycleBehind = this.CHUNK_LENGTH * 1.5;
+        const aheadReach = this.CHUNK_LENGTH * 4;
 
         this.terrainChunks.forEach(chunk => {
-            if (chunk.mesh.position.z > playerPos.z + chunkCos) {
-                let minZ = Infinity;
-                this.terrainChunks.forEach(c => {
-                    if (c.mesh.position.z < minZ) {
-                        minZ = c.mesh.position.z;
-                    }
-                });
-                chunk.mesh.position.z = minZ - chunkCos;
+            if (chunk.mesh.position.z > playerPos.z + recycleBehind) {
+                chunk.mesh.position.z = playerPos.z - aheadReach;
                 // Keep the recycled chunk exactly on the shared slope surface
                 chunk.mesh.position.y = -chunk.mesh.position.z * Math.tan(this.SLOPE_ANGLE);
             }
@@ -347,6 +390,15 @@ class WorldEnvironment {
         // Parallax mountain ranges
         this.mountainGroup.position.z = playerPos.z * 0.65;
         this.mountainGroup.position.y = playerPos.y * 0.65;
+
+        // Low-poly cloud layer: follows the player, recycling strays behind them
+        this.cloudGroup.position.set(playerPos.x * 0.3, playerPos.y * 0.75, playerPos.z * 0.9);
+        const cloudDrift = -playerPos.z * 0.1;
+        this.cloudGroup.children.forEach(cloud => {
+            const relZ = cloud.position.z + cloudDrift;
+            if (relZ > 300) cloud.position.z -= 1300;
+            else if (relZ < -1000) cloud.position.z += 1300;
+        });
 
         // Sunlight follows player
         this.sunLight.position.set(

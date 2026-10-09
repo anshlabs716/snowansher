@@ -20,6 +20,21 @@ class ObstaclesManager {
 
         this.TRACK_WIDTH = 58;
         this.SLOPE_ANGLE = 0.075;
+
+        // Terrain sampler so obstacles can sit on the real ground surface instead of
+        // a guessed spawn height. Assigned by the game so it stays in sync with
+        // GamePhysics.getGroundHeightAt (single source of truth for terrain height).
+        this.getGroundHeightAt = null;
+
+        // Shared flat-shaded low-poly forest materials (Snow Rider palette)
+        this.matPineFoliage = new THREE.MeshStandardMaterial({ color: 0xc98a66, roughness: 0.9, metalness: 0.0, flatShading: true });
+        this.matPineSnow = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.65, metalness: 0.0, flatShading: true });
+        this.matPineTrunk = new THREE.MeshStandardMaterial({ color: 0x8b5e46, roughness: 0.95, metalness: 0.0, flatShading: true });
+        this.matBark = new THREE.MeshStandardMaterial({ color: 0x9c6b52, roughness: 0.95, metalness: 0.0, flatShading: true });
+
+        // Dark grey rock palette (real rock tones — darker than snow, reads as lethal)
+        this.matRockDark = new THREE.MeshStandardMaterial({ color: 0x4a4f55, roughness: 0.95, metalness: 0.0, flatShading: true });
+        this.matRock = new THREE.MeshStandardMaterial({ color: 0x61666c, roughness: 0.95, metalness: 0.0, flatShading: true });
     }
 
     clearAll() {
@@ -41,52 +56,99 @@ class ObstaclesManager {
     // ─── PROCEDURAL HAZARD BUILDERS ───
 
     /**
-     * Multi-tiered realistic snow-laden evergreen pine tree
+     * Low-poly flat-shaded salmon-brown snow pine (Snow Rider style)
      */
     createPineTree(x, y, z) {
         const group = new THREE.Group();
-        const scale = 0.85 + Math.random() * 0.95;
+        const scale = 1.2 + Math.random() * 1.1;
 
         // Trunk
-        const trunkGeo = new THREE.CylinderGeometry(0.22 * scale, 0.38 * scale, 2.4 * scale, 7);
-        const trunkMat = new THREE.MeshStandardMaterial({ color: 0x422a1d, roughness: 0.95 });
-        const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-        trunk.position.y = 1.2 * scale;
+        const trunkGeo = new THREE.CylinderGeometry(0.26 * scale, 0.42 * scale, 2.6 * scale, 6);
+        const trunk = new THREE.Mesh(trunkGeo, this.matPineTrunk);
+        trunk.position.y = 1.3 * scale;
         trunk.castShadow = (this.config.graphics === 'ultra');
         group.add(trunk);
 
-        // 3 Dense Foliage Tiers with Thick Fluffy Snow Caps
-        const foliageMat = new THREE.MeshStandardMaterial({ color: 0x1a4335, roughness: 0.85 });
-        const snowMat = new THREE.MeshStandardMaterial({ color: 0xfafcff, roughness: 0.55 });
-
+        // 3 flat-shaded foliage tiers, each capped with a thick white snow blanket
         for (let tier = 0; tier < 3; tier++) {
-            const rad = (2.0 - tier * 0.48) * scale;
-            const height = 1.7 * scale;
+            const rad = (2.9 - tier * 0.6) * scale;
+            const height = 1.6 * scale;
 
-            // Pine needle cone
-            const coneGeo = new THREE.ConeGeometry(rad, height, 8);
-            const cone = new THREE.Mesh(coneGeo, foliageMat);
-            cone.position.y = (2.2 + tier * 1.15) * scale;
+            const coneGeo = new THREE.ConeGeometry(rad, height, 6);
+            const cone = new THREE.Mesh(coneGeo, this.matPineFoliage);
+            cone.position.y = (2.4 + tier * 1.15) * scale;
             cone.castShadow = (this.config.graphics === 'ultra');
             group.add(cone);
 
-            // Heavy snow mound resting on branch tier
-            const snowGeo = new THREE.ConeGeometry(rad * 0.88, height * 0.45, 8);
-            const snowCap = new THREE.Mesh(snowGeo, snowMat);
-            snowCap.position.y = (2.65 + tier * 1.15) * scale;
+            const snowGeo = new THREE.ConeGeometry(rad * 0.9, height * 0.5, 6);
+            const snowCap = new THREE.Mesh(snowGeo, this.matPineSnow);
+            snowCap.position.y = (2.82 + tier * 1.15) * scale;
             group.add(snowCap);
         }
 
         group.position.set(x, y, z);
         group.rotation.y = Math.random() * Math.PI * 2;
-        group.rotation.z = (Math.random() - 0.5) * 0.08;
+        group.rotation.z = (Math.random() - 0.5) * 0.06;
 
         this.scene.add(group);
         this.obstacles.push({
             mesh: group,
             type: 'tree',
-            radius: 1.15 * scale,
-            height: 5.8 * scale,
+            radius: 1.3 * scale,
+            height: 5.7 * scale,
+            pos: group.position,
+            passed: false
+        });
+    }
+
+    /**
+     * Bare deciduous tree with angular upward-branching limbs (low-poly winter look)
+     */
+    createBareTree(x, y, z) {
+        const group = new THREE.Group();
+        const scale = 1.1 + Math.random() * 0.9;
+
+        // Main trunk
+        const trunkGeo = new THREE.CylinderGeometry(0.3 * scale, 0.55 * scale, 6.5 * scale, 6);
+        const trunk = new THREE.Mesh(trunkGeo, this.matBark);
+        trunk.position.y = 3.25 * scale;
+        trunk.castShadow = (this.config.graphics === 'ultra');
+        group.add(trunk);
+
+        // Angular branches splayed outward from the upper trunk
+        const branchCount = 5;
+        for (let b = 0; b < branchCount; b++) {
+            const pivot = new THREE.Group();
+            pivot.position.y = (3.6 + b * 0.6) * scale;
+            pivot.rotation.y = b * 2.4 + Math.random() * 0.9;
+
+            const len = (3.4 - b * 0.4) * scale;
+            const tilt = 0.85 + Math.random() * 0.35;
+
+            const branchGeo = new THREE.CylinderGeometry(0.05 * scale, 0.16 * scale, len, 5);
+            const branch = new THREE.Mesh(branchGeo, this.matBark);
+            branch.rotation.z = tilt;
+            // Seat the branch base exactly on the trunk (pivot point)
+            branch.position.set(-Math.sin(tilt) * len * 0.5, Math.cos(tilt) * len * 0.5, 0);
+            pivot.add(branch);
+            group.add(pivot);
+        }
+
+        // Central crown twig
+        const crownGeo = new THREE.CylinderGeometry(0.03 * scale, 0.12 * scale, 2.4 * scale, 5);
+        const crown = new THREE.Mesh(crownGeo, this.matBark);
+        crown.position.y = 7.2 * scale;
+        group.add(crown);
+
+        group.position.set(x, y, z);
+        group.rotation.y = Math.random() * Math.PI * 2;
+
+        this.scene.add(group);
+        this.obstacles.push({
+            mesh: group,
+            type: 'tree',
+            radius: 1.0 * scale,
+            height: 8.2 * scale,
             pos: group.position,
             passed: false
         });
@@ -113,7 +175,7 @@ class ObstaclesManager {
             mesh: mesh,
             type: 'boulder',
             radius: size * 0.95,
-            height: size * 2.0,
+            height: size * 1.5, // collision top ≈ visible top, so jumps that LOOK clear DO clear
             pos: mesh.position,
             rolling: true,
             rollSpeed: 4.0 + Math.random() * 3.5,
@@ -182,13 +244,64 @@ class ObstaclesManager {
     }
 
     /**
+     * Dark grey rock cluster — rare but lethal hazard (jump or dodge)
+     */
+    createRock(x, y, z) {
+        const group = new THREE.Group();
+        const chunkCount = 1 + Math.floor(Math.random() * 2);
+        let top = 0;
+        let spread = 0;
+
+        for (let c = 0; c < chunkCount; c++) {
+            const size = 0.9 + Math.random() * 1.1;
+            const geo = new THREE.DodecahedronGeometry(size, 0);
+            const rock = new THREE.Mesh(geo, Math.random() < 0.5 ? this.matRockDark : this.matRock);
+            const ox = (Math.random() - 0.5) * 2.6;
+            const oz = (Math.random() - 0.5) * 2.6;
+            rock.position.set(ox, size * 0.55, oz);
+            rock.scale.set(1.0, 0.72, 0.9 + Math.random() * 0.25); // squat, weathered boulder
+            rock.rotation.set(Math.random() * 0.5, Math.random() * Math.PI * 2, Math.random() * 0.5);
+            rock.castShadow = (this.config.graphics === 'ultra');
+            group.add(rock);
+
+            top = Math.max(top, size * 0.55 + size * 0.72);
+            spread = Math.max(spread, Math.abs(ox) + size);
+        }
+
+        group.position.set(x, y, z);
+        group.rotation.y = Math.random() * Math.PI * 2;
+        this.scene.add(group);
+
+        this.obstacles.push({
+            mesh: group,
+            type: 'rock',
+            radius: Math.min(spread, 2.6),
+            height: top,
+            pos: group.position,
+            passed: false
+        });
+    }
+
+    /**
      * Mega Ski Jump Ramps with high launch power for massive airtime
      */
-    createMegaRamp(x, y, z, isMega = false) {
+    createMegaRamp(x, y, z, isMega = false, groundFn = null) {
         const group = new THREE.Group();
         const rampWidth = isMega ? 14.0 : 9.5;
         const rampLength = isMega ? 12.0 : 8.5;
         const rampHeight = isMega ? 4.2 : 2.8;
+
+        // Ramps used to be placed at a flat spawn height, which left them hovering
+        // above (or sunk into) the slope, and they never looked like they rested on
+        // anything. Sit them on the actual terrain height at their footprint instead,
+        // then raise them by their own height so the base is flush with the ground.
+        const sampleZ = z + (isMega ? -rampLength * 0.35 : -rampLength * 0.35);
+        let baseY = y;
+        if (typeof groundFn === 'function') {
+            const zBack = z + rampLength * 0.5;
+            const zFront = z - rampLength * 0.5;
+            baseY = Math.max(groundFn(x, zBack), groundFn(x, zFront));
+        }
 
         // Timber wood frame
         const frameGeo = new THREE.BoxGeometry(rampWidth, 0.4, rampLength);
@@ -212,16 +325,91 @@ class ObstaclesManager {
         frame.add(chevron);
 
         group.add(frame);
-        group.position.set(x, y, z);
+        group.position.set(x, baseY, z);
         this.scene.add(group);
 
         this.ramps.push({
             mesh: group,
             width: rampWidth,
             length: rampLength,
-            boostPower: isMega ? 48 : 36, // HUGE high jump launch!
+            boostPower: isMega ? 46 : 34, // Big obvious kicker launch (≈25m / ≈14m apex) — clearly above a normal jump
             pos: group.position
         });
+    }
+
+    /**
+     * Cliff-clearing ramp: a very long, steep kicker whose lip is high enough to
+     * carry the sled across a chasm it could never clear on the flat.
+     *
+     * Unlike createMegaRamp this one does NOT need to touch the ground — a cliff gap
+     * means the takeoff point is genuinely elevated — but its base is still pinned to
+     * the terrain at its own footing so it never looks like it is hovering.
+     */
+    createCliffJumpRamp(x, y, z, groundFn = null, scale = 1.0) {
+        const group = new THREE.Group();
+        const rampWidth = 16.0 * scale;
+        const rampLength = 30.0 * scale;
+        const rampHeight = 11.0 * scale;
+
+        // Support legs so the ramp reads as built structure, not a floating slab.
+        const legMat = new THREE.MeshStandardMaterial({ color: 0x5d4037, roughness: 0.9 });
+        [-0.34, 0.02, 0.34].forEach(t => {
+            const legH = Math.max(1.2, rampHeight * (0.9 - t));
+            const legGeo = new THREE.BoxGeometry(rampWidth * 0.14, legH, rampWidth * 0.14);
+            const leg = new THREE.Mesh(legGeo, legMat);
+            leg.position.set(rampWidth * 0.32, legH * 0.5 - rampHeight * 0.1, rampLength * t);
+            leg.castShadow = (this.config && this.config.graphics === 'ultra');
+            group.add(leg);
+        });
+
+        // Timber deck
+        const frameGeo = new THREE.BoxGeometry(rampWidth, 0.55, rampLength);
+        const frameMat = new THREE.MeshStandardMaterial({ color: 0x6d4c41, roughness: 0.85 });
+        const frame = new THREE.Mesh(frameGeo, frameMat);
+        // Steeper launch angle than a normal kicker — this is the point of the ramp.
+        frame.rotation.x = 0.46;
+        frame.position.set(0, rampHeight * 0.5, 0);
+        frame.castShadow = (this.config && this.config.graphics === 'ultra');
+        group.add(frame);
+
+        // Snow-packed launch surface
+        const snowGeo = new THREE.BoxGeometry(rampWidth - 0.3, 0.4, rampLength - 0.3);
+        const snowMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
+        const snowTop = new THREE.Mesh(snowGeo, snowMat);
+        snowTop.position.set(0, 0.3, 0);
+        frame.add(snowTop);
+
+        // Warning chevrons up the face
+        const chevMat = new THREE.MeshBasicMaterial({ color: 0xff4757 });
+        for (let i = 0; i < 4; i++) {
+            const chevGeo = new THREE.BoxGeometry(rampWidth * 0.9, 0.07, 0.7);
+            const chev = new THREE.Mesh(chevGeo, chevMat);
+            chev.position.set(0, 0.52, rampLength * (0.18 + i * 0.16));
+            frame.add(chev);
+        }
+
+        // Base pinned to terrain where the ramp meets the ground.
+        let baseY = y;
+        if (typeof groundFn === 'function') baseY = groundFn(x, z + rampLength * 0.5);
+
+        group.position.set(x, baseY, z);
+        this.scene.add(group);
+
+        // Launch power scales with the ramp so a bigger ramp clears a bigger gap.
+        // Tuned against gravity 42.0 so apexes are ~45m (scale 1.0) and ~130m
+        // (scale 1.5) — enough to cross a real chasm, not the 170m/385m lunge that
+        // a raw linear boost produced.
+        const boost = Math.round(61.5 * scale);
+        this.ramps.push({
+            mesh: group,
+            width: rampWidth,
+            length: rampLength,
+            boostPower: boost,
+            isCliffJumper: true,
+            pos: group.position
+        });
+        this.cliffRamps = this.cliffRamps || [];
+        this.cliffRamps.push(group);
     }
 
     /**

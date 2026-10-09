@@ -12,14 +12,14 @@ const SnowShaders = {
         uniforms: {
             uTime: { value: 0.0 },
             uSunDirection: { value: new THREE.Vector3(0.5, 0.8, -0.3).normalize() },
-            uSunColor: { value: new THREE.Color(0xfff5e6) },
-            uSkyColor: { value: new THREE.Color(0x89c7eb) },
-            uGroundColor: { value: new THREE.Color(0xe8f4fc) },
-            uShadowColor: { value: new THREE.Color(0x4a7599) },
+            uSunColor: { value: new THREE.Color(0xffffff) },
+            uSkyColor: { value: new THREE.Color(0xcadcec) },
+            uGroundColor: { value: new THREE.Color(0xdee9f1) },
+            uShadowColor: { value: new THREE.Color(0xa9c6de) },
             uSparkleScale: { value: 45.0 },
-            uSparkleIntensity: { value: 1.8 },
+            uSparkleIntensity: { value: 0.7 },
             uDaylight: { value: 1.0 },
-            uFogColor: { value: new THREE.Color(0x9bd8f5) },
+            uFogColor: { value: new THREE.Color(0xb4cde4) },
             uFogDensity: { value: 0.0025 }
         },
         vertexShader: `
@@ -83,12 +83,12 @@ const SnowShaders = {
 
                 // Hemisphere sky ambient bounce
                 float upFactor = clamp(normal.y * 0.5 + 0.5, 0.0, 1.0);
-                vec3 ambient = mix(uShadowColor, uSkyColor, upFactor) * 0.55;
+                vec3 ambient = mix(uShadowColor, uSkyColor, upFactor) * 0.38;
 
                 // Main snow base color with subtle undulation modulation
                 float macroNoise = noise2D(vWorldPosition.xz * 0.04);
-                vec3 baseColor = mix(uGroundColor, vec3(1.0), macroNoise * 0.2);
-                vec3 litColor = baseColor * (uSunColor * diffuse + ambient);
+                vec3 baseColor = mix(uGroundColor, vec3(1.0), macroNoise * 0.10);
+                vec3 litColor = baseColor * (uSunColor * diffuse + ambient) * 0.80;
 
                 // Snow crystal specular sparkle glints
                 vec3 halfwayDir = normalize(lightDir + viewDir);
@@ -100,7 +100,7 @@ const SnowShaders = {
 
                 // Subtle blue subsurface scattering simulation on slopes
                 float rim = 1.0 - clamp(dot(viewDir, normal), 0.0, 1.0);
-                litColor += uSkyColor * pow(rim, 3.0) * 0.25;
+                litColor += uSkyColor * pow(rim, 3.0) * 0.10;
 
                 // Time-of-day response: golden sunsets & cool moonlit nights
                 vec3 nightColor = litColor * vec3(0.30, 0.40, 0.72);
@@ -180,9 +180,9 @@ const SnowShaders = {
                 vec3 dir = normalize(vRayDir);
                 float height = dir.y;
 
-                // Day sky colors
-                vec3 dayZenith = vec3(0.12, 0.45, 0.85);
-                vec3 dayHorizon = vec3(0.65, 0.85, 0.98);
+                // Day sky colors (clear blue alpine sky — must contrast the white snow)
+                vec3 dayZenith = vec3(0.36, 0.55, 0.79);
+                vec3 dayHorizon = vec3(0.68, 0.80, 0.92);
 
                 // Sunset colors
                 vec3 sunsetZenith = vec3(0.2, 0.15, 0.45);
@@ -197,9 +197,10 @@ const SnowShaders = {
                 vec3 currentHorizon;
 
                 if (uTimeOfDay < 0.5) {
-                    float t = uTimeOfDay * 2.0;
-                    currentZenith = mix(dayZenith, sunsetZenith, t * 0.4);
-                    currentHorizon = mix(dayHorizon, sunsetHorizon, t * 0.4);
+                    // Hold a clean daytime sky until 0.35, then blend into sunset
+                    float t = clamp((uTimeOfDay - 0.35) / 0.15, 0.0, 1.0);
+                    currentZenith = mix(dayZenith, sunsetZenith, t);
+                    currentHorizon = mix(dayHorizon, sunsetHorizon, t);
                 } else if (uTimeOfDay < 0.85) {
                     float t = (uTimeOfDay - 0.5) / 0.35;
                     currentZenith = mix(sunsetZenith, nightZenith, t);

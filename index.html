@@ -1,688 +1,1051 @@
-// ============================================================
-//  SNOW RIDER 3D – Full Game with Three.js
-//  Controls: A/D or ←/→ to steer | SPACE to jump
-// ============================================================
-
-// ─── DOM refs ──────────────────────────────────────────────────
-const hudGifts = document.getElementById('gifts');
-const hudDistance = document.getElementById('distance');
-const hudBest = document.getElementById('best');
-const hudSpeed = document.getElementById('speed');
-const menu = document.getElementById('menu');
-const gameover = document.getElementById('gameover');
-const finalDist = document.getElementById('final-dist');
-const finalGifts = document.getElementById('final-gifts');
-const finalSpeed = document.getElementById('final-speed');
-const retryBtn = document.getElementById('retry');
-
-// ─── State ────────────────────────────────────────────────────
-let best = parseInt(localStorage.getItem('snowrider_best')) || 0;
-hudBest.textContent = best;
-
-const state = {
-    playing: false,
-    gameOver: false,
-    score: 0,
-    gifts: 0,
-    distance: 0,
-    speed: 0,
-    difficulty: 'medium',
-    health: 100,
-    maxHealth: 100
-};
-
-// ─── Keys ────────────────────────────────────────────────────
-const keys = { left: false, right: false, jump: false };
-
-// ─── Difficulty ──────────────────────────────────────────────
-const DIFFICULTY = {
-    easy: { speed: 4, maxSpeed: 10, obstacleRate: 50, gravity: -0.5, jumpPower: 8 },
-    medium: { speed: 6, maxSpeed: 14, obstacleRate: 35, gravity: -0.6, jumpPower: 9 },
-    hard: { speed: 8, maxSpeed: 18, obstacleRate: 25, gravity: -0.7, jumpPower: 10 }
-};
-
-// ─── Three.js Setup ──────────────────────────────────────────
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x1a2a4a);
-scene.fog = new THREE.Fog(0x1a2a4a, 80, 200);
-
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 300);
-camera.position.set(0, 8, 14);
-camera.lookAt(0, 0, 0);
-
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.0;
-document.body.prepend(renderer.domElement);
-
-// ─── Lights ──────────────────────────────────────────────────
-const ambientLight = new THREE.AmbientLight(0x6688cc, 0.6);
-scene.add(ambientLight);
-
-const sunLight = new THREE.DirectionalLight(0xffeedd, 1.4);
-sunLight.position.set(50, 80, 30);
-sunLight.castShadow = true;
-sunLight.shadow.mapSize.width = 1024;
-sunLight.shadow.mapSize.height = 1024;
-sunLight.shadow.camera.near = 0.5;
-sunLight.shadow.camera.far = 150;
-sunLight.shadow.camera.left = -50;
-sunLight.shadow.camera.right = 50;
-sunLight.shadow.camera.top = 50;
-sunLight.shadow.camera.bottom = -50;
-scene.add(sunLight);
-
-const hemiLight = new THREE.HemisphereLight(0x88ccff, 0x445566, 0.4);
-scene.add(hemiLight);
-
-// ─── Sky ──────────────────────────────────────────────────────
-const skyGeo = new THREE.SphereGeometry(200, 20, 20);
-const skyMat = new THREE.ShaderMaterial({
-    side: THREE.BackSide,
-    uniforms: {
-        uTop: { value: new THREE.Color(0x1a3a6a) },
-        uBottom: { value: new THREE.Color(0x7ac4e8) }
-    },
-    vertexShader: `
-        varying vec3 vPos;
-        void main() {
-            vPos = position;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-    `,
-    fragmentShader: `
-        uniform vec3 uTop;
-        uniform vec3 uBottom;
-        varying vec3 vPos;
-        void main() {
-            float h = normalize(vPos).y;
-            vec3 col = mix(uBottom, uTop, max(0.0, h * 0.7 + 0.3));
-            gl_FragColor = vec4(col, 1.0);
-        }
-    `
-});
-const skyMesh = new THREE.Mesh(skyGeo, skyMat);
-scene.add(skyMesh);
-
-// ─── Ground ──────────────────────────────────────────────────
-const groundWidth = 80;
-const groundLength = 200;
-const groundGeo = new THREE.PlaneGeometry(groundWidth, groundLength, 80, 160);
-const groundMat = new THREE.MeshLambertMaterial({
-    color: 0x4a8a9a,
-    roughness: 0.9,
-    metalness: 0.0
-});
-const ground = new THREE.Mesh(groundGeo, groundMat);
-ground.rotation.x = -Math.PI / 2;
-ground.position.z = -30;
-ground.receiveShadow = true;
-scene.add(ground);
-
-// ─── Snow particles ──────────────────────────────────────────
-const snowCount = 3000;
-const snowGeo = new THREE.BufferGeometry();
-const snowPos = new Float32Array(snowCount * 3);
-for (let i = 0; i < snowCount * 3; i++) {
-    snowPos[i] = (Math.random() - 0.5) * 200;
-    if (i % 3 === 1) snowPos[i] = Math.random() * 60 + 10;
-    if (i % 3 === 2) snowPos[i] = (Math.random() - 0.5) * 200;
-}
-snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
-const snowMat = new THREE.PointsMaterial({
-    color: 0xffffff,
-    size: 0.2,
-    transparent: true,
-    opacity: 0.6,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false
-});
-const snowParticles = new THREE.Points(snowGeo, snowMat);
-scene.add(snowParticles);
-
-// ─── Trees ──────────────────────────────────────────────────
-const treeGroup = new THREE.Group();
-const trunkMat = new THREE.MeshLambertMaterial({ color: 0x5a3d2b });
-const leafMat = new THREE.MeshLambertMaterial({ color: 0x2a6a3a });
-const leafMat2 = new THREE.MeshLambertMaterial({ color: 0x3a7a4a });
-
-for (let i = 0; i < 120; i++) {
-    const x = (Math.random() - 0.5) * 70;
-    const z = (Math.random() - 0.5) * 180 - 10;
-    if (Math.abs(x) < 6) continue;
-
-    const size = 0.5 + Math.random() * 1.2;
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.08 * size, 0.12 * size, 0.8 * size, 5), trunkMat);
-    trunk.position.set(x, 0.4 * size, z);
-    trunk.castShadow = true;
-    trunk.receiveShadow = true;
-    treeGroup.add(trunk);
-
-    const leaf1 = new THREE.Mesh(new THREE.ConeGeometry(0.5 * size, 0.8 * size, 6), leafMat);
-    leaf1.position.set(x, 0.8 * size + 0.4 * size, z);
-    leaf1.castShadow = true;
-    leaf1.receiveShadow = true;
-    treeGroup.add(leaf1);
-
-    const leaf2 = new THREE.Mesh(new THREE.ConeGeometry(0.4 * size, 0.6 * size, 6), leafMat2);
-    leaf2.position.set(x, 0.8 * size + 0.8 * size, z);
-    leaf2.castShadow = true;
-    leaf2.receiveShadow = true;
-    treeGroup.add(leaf2);
-}
-scene.add(treeGroup);
-
-// ─── Sled ──────────────────────────────────────────────────
-const sledGroup = new THREE.Group();
-
-// Body
-const bodyMat = new THREE.MeshLambertMaterial({ color: 0x55d7ff, roughness: 0.3, metalness: 0.6 });
-const body = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.2, 2.0), bodyMat);
-body.position.y = 0.2;
-body.castShadow = true;
-body.receiveShadow = true;
-sledGroup.add(body);
-
-// Seat
-const seatMat = new THREE.MeshLambertMaterial({ color: 0x222244, roughness: 0.7 });
-const seat = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.2, 0.6), seatMat);
-seat.position.set(0, 0.4, -0.3);
-seat.castShadow = true;
-seat.receiveShadow = true;
-sledGroup.add(seat);
-
-// Back
-const backMat = new THREE.MeshLambertMaterial({ color: 0x333355, roughness: 0.7 });
-const back = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.4, 0.1), backMat);
-back.position.set(0, 0.5, -0.8);
-back.castShadow = true;
-back.receiveShadow = true;
-sledGroup.add(back);
-
-// Skis
-const skiMat = new THREE.MeshLambertMaterial({ color: 0x8899aa, metalness: 0.8, roughness: 0.2 });
-for (let side = -1; side <= 1; side += 2) {
-    const ski = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, 1.8), skiMat);
-    ski.position.set(side * 0.6, 0.02, 0);
-    ski.castShadow = true;
-    ski.receiveShadow = true;
-    sledGroup.add(ski);
-}
-
-// Headlight
-const hlMat = new THREE.MeshLambertMaterial({ color: 0xffffaa, emissive: 0xffdd44, emissiveIntensity: 0.3 });
-const hl = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), hlMat);
-hl.position.set(0, 0.2, 1.1);
-sledGroup.add(hl);
-
-// Glow
-const glowMat = new THREE.MeshLambertMaterial({
-    color: 0x55d7ff,
-    emissive: 0x55d7ff,
-    emissiveIntensity: 0.1,
-    transparent: true,
-    opacity: 0.15
-});
-const glow = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.04, 1.6), glowMat);
-glow.position.y = 0.1;
-sledGroup.add(glow);
-
-sledGroup.position.set(0, 0.6, 0);
-scene.add(sledGroup);
-
-// ─── Obstacles ──────────────────────────────────────────────
-const obstacles = [];
-
-// ─── Gifts ──────────────────────────────────────────────────
-const gifts = [];
-
-// ─── Particles ──────────────────────────────────────────────
-const particles = [];
-
-// ─── Game functions ──────────────────────────────────────────
-
-let gameTime = 0;
-let spawnTimer = 0;
-
-function getDiff() {
-    return DIFFICULTY[state.difficulty] || DIFFICULTY.medium;
-}
-
-function resetGame() {
-    state.playing = true;
-    state.gameOver = false;
-    state.score = 0;
-    state.gifts = 0;
-    state.distance = 0;
-    state.speed = 0;
-    state.health = 100;
-
-    sledGroup.position.set(0, 0.6, 0);
-    sledGroup.rotation.set(0, 0, 0);
-
-    // Clear obstacles
-    obstacles.forEach(o => scene.remove(o.mesh));
-    obstacles.length = 0;
-
-    // Clear gifts
-    gifts.forEach(g => scene.remove(g.mesh));
-    gifts.length = 0;
-
-    // Clear particles
-    particles.forEach(p => scene.remove(p.mesh));
-    particles.length = 0;
-
-    gameTime = 0;
-    spawnTimer = 0;
-
-    hudGifts.textContent = '0';
-    hudDistance.textContent = '0';
-    hudSpeed.textContent = '0';
-    gameover.classList.remove('show');
-}
-
-function spawnObstacle() {
-    const diff = getDiff();
-    const x = (Math.random() - 0.5) * 8;
-    const z = -30 - Math.random() * 30;
-    const type = Math.random() > 0.5 ? 'tree' : 'rock';
-
-    const group = new THREE.Group();
-    let size = 0.6 + Math.random() * 0.6;
-
-    if (type === 'tree') {
-        const trunk = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.08 * size, 0.12 * size, 0.8 * size, 5),
-            new THREE.MeshLambertMaterial({ color: 0x5a3d2b })
-        );
-        trunk.position.y = 0.4 * size;
-        trunk.castShadow = true;
-        trunk.receiveShadow = true;
-        group.add(trunk);
-
-        const leaf1 = new THREE.Mesh(
-            new THREE.ConeGeometry(0.5 * size, 0.7 * size, 6),
-            new THREE.MeshLambertMaterial({ color: 0x2a6a3a })
-        );
-        leaf1.position.y = 0.8 * size + 0.35 * size;
-        leaf1.castShadow = true;
-        leaf1.receiveShadow = true;
-        group.add(leaf1);
-
-        const leaf2 = new THREE.Mesh(
-            new THREE.ConeGeometry(0.4 * size, 0.5 * size, 6),
-            new THREE.MeshLambertMaterial({ color: 0x3a7a4a })
-        );
-        leaf2.position.y = 0.8 * size + 0.7 * size;
-        leaf2.castShadow = true;
-        leaf2.receiveShadow = true;
-        group.add(leaf2);
-    } else {
-        const rock = new THREE.Mesh(
-            new THREE.DodecahedronGeometry(0.4 * size + 0.2, 0),
-            new THREE.MeshLambertMaterial({ color: 0x6a7a8a, roughness: 0.9 })
-        );
-        rock.position.y = 0.3 * size;
-        rock.rotation.set(Math.random() * 6, Math.random() * 6, 0);
-        rock.castShadow = true;
-        rock.receiveShadow = true;
-        group.add(rock);
-    }
-
-    group.position.set(x, 0, z);
-    scene.add(group);
-
-    obstacles.push({
-        mesh: group,
-        x: x,
-        z: z,
-        radius: type === 'tree' ? 0.6 * size : 0.5 * size + 0.2,
-        type: type,
-        active: true
-    });
-}
-
-function spawnGift() {
-    const x = (Math.random() - 0.5) * 6;
-    const z = -25 - Math.random() * 35;
-
-    const group = new THREE.Group();
-
-    // Box
-    const boxMat = new THREE.MeshLambertMaterial({
-        color: 0xffd166,
-        emissive: 0xff8800,
-        emissiveIntensity: 0.05
-    });
-    const box = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.5), boxMat);
-    box.castShadow = true;
-    box.receiveShadow = true;
-    group.add(box);
-
-    // Ribbon
-    const ribbonMat = new THREE.MeshLambertMaterial({
-        color: 0xff4466,
-        emissive: 0xff2244,
-        emissiveIntensity: 0.05
-    });
-    const ribbon1 = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.05, 0.05), ribbonMat);
-    ribbon1.position.y = 0.2;
-    group.add(ribbon1);
-
-    const ribbon2 = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.55), ribbonMat);
-    ribbon2.position.y = 0.2;
-    group.add(ribbon2);
-
-    // Glow
-    const glowGift = new THREE.Mesh(
-        new THREE.SphereGeometry(0.4, 6, 6),
-        new THREE.MeshBasicMaterial({ color: 0xffcc44, transparent: true, opacity: 0.06 })
-    );
-    group.add(glowGift);
-
-    group.position.set(x, 0.5, z);
-    group.userData = { bobSpeed: 0.8 + Math.random() * 0.4, bobOffset: Math.random() * 6 };
-    scene.add(group);
-
-    gifts.push({
-        mesh: group,
-        x: x,
-        z: z,
-        collected: false
-    });
-}
-
-function addParticles(x, y, z, color, count) {
-    const mat = new THREE.MeshBasicMaterial({
-        color: color,
-        transparent: true,
-        opacity: 0.6
-    });
-    for (let i = 0; i < count; i++) {
-        const size = 0.05 + Math.random() * 0.1;
-        const mesh = new THREE.Mesh(new THREE.SphereGeometry(size, 4, 4), mat.clone());
-        mesh.position.set(
-            x + (Math.random() - 0.5) * 0.5,
-            y + (Math.random() - 0.5) * 0.5,
-            z + (Math.random() - 0.5) * 0.5
-        );
-        mesh.userData = {
-            vx: (Math.random() - 0.5) * 4,
-            vy: (Math.random() - 0.5) * 4 + 2,
-            vz: (Math.random() - 0.5) * 4,
-            life: 30 + Math.random() * 30,
-            maxLife: 60
-        };
-        scene.add(mesh);
-        particles.push(mesh);
-    }
-}
-
-function gameOverHandler() {
-    state.playing = false;
-    state.gameOver = true;
-
-    finalDist.textContent = Math.floor(state.distance);
-    finalGifts.textContent = state.gifts;
-    finalSpeed.textContent = Math.floor(state.speed * 3.6);
-
-    if (state.distance > best) {
-        best = state.distance;
-        localStorage.setItem('snowrider_best', String(best));
-        hudBest.textContent = best;
-    }
-
-    addParticles(sledGroup.position.x, 0.5, sledGroup.position.z, 0xff6b6b, 40);
-    gameover.classList.add('show');
-}
-
-// ─── Update ──────────────────────────────────────────────────
-
-function update(delta) {
-    if (!state.playing || state.gameOver) return;
-
-    gameTime += delta;
-    const diff = getDiff();
-
-    // Speed
-    state.speed += (diff.speed - state.speed) * 0.02;
-    state.speed = Math.min(state.speed, diff.maxSpeed);
-
-    // Distance
-    state.distance += state.speed * delta * 2;
-
-    // Steering
-    const steerSpeed = 4;
-    if (keys.left) sledGroup.position.x -= steerSpeed * delta * 5;
-    if (keys.right) sledGroup.position.x += steerSpeed * delta * 5;
-
-    // Boundaries
-    const limit = 15;
-    sledGroup.position.x = Math.max(-limit, Math.min(limit, sledGroup.position.x));
-
-    // Sled tilt
-    const targetRot = -sledGroup.position.x * 0.03;
-    sledGroup.rotation.z += (targetRot - sledGroup.rotation.z) * delta * 5;
-
-    // Jump
-    if (keys.jump && sledGroup.position.y < 0.7) {
-        sledGroup.position.y = 0.6;
-        sledGroup.userData.vy = diff.jumpPower;
-        addParticles(sledGroup.position.x, 0.1, sledGroup.position.z, 0x55d7ff, 10);
-    }
-
-    // Gravity
-    if (sledGroup.position.y > 0.6) {
-        sledGroup.userData.vy = (sledGroup.userData.vy || 0) + diff.gravity * delta * 8;
-        sledGroup.position.y += sledGroup.userData.vy * delta;
-    } else {
-        sledGroup.position.y = 0.6;
-        sledGroup.userData.vy = 0;
-    }
-
-    // Move forward
-    sledGroup.position.z -= state.speed * delta * 1.5;
-
-    // Camera follow
-    const camDist = 10 + state.speed * 0.03;
-    const camHeight = 6 + state.speed * 0.02;
-    const targetCam = new THREE.Vector3(
-        sledGroup.position.x * 0.3,
-        sledGroup.position.y + camHeight,
-        sledGroup.position.z + camDist
-    );
-    camera.position.lerp(targetCam, delta * 2);
-    camera.lookAt(sledGroup.position.x * 0.2, sledGroup.position.y + 0.5, sledGroup.position.z - 5);
-
-    // ─── Spawn obstacles ──────────────────────────────────
-    spawnTimer += delta;
-    if (spawnTimer > 1.5 / (1 + state.speed * 0.02)) {
-        spawnTimer = 0;
-        if (Math.random() < 0.6) spawnObstacle();
-        if (Math.random() < 0.4) spawnGift();
-    }
-
-    // ─── Update obstacles ─────────────────────────────────
-    for (let i = obstacles.length - 1; i >= 0; i--) {
-        const ob = obstacles[i];
-        if (!ob.active) continue;
-
-        // Move with world
-        ob.z -= state.speed * delta * 1.5;
-
-        // Collision
-        const dx = sledGroup.position.x - ob.x;
-        const dz = sledGroup.position.z - ob.z;
-        const dist = Math.sqrt(dx * dx + dz * dz);
-
-        if (dist < ob.radius + 0.5 && sledGroup.position.y < 1.2) {
-            addParticles(sledGroup.position.x, 0.5, sledGroup.position.z, 0xff6b6b, 30);
-            gameOverHandler();
-            return;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>SNOW ANSHER 3D - Ultimate Snow Rider Experience</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00d2ff;
+            --primary-glow: rgba(0, 210, 255, 0.45);
+            --accent: #ffd166;
+            --accent-glow: rgba(255, 209, 102, 0.5);
+            --danger: #ff4757;
+            --glass-bg: rgba(7, 18, 38, 0.82);
+            --glass-border: rgba(120, 200, 255, 0.28);
+            --glass-highlight: rgba(255, 255, 255, 0.12);
         }
 
-        // Remove if behind
-        if (ob.z > 15) {
-            scene.remove(ob.mesh);
-            obstacles.splice(i, 1);
-        }
-    }
-
-    // ─── Update gifts ─────────────────────────────────────
-    for (let i = gifts.length - 1; i >= 0; i--) {
-        const g = gifts[i];
-        if (g.collected) continue;
-
-        g.z -= state.speed * delta * 1.5;
-
-        // Bob
-        const bob = Math.sin(gameTime * g.mesh.userData.bobSpeed + g.mesh.userData.bobOffset) * 0.05;
-        g.mesh.position.y = 0.5 + bob;
-
-        // Collision
-        const dx = sledGroup.position.x - g.x;
-        const dz = sledGroup.position.z - g.z;
-        if (Math.abs(dx) < 0.6 && Math.abs(dz) < 0.6) {
-            g.collected = true;
-            state.gifts++;
-            hudGifts.textContent = state.gifts;
-            addParticles(g.x, 0.5, g.z, 0xffd166, 20);
-            scene.remove(g.mesh);
-            gifts.splice(i, 1);
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
         }
 
-        // Remove if behind
-        if (g.z > 15) {
-            scene.remove(g.mesh);
-            gifts.splice(i, 1);
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #050b14;
+            font-family: 'Rajdhani', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: #ffffff;
         }
-    }
 
-    // ─── Update particles ─────────────────────────────────
-    for (let i = particles.length - 1; i >= 0; i--) {
-        const p = particles[i];
-        p.position.x += p.userData.vx * delta;
-        p.position.y += p.userData.vy * delta;
-        p.position.z += p.userData.vz * delta;
-        p.userData.vy -= 2 * delta;
-        p.userData.life--;
-        const alpha = p.userData.life / p.userData.maxLife;
-        p.material.opacity = alpha * 0.6;
-        p.scale.setScalar(alpha);
-        if (p.userData.life <= 0) {
-            scene.remove(p);
-            particles.splice(i, 1);
+        #canvas-container {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
         }
-    }
 
-    // ─── Update snow ──────────────────────────────────────
-    const snowPositions = snowParticles.geometry.attributes.position.array;
-    for (let i = 0; i < snowPositions.length / 3; i++) {
-        snowPositions[i * 3 + 1] -= delta * 0.3;
-        snowPositions[i * 3] += Math.sin(gameTime + i) * delta * 0.02;
-        if (snowPositions[i * 3 + 1] < -2) {
-            snowPositions[i * 3 + 1] = 30 + Math.random() * 20;
-            snowPositions[i * 3] = (Math.random() - 0.5) * 200;
-            snowPositions[i * 3 + 2] = (Math.random() - 0.5) * 200;
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
         }
-    }
-    snowParticles.geometry.attributes.position.needsUpdate = true;
 
-    // ─── HUD ──────────────────────────────────────────────
-    hudDistance.textContent = Math.floor(state.distance);
-    hudSpeed.textContent = Math.floor(state.speed * 3.6);
+        /* Speed Vignette & Speed Lines */
+        #speed-vignette {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 5;
+            box-shadow: inset 0 0 120px rgba(0, 40, 80, 0.7);
+            transition: box-shadow 0.2s;
+        }
 
-    // ─── Ground follow ────────────────────────────────────
-    ground.position.z = Math.round(sledGroup.position.z / 10) * 10 - 10;
-}
+        #speed-lines {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 6;
+            opacity: 0;
+            background: radial-gradient(circle at center, transparent 55%, rgba(200, 245, 255, 0.2) 95%);
+            transition: opacity 0.2s ease-out;
+        }
 
-// ─── Start game ──────────────────────────────────────────────
+        #screen-flash {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 7;
+            background: white;
+            opacity: 0;
+            transition: opacity 0.15s ease-out;
+        }
 
-function startGame(difficulty) {
-    state.difficulty = difficulty || 'medium';
-    menu.classList.add('hidden');
-    resetGame();
-}
+        /* Achievement Toast Notification */
+        .achievement-toast {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 1000;
+            background: var(--glass-bg);
+            border: 1px solid var(--accent);
+            border-radius: 16px;
+            padding: 14px 22px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), 0 0 25px var(--accent-glow);
+            backdrop-filter: blur(16px);
+            transform: translateX(120%);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+        }
 
-// ─── Menu buttons ─────────────────────────────────────────────
+        .achievement-toast.show {
+            transform: translateX(0);
+        }
 
-document.querySelectorAll('.diff-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-        startGame(this.dataset.diff);
-    });
-});
+        /* HUD Overlay */
+        #hud {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 24px 32px;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
 
-retryBtn.addEventListener('click', function() {
-    startGame(state.difficulty);
-});
+        #hud.active {
+            visibility: visible;
+            opacity: 1;
+        }
 
-// ─── Keyboard ────────────────────────────────────────────────
+        .hud-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
 
-document.addEventListener('keydown', function(e) {
-    const key = e.key;
-    if (key === 'a' || key === 'A' || key === 'ArrowLeft') {
-        e.preventDefault();
-        keys.left = true;
-    }
-    if (key === 'd' || key === 'D' || key === 'ArrowRight') {
-        e.preventDefault();
-        keys.right = true;
-    }
-    if (key === ' ' || key === 'Space' || key === 'ArrowUp') {
-        e.preventDefault();
-        keys.jump = true;
-    }
-});
+        .hud-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            padding: 12px 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
 
-document.addEventListener('keyup', function(e) {
-    const key = e.key;
-    if (key === 'a' || key === 'A' || key === 'ArrowLeft') {
-        e.preventDefault();
-        keys.left = false;
-    }
-    if (key === 'd' || key === 'D' || key === 'ArrowRight') {
-        e.preventDefault();
-        keys.right = false;
-    }
-    if (key === ' ' || key === 'Space' || key === 'ArrowUp') {
-        e.preventDefault();
-        keys.jump = false;
-    }
-});
+        .hud-icon-box {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: var(--primary);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
 
-// ─── Resize ──────────────────────────────────────────────────
+        .hud-icon-box.gold {
+            color: var(--accent);
+            background: rgba(255, 209, 102, 0.12);
+        }
 
-window.addEventListener('resize', function() {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-});
+        .hud-label {
+            font-size: 11px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.6);
+            font-weight: 700;
+        }
 
-// ─── Game Loop ──────────────────────────────────────────────
+        .hud-val {
+            font-family: 'Orbitron', monospace;
+            font-size: 26px;
+            font-weight: 700;
+            color: #ffffff;
+            text-shadow: 0 0 12px var(--primary-glow);
+        }
 
-let lastTime = 0;
+        .hud-center {
+            position: absolute;
+            left: 50%;
+            top: 24px;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
 
-function gameLoop(time) {
-    const delta = Math.min((time - lastTime) / 1000, 0.05);
-    lastTime = time;
+        .distance-display {
+            background: var(--glass-bg);
+            backdrop-filter: blur(14px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 10px 30px;
+            text-align: center;
+        }
 
-    update(delta);
-    renderer.render(scene, camera);
-    requestAnimationFrame(gameLoop);
-}
+        .distance-display .hud-val {
+            font-size: 38px;
+            font-weight: 900;
+            color: #ffffff;
+            letter-spacing: 2px;
+        }
 
-// ─── Init ────────────────────────────────────────────────────
+        .distance-display .unit {
+            font-size: 14px;
+            color: var(--primary);
+            margin-left: 4px;
+        }
 
-// Reset game, show menu
-resetGame();
-state.playing = false;
-menu.classList.remove('hidden');
+        /* Active Powerups Tray */
+        #powerup-tray {
+            display: flex;
+            gap: 10px;
+            margin-top: 6px;
+        }
 
-// Start loop
-requestAnimationFrame(gameLoop);
+        .powerup-pill {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid var(--primary);
+            border-radius: 20px;
+            padding: 4px 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            color: white;
+            display: none;
+        }
 
-console.log('❄️ Snow Rider 3D loaded! Controls: A/D to steer, SPACE to jump');
+        .powerup-pill.active {
+            display: flex;
+        }
+
+        /* Combo & Near-miss toast */
+        #combo-popup {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 24px;
+            font-weight: 900;
+            color: var(--accent);
+            text-shadow: 0 0 25px var(--accent-glow);
+            letter-spacing: 2px;
+            opacity: 0;
+            transform: scale(0.7) translateY(10px);
+            transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        #combo-popup.show {
+            opacity: 1;
+            transform: scale(1.15) translateY(0);
+        }
+
+        /* HUD Bottom */
+        .hud-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .speedometer {
+            background: var(--glass-bg);
+            backdrop-filter: blur(14px);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            padding: 14px 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        .speed-val-wrap {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+        }
+
+        .speed-val-wrap .hud-val {
+            font-size: 36px;
+            font-weight: 900;
+            color: #00d2ff;
+        }
+
+        .speed-val-wrap .unit {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.5);
+            font-weight: 700;
+        }
+
+        .speed-bar-container {
+            width: 150px;
+            height: 7px;
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 4px;
+            margin-top: 6px;
+            overflow: hidden;
+        }
+
+        .speed-bar-fill {
+            height: 100%;
+            width: 30%;
+            background: linear-gradient(90deg, #00d2ff, #ffd166, #ff4757);
+            border-radius: 4px;
+            transition: width 0.1s linear;
+        }
+
+        .hud-controls-hint {
+            color: rgba(255, 255, 255, 0.65);
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .kbd-badge {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            padding: 3px 8px;
+            font-size: 12px;
+            font-family: 'Orbitron', monospace;
+            color: #ffffff;
+        }
+
+        /* Mobile Touch Controls */
+        #touch-controls {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 15;
+            display: none;
+        }
+
+        .touch-zone-left, .touch-zone-right, .touch-zone-jump {
+            position: absolute;
+            pointer-events: auto;
+        }
+
+        .touch-zone-left { left: 0; bottom: 0; width: 35%; height: 60%; }
+        .touch-zone-right { right: 0; bottom: 0; width: 35%; height: 60%; }
+        .touch-zone-jump { left: 35%; width: 30%; bottom: 0; height: 60%; }
+
+        /* Overlays & Menus */
+        .overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at center, rgba(3, 14, 33, 0.78) 0%, rgba(1, 6, 15, 0.96) 100%);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            opacity: 1;
+            transition: opacity 0.35s ease, visibility 0.35s ease;
+        }
+
+        .overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .menu-modal {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.75), 0 0 45px rgba(0, 210, 255, 0.2);
+            width: 90%;
+            max-width: 860px;
+            padding: 36px 44px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .menu-modal::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -50%;
+            width: 200%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), var(--accent), transparent);
+        }
+
+        .title-block {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .title-block h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 54px;
+            font-weight: 900;
+            letter-spacing: 5px;
+            background: linear-gradient(180deg, #ffffff 30%, #76d0ff 85%, #0099ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 35px var(--primary-glow);
+            line-height: 1.1;
+        }
+
+        .title-block .subtitle {
+            font-size: 15px;
+            letter-spacing: 6px;
+            color: var(--primary);
+            text-transform: uppercase;
+            font-weight: 700;
+            margin-top: 6px;
+        }
+
+        /* Nav Tabs */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 16px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: 1px solid transparent;
+            color: rgba(255, 255, 255, 0.65);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tab-btn:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .tab-btn.active {
+            color: #000000;
+            background: var(--primary);
+            box-shadow: 0 0 20px var(--primary-glow);
+        }
+
+        .tab-panel {
+            display: none;
+            animation: fadeIn 0.3s ease forwards;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Mode Selection Cards */
+        .modes-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px;
+            margin-bottom: 26px;
+        }
+
+        .mode-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 24px 18px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mode-card:hover {
+            background: rgba(0, 210, 255, 0.12);
+            border-color: var(--primary);
+            transform: translateY(-5px);
+            box-shadow: 0 12px 28px rgba(0, 210, 255, 0.25);
+        }
+
+        .mode-card.featured {
+            border-color: rgba(255, 209, 102, 0.4);
+        }
+
+        .mode-card.featured:hover {
+            background: rgba(255, 209, 102, 0.15);
+            border-color: var(--accent);
+            box-shadow: 0 12px 28px rgba(255, 209, 102, 0.3);
+        }
+
+        .mode-card i {
+            font-size: 38px;
+            margin-bottom: 14px;
+            color: var(--primary);
+            transition: transform 0.25s;
+        }
+
+        .mode-card.featured i {
+            color: var(--accent);
+        }
+
+        .mode-card:hover i {
+            transform: scale(1.15);
+        }
+
+        .mode-card h3 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 18px;
+            letter-spacing: 2px;
+            margin-bottom: 6px;
+        }
+
+        .mode-card p {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.6);
+            line-height: 1.4;
+        }
+
+        /* Garage Grid */
+        .garage-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+
+        .garage-currency {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Orbitron', monospace;
+            font-size: 22px;
+            color: var(--accent);
+            background: rgba(255, 209, 102, 0.12);
+            padding: 8px 18px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 209, 102, 0.3);
+        }
+
+        .sled-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 16px;
+            max-height: 340px;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+
+        .sled-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            padding: 18px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            position: relative;
+        }
+
+        .sled-card:hover {
+            border-color: var(--primary);
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-3px);
+        }
+
+        .sled-card.selected {
+            border-color: var(--primary);
+            background: rgba(0, 210, 255, 0.16);
+            box-shadow: 0 0 25px var(--primary-glow);
+        }
+
+        .sled-card.locked {
+            opacity: 0.6;
+        }
+
+        .sled-badge {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: bold;
+            padding: 3px 8px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .sled-badge.owned {
+            background: rgba(46, 213, 115, 0.2);
+            color: #2ed573;
+        }
+
+        .sled-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 17px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .sled-stats-mini {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .stat-mini-bar {
+            width: 85px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 2px;
+            overflow: hidden;
+            align-self: center;
+        }
+
+        .stat-mini-fill {
+            height: 100%;
+            background: var(--primary);
+            border-radius: 2px;
+        }
+
+        /* Settings Grid */
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .setting-row {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .setting-row label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 13px;
+            letter-spacing: 1px;
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        .setting-row select, .setting-row input[type="range"] {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--glass-border);
+            color: white;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-family: inherit;
+            font-size: 14px;
+            outline: none;
+        }
+
+        /* Range sliders must have ZERO horizontal padding, otherwise the thumb
+           track is inset and the slider can never reach 0% or 100% */
+        .setting-row input[type="range"] {
+            padding: 8px 0;
+            cursor: pointer;
+        }
+
+        /* Buttons */
+        .btn-action {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            background: linear-gradient(135deg, #00d2ff, #0088ff);
+            color: #000000;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 900;
+            font-size: 20px;
+            letter-spacing: 2px;
+            padding: 16px 48px;
+            border-radius: 14px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(0, 210, 255, 0.4);
+            transition: all 0.25s ease;
+            text-transform: uppercase;
+        }
+
+        .btn-action:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 15px 45px rgba(0, 210, 255, 0.6);
+            background: linear-gradient(135deg, #33dcff, #1995ff);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 15px;
+            padding: 12px 28px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.16);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        /* Game Over Screen */
+        .gameover-modal {
+            text-align: center;
+            max-width: 580px;
+        }
+
+        .gameover-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin: 28px 0;
+        }
+
+        .stat-result-box {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            padding: 16px;
+        }
+
+        .stat-result-box .num {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 32px;
+            font-weight: 900;
+            color: var(--primary);
+            margin-top: 4px;
+        }
+
+        .stat-result-box .num.gold {
+            color: var(--accent);
+        }
+
+        .highscore-badge {
+            display: inline-block;
+            background: linear-gradient(90deg, #f1c40f, #e67e22);
+            color: black;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 900;
+            font-size: 12px;
+            padding: 4px 14px;
+            border-radius: 20px;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .menu-modal { padding: 24px 20px; width: 95%; }
+            .title-block h1 { font-size: 36px; }
+            .modes-grid { grid-template-columns: 1fr; gap: 12px; }
+            .settings-grid { grid-template-columns: 1fr; }
+            .hud-controls-hint { display: none; }
+            #touch-controls { display: block; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 3D Canvas WebGL Render Layer -->
+    <div id="canvas-container"></div>
+
+    <!-- Speed vignette & visual overlays -->
+    <div id="speed-vignette"></div>
+    <div id="speed-lines"></div>
+    <div id="screen-flash"></div>
+
+    <!-- HUD (Heads-Up Display) -->
+    <div id="hud">
+        <div class="hud-top">
+            <div class="hud-card">
+                <div class="hud-icon-box gold">
+                    <i class="fas fa-gift"></i>
+                </div>
+                <div>
+                    <div class="hud-label">GIFTS</div>
+                    <div class="hud-val" id="hud-gifts">0</div>
+                </div>
+            </div>
+
+            <div class="hud-center">
+                <div class="distance-display">
+                    <div class="hud-label">DISTANCE</div>
+                    <div><span class="hud-val" id="hud-dist">0</span><span class="unit">M</span></div>
+                </div>
+                <div id="combo-popup">★ CLOSE CALL! +50m ★</div>
+
+                <!-- Active Powerups Tray -->
+                <div id="powerup-tray">
+                    <div class="powerup-pill" id="pill-shield"><i class="fas fa-shield-alt"></i> SHIELD</div>
+                    <div class="powerup-pill" id="pill-magnet"><i class="fas fa-magnet"></i> MAGNET</div>
+                    <div class="powerup-pill" id="pill-rocket"><i class="fas fa-rocket"></i> HYPER BOOST</div>
+                    <div class="powerup-pill" id="pill-multiplier"><i class="fas fa-star"></i> 2X SCORE</div>
+                </div>
+            </div>
+
+            <div class="hud-card">
+                <div class="hud-icon-box">
+                    <i class="fas fa-trophy"></i>
+                </div>
+                <div>
+                    <div class="hud-label">RECORD</div>
+                    <div class="hud-val" id="hud-best">0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="hud-bottom">
+            <div class="hud-controls-hint">
+                <span class="kbd-badge">A</span> <span class="kbd-badge">D</span> STEER
+                <span style="opacity: 0.3; margin: 0 4px;">|</span>
+                <span class="kbd-badge">SPACE</span> HIGH JUMP
+                <span style="opacity: 0.3; margin: 0 4px;">|</span>
+                <span class="kbd-badge">W</span> <span class="kbd-badge">S</span> <span class="kbd-badge">E</span> AERIAL STUNTS
+                <span style="opacity: 0.3; margin: 0 4px;">|</span>
+                <span class="kbd-badge">ESC</span> PAUSE
+            </div>
+
+            <div class="speedometer">
+                <div class="hud-label">VELOCITY</div>
+                <div class="speed-val-wrap">
+                    <span class="hud-val" id="hud-speed">0</span>
+                    <span class="unit">KM/H</span>
+                </div>
+                <div class="speed-bar-container">
+                    <div class="speed-bar-fill" id="hud-speed-bar"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Touch Area -->
+    <div id="touch-controls">
+        <div class="touch-zone-left" id="touch-left"></div>
+        <div class="touch-zone-jump" id="touch-jump"></div>
+        <div class="touch-zone-right" id="touch-right"></div>
+    </div>
+
+    <!-- Main Menu Overlay -->
+    <div id="menu-overlay" class="overlay">
+        <div class="menu-modal">
+            <div class="title-block">
+                <h1>SNOW ANSHER 3D</h1>
+                <div class="subtitle">Next-Gen Downhill Extreme Sledding</div>
+            </div>
+
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="tab-play"><i class="fas fa-play"></i> RIDE</button>
+                <button class="tab-btn" data-tab="tab-garage"><i class="fas fa-sleigh"></i> GARAGE (10)</button>
+                <button class="tab-btn" data-tab="tab-settings"><i class="fas fa-sliders-h"></i> OPTIONS</button>
+                <button class="tab-btn" data-tab="tab-controls"><i class="fas fa-gamepad"></i> STUNT GUIDE</button>
+            </div>
+
+            <!-- Tab: Play Modes -->
+            <div id="tab-play" class="tab-panel active">
+                <div class="modes-grid">
+                    <div class="mode-card" onclick="game.start('easy')">
+                        <i class="fas fa-snowflake"></i>
+                        <h3>POWDER CRUISE</h3>
+                        <p>Gentle slopes & wide corridors. Perfect for relaxing glides.</p>
+                    </div>
+                    <div class="mode-card featured" onclick="game.start('medium')">
+                        <i class="fas fa-mountain"></i>
+                        <h3>ALPINE RUSH</h3>
+                        <p>The premier downhill run! Mega kickers, rolling avalanches & rainbow grind rails.</p>
+                    </div>
+                    <div class="mode-card" onclick="game.start('hard')">
+                        <i class="fas fa-bolt"></i>
+                        <h3>BLIZZARD RUN</h3>
+                        <p>Maximum speed, huge hang-time ramps, dense hazards, and polar auroras.</p>
+                    </div>
+                </div>
+
+                <div style="text-align: center;">
+                    <button class="btn-action" onclick="game.start('medium')">
+                        <i class="fas fa-play"></i> LAUNCH SLED
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab: Garage -->
+            <div id="tab-garage" class="tab-panel">
+                <div class="garage-header">
+                    <h2 style="font-family: 'Orbitron'; font-size: 20px;">FLEET GARAGE</h2>
+                    <div class="garage-currency">
+                        <i class="fas fa-gift"></i> <span id="garage-gifts-val">0</span>
+                    </div>
+                </div>
+
+                <div class="sled-grid" id="garage-list">
+                    <!-- Populated dynamically via JS -->
+                </div>
+            </div>
+
+            <!-- Tab: Settings -->
+            <div id="tab-settings" class="tab-panel">
+                <div class="settings-grid">
+                    <div class="setting-row">
+                        <label>GRAPHICS PRESET</label>
+                        <select id="opt-graphics" onchange="game.setOption('graphics', this.value)">
+                            <option value="ultra">ULTRA (GLSL Shaders & High VFX)</option>
+                            <option value="balanced" selected>BALANCED (Smooth 60FPS)</option>
+                            <option value="performance">PERFORMANCE (Fast / Low Spec)</option>
+                        </select>
+                    </div>
+                    <div class="setting-row">
+                        <label>CAMERA SENSITIVITY</label>
+                        <input type="range" id="opt-sens" min="0.6" max="2.2" step="0.1" value="1.2" oninput="game.setOption('sens', this.value)">
+                    </div>
+                    <div class="setting-row">
+                        <label>FIELD OF VIEW (FOV)</label>
+                        <input type="range" id="opt-fov" min="55" max="95" step="5" value="70" oninput="game.setOption('fov', this.value)">
+                    </div>
+                    <div class="setting-row">
+                        <label>AUDIO VOLUME</label>
+                        <input type="range" id="opt-volume" min="0" max="1" step="0.05" value="0.75" oninput="game.setOption('volume', this.value)">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Controls / Stunts Guide -->
+            <div id="tab-controls" class="tab-panel">
+                <div style="display: flex; flex-direction: column; gap: 12px; font-size: 15px; color: rgba(255,255,255,0.85); line-height: 1.5;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px;">
+                        <span><i class="fas fa-arrows-alt-h" style="color: var(--primary); width: 24px;"></i> Steer Left / Right</span>
+                        <span><span class="kbd-badge">A</span> <span class="kbd-badge">D</span> or <span class="kbd-badge">←</span> <span class="kbd-badge">→</span></span>
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px;">
+                        <span><i class="fas fa-rocket" style="color: var(--accent); width: 24px;"></i> High Jump / Mega Ramp Launch</span>
+                        <span><span class="kbd-badge">SPACE</span> (Hold for extra floaty height!)</span>
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px;">
+                        <span><i class="fas fa-sync-alt" style="color: #2ed573; width: 24px;"></i> Aerial Stunts (While in air)</span>
+                        <span><span class="kbd-badge">W</span> Superman | <span class="kbd-badge">S</span> Backflip | <span class="kbd-badge">E</span> Method</span>
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px;">
+                        <span><i class="fas fa-rainbow" style="color: #ff9ff3; width: 24px;"></i> Rainbow Grind Rails</span>
+                        <span>Land on elevated rails to grind with sparks!</span>
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <span><i class="fas fa-shield-alt" style="color: #00d2ff; width: 24px;"></i> Powerup Pickups</span>
+                        <span>Shield (Absorbs crash) | Magnet | Hyper Rocket Boost</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Over Overlay -->
+    <div id="gameover-overlay" class="overlay hidden">
+        <div class="menu-modal gameover-modal">
+            <div id="new-record-tag" class="highscore-badge">★ NEW RECORD! ★</div>
+            <h1 style="font-family: 'Orbitron'; font-size: 42px; color: var(--danger); text-shadow: 0 0 25px rgba(255, 71, 87, 0.5);">WIPEOUT!</h1>
+            <p style="color: rgba(255,255,255,0.6); letter-spacing: 3px; font-weight: 700; margin-top: 4px;">HEAVY IMPACT DETECTED</p>
+
+            <div class="gameover-stats">
+                <div class="stat-result-box">
+                    <div class="hud-label">DISTANCE</div>
+                    <div class="num" id="go-dist">0m</div>
+                </div>
+                <div class="stat-result-box">
+                    <div class="hud-label">GIFTS</div>
+                    <div class="num gold" id="go-gifts">0</div>
+                </div>
+                <div class="stat-result-box">
+                    <div class="hud-label">TOP SPEED</div>
+                    <div class="num" id="go-speed">0</div>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: center; gap: 16px;">
+                <button class="btn-action" onclick="game.retry()">
+                    <i class="fas fa-redo"></i> RETRY RUN
+                </button>
+                <button class="btn-secondary" onclick="game.openMenu()">
+                    <i class="fas fa-home"></i> HUB
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pause Overlay -->
+    <div id="pause-overlay" class="overlay hidden">
+        <div class="menu-modal" style="max-width: 440px; text-align: center;">
+            <h1 style="font-family: 'Orbitron'; font-size: 36px; margin-bottom: 24px;">GAME PAUSED</h1>
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+                <button class="btn-action" onclick="game.togglePause()">
+                    <i class="fas fa-play"></i> RESUME
+                </button>
+                <button class="btn-secondary" onclick="game.retry()">
+                    <i class="fas fa-redo"></i> RESTART
+                </button>
+                <button class="btn-secondary" onclick="game.openMenu()">
+                    <i class="fas fa-home"></i> MAIN MENU
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Three.js Engine & Modular Subsystems -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="js/Shaders.js"></script>
+    <script src="js/AudioEngine.js"></script>
+    <script src="js/AudioSynthesizerBank.js"></script>
+    <script src="js/SoundtrackData.js"></script>
+    <script src="js/RiderModel.js"></script>
+    <script src="js/StuntAnimationLibrary.js"></script>
+    <script src="js/SledCollection.js"></script>
+    <script src="js/CosmeticsCatalog.js"></script>
+    <script src="js/WorldEnvironment.js"></script>
+    <script src="js/ProceduralDecorations.js"></script>
+    <script src="js/SlopeTrackPatterns.js"></script>
+    <script src="js/ObstaclesManager.js"></script>
+    <script src="js/PowerupSystem.js"></script>
+    <script src="js/TrickSystem.js"></script>
+    <script src="js/ParticleEngine.js"></script>
+    <script src="js/GamePhysics.js"></script>
+    <script src="js/MultiplayerBotRiders.js"></script>
+    <script src="js/AchievementsCatalog.js"></script>
+    <script src="js/GameUI.js"></script>
+    <script src="js/GhostRacer.js"></script>
+    <script src="js/BiomesManager.js"></script>
+    <script src="js/WeatherFX.js"></script>
+    <script src="js/Customizer.js"></script>
+    <script src="js/TelemetryAndLeaderboard.js"></script>
+    <script src="js/TerrainBiomesMesher.js"></script>
+    <script src="js/StuntComboEngine.js"></script>
+    <script src="js/DailyChallenges.js"></script>
+    <script src="js/VisualPostProcessor.js"></script>
+    <script src="index.js"></script>
+</body>
+</html>

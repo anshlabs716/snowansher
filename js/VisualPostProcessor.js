@@ -23,8 +23,10 @@ class VisualPostProcessor {
     }
 
     setupRenderTargets() {
-        const width = window.innerWidth;
-        const height = window.innerHeight;
+        // Match the drawing buffer size so ULTRA stays crisp on high-DPI screens
+        const pr = this.renderer.getPixelRatio ? this.renderer.getPixelRatio() : 1;
+        const width = window.innerWidth * pr;
+        const height = window.innerHeight * pr;
 
         this.renderTarget = new THREE.WebGLRenderTarget(width, height, {
             minFilter: THREE.LinearFilter,
@@ -90,8 +92,9 @@ class VisualPostProcessor {
         this.postScene.add(this.postQuad);
 
         window.addEventListener('resize', () => {
-            this.renderTarget.setSize(window.innerWidth, window.innerHeight);
-            this.tiltShiftMaterial.uniforms.uResolution.value.set(window.innerWidth, window.innerHeight);
+            const pr = this.renderer.getPixelRatio ? this.renderer.getPixelRatio() : 1;
+            this.renderTarget.setSize(window.innerWidth * pr, window.innerHeight * pr);
+            this.tiltShiftMaterial.uniforms.uResolution.value.set(window.innerWidth * pr, window.innerHeight * pr);
         });
     }
 

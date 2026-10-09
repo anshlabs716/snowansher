@@ -29,7 +29,7 @@ class GamePhysics {
         this.grindRailRef = null;
         this.airTime = 0.0;
         this.jumpHoldTime = 0.0;
-        this.jumpImpulse = 26.0;      // Lower, snappy jump — still leaves room for mid-air dances
+        this.jumpImpulse = 22.0;      // Tap clears snowmen (4.1m) & snowballs (~6.8m); hold for big trick air
         this.gravity = 42.0;           // Responsive gravity
         this.hangTimeMultiplier = 0.72; // Light floatiness at jump apex
 
@@ -44,9 +44,9 @@ class GamePhysics {
 
     reset(difficulty = 'medium', sledStats = {}) {
         const diffConfig = {
-            easy: { baseSpeed: 60, maxSpeed: 130, jumpMult: 1.0 },
+            easy: { baseSpeed: 60, maxSpeed: 130, jumpMult: 1.15 },
             medium: { baseSpeed: 75, maxSpeed: 165, jumpMult: 1.2 },
-            hard: { baseSpeed: 95, maxSpeed: 210, jumpMult: 1.35 }
+            hard: { baseSpeed: 95, maxSpeed: 210, jumpMult: 1.25 }
         }[difficulty] || { baseSpeed: 75, maxSpeed: 165, jumpMult: 1.2 };
 
         this.baseSpeed = diffConfig.baseSpeed;
@@ -54,7 +54,7 @@ class GamePhysics {
         this.speed = this.baseSpeed;
 
         const jumpStat = (sledStats.jump || 85) / 80;
-        this.jumpImpulse = 26.0 * jumpStat * diffConfig.jumpMult; // Lower jump height (dance tricks still fit in the airtime)
+        this.jumpImpulse = 22.0 * jumpStat * diffConfig.jumpMult; // TAP reliably clears snowmen & snowballs on every difficulty
 
         this.position.set(0, 0, 0);
         this.velocity.set(0, 0, 0);
@@ -73,15 +73,15 @@ class GamePhysics {
         // Base downhill slope
         let y = -z * Math.tan(this.SLOPE_ANGLE);
 
-        // Banked halfpipe outer rims
+        // Banked halfpipe outer rims (smooth 9m plateau so the world opens into a meadow)
         const absX = Math.abs(x);
         if (absX > this.TRACK_WIDTH * 0.44) {
             const rim = absX - this.TRACK_WIDTH * 0.44;
-            y += Math.pow(rim * 0.22, 1.85);
+            y += 9.0 * Math.tanh(Math.pow(rim * 0.22, 1.85) / 9.0);
         }
 
         // Undulating moguls
-        y += Math.sin(x * 0.1) * Math.cos(z * 0.07) * 0.75;
+        y += Math.sin(x * 0.1) * Math.cos(z * 0.07) * 0.45;
         return y;
     }
 

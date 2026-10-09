@@ -9,10 +9,11 @@
 class SnowAnsherMaster {
     constructor() {
         this.config = {
-            graphics: localStorage.getItem('sr3d_gfx') || 'balanced',
+            // NOTE: keys must match what setOption() writes ('sr3d_' + key)
+            graphics: localStorage.getItem('sr3d_graphics') || localStorage.getItem('sr3d_gfx') || 'balanced',
             sens: parseFloat(localStorage.getItem('sr3d_sens')) || 1.2,
             fov: parseInt(localStorage.getItem('sr3d_fov')) || 70,
-            volume: parseFloat(localStorage.getItem('sr3d_vol')) || 0.75,
+            volume: parseFloat(localStorage.getItem('sr3d_volume') || localStorage.getItem('sr3d_vol')) || 0.75,
             skin: parseInt(localStorage.getItem('sr3d_skin')) || 0
         };
 
@@ -66,6 +67,16 @@ class SnowAnsherMaster {
         this.ui = new GameUI(this);
         this.ui.renderGarageShowroom();
 
+        // Restore saved options into the settings controls (they reset visually on reload)
+        const syncSel = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.value = val;
+        };
+        syncSel('opt-graphics', this.config.graphics);
+        syncSel('opt-sens', this.config.sens);
+        syncSel('opt-fov', this.config.fov);
+        syncSel('opt-volume', this.config.volume);
+
         // Render Clock & Animation Loop
         this.clock = new THREE.Clock();
         requestAnimationFrame((t) => this.tick(t));
@@ -76,8 +87,8 @@ class SnowAnsherMaster {
     setupRenderer() {
         const container = document.getElementById('canvas-container');
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x9bd8f5);
-        this.scene.fog = new THREE.FogExp2(0x9bd8f5, 0.0028);
+        this.scene.background = new THREE.Color(0xb4cde4);
+        this.scene.fog = new THREE.FogExp2(0xb4cde4, 0.0024);
 
         this.camera = new THREE.PerspectiveCamera(this.config.fov, window.innerWidth / window.innerHeight, 0.1, 1500);
         this.camera.position.set(0, 6, 12);
@@ -87,9 +98,11 @@ class SnowAnsherMaster {
             powerPreference: 'high-performance'
         });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.config.graphics === 'ultra' ? 2 : 1.5));
-        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.15;
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio,
+            this.config.graphics === 'ultra' ? 2 :
+            this.config.graphics === 'performance' ? 1 : 1.5));
+        this.renderer.toneMapping = THREE.NoToneMapping; // Flat, vivid low-poly colors (like the reference art)
+        this.renderer.toneMappingExposure = 1.0;
         this.renderer.outputEncoding = THREE.sRGBEncoding;
 
         if (this.config.graphics === 'ultra') {
@@ -104,6 +117,9 @@ class SnowAnsherMaster {
         this.sound = new AudioEngine();
         this.world = new WorldEnvironment(this.scene, this.renderer, this.config);
         this.obstacles = new ObstaclesManager(this.scene, this.config);
+        // Obstacles sample the real terrain height so ramps/obstacles sit on the
+        // ground rather than hovering at a guessed y.
+        this.obstacles.getGroundHeightAt = (gx, gz) => this.physics.getGroundHeightAt(gx, gz);
         this.particles = new ParticleEngine(this.scene, this.config);
         this.physics = new GamePhysics(this.config);
         this.tricks = new TrickSystem();
@@ -228,6 +244,21 @@ class SnowAnsherMaster {
         const y = this.physics.getGroundHeightAt(0, z);
         const rand = Math.random();
 
+        // Dense low-poly forest walls hugging both banks of the run (Snow Rider look)
+        const flankCount = (this.config.graphics === 'performance') ? 1 : 3;
+        for (const side of [-1, 1]) {
+            for (let f = 0; f < flankCount; f++) {
+                const x = side * (this.physics.TRACK_WIDTH * 0.52 + 3 + Math.random() * 11);
+                const fz = z + (Math.random() - 0.5) * 22;
+                const fy = this.physics.getGroundHeightAt(x, fz);
+                if (Math.random() < 0.68) {
+                    this.obstacles.createPineTree(x, fy, fz);
+                } else {
+                    this.obstacles.createBareTree(x, fy, fz);
+                }
+            }
+        }
+
         if (rand < 0.1) {
             // Holiday Gift Box
             const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 8);
@@ -246,7 +277,7 @@ class SnowAnsherMaster {
             // MEGA Ski Jump Kicker (Launch high into the sky!)
             const isMega = (Math.random() < 0.45);
             const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 14);
-            this.obstacles.createMegaRamp(x, y, z, isMega);
+            this.obstacles.createMegaRamp(x, y, z, isMega, (gx, gz) => this.physics.getGroundHeightAt(gx, gz));
         } else if (rand < 0.44) {
             // Rainbow Ice Grind Rail
             const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 16);
@@ -259,12 +290,20 @@ class SnowAnsherMaster {
             // Cute 3D Snowman
             const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 8);
             this.obstacles.createSnowman(x, y, z);
+        } else if (rand < 0.76) {
+            // Dark grey rock cluster — rare but lethal (hop over it)
+            const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 12);
+            this.obstacles.createRock(x, y, z);
         } else {
-            // Dense Snow Pine Trees
+            // Snow pines / bare winter trees right on the run
             const count = (Math.random() < 0.4) ? 2 : 1;
             for (let c = 0; c < count; c++) {
                 const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 6);
-                this.obstacles.createPineTree(x, y, z);
+                if (Math.random() < 0.65) {
+                    this.obstacles.createPineTree(x, y, z);
+                } else {
+                    this.obstacles.createBareTree(x, y, z);
+                }
             }
         }
 
@@ -272,7 +311,8 @@ class SnowAnsherMaster {
         if (Math.random() < 0.15) {
             const side = (Math.random() < 0.5 ? -1 : 1);
             const chaletX = side * (this.physics.TRACK_WIDTH * 0.55 + 16);
-            this.world.createAlpineChalet(chaletX, y, z);
+            // Sit the chalet on the actual plateau height at its side position
+            this.world.createAlpineChalet(chaletX, this.physics.getGroundHeightAt(chaletX, z), z);
         }
     }
 
@@ -284,6 +324,7 @@ class SnowAnsherMaster {
         this.running = false;
         this.paused = false;
         this.sound.stopMusic();
+        this.sound.stopMovementLoops(); // silence wind/carve in the hub too
         this.ui.dom.gameoverOverlay.classList.add('hidden');
         this.ui.dom.pauseOverlay.classList.add('hidden');
         this.ui.dom.hud.classList.remove('active');
@@ -295,6 +336,7 @@ class SnowAnsherMaster {
         if (!this.running || this.crashed) return;
         this.paused = !this.paused;
         if (this.paused) {
+            this.sound.stopMovementLoops(); // don't let wind roar over the pause menu
             this.ui.dom.pauseOverlay.classList.remove('hidden');
         } else {
             this.ui.dom.pauseOverlay.classList.add('hidden');
@@ -316,6 +358,9 @@ class SnowAnsherMaster {
         this.crashed = true;
         this.running = false;
         this.sound.playCrashImpact();
+        this.sound.stopMovementLoops(); // wind/carve loops must die with the run
+        this.sound.stopMusic(); // sequencer kept scheduling notes after death
+        this.sound.stopThrusterLoops();
 
         // Screen flash & camera shake
         this.ui.dom.screenFlash.style.opacity = '0.95';
@@ -507,7 +552,10 @@ class SnowAnsherMaster {
         this.obstacles.ramps.forEach(ramp => {
             const dx = Math.abs(pPos.x - ramp.pos.x);
             const dz = Math.abs(pPos.z - ramp.pos.z);
-            if (dx < ramp.width * 0.5 && dz < ramp.length * 0.5 && this.physics.isGrounded) {
+            // Cliff jumpers are long (up to 45u), so test their whole deck, not half.
+            // The old half-length window meant big ramps were easy to miss at speed.
+            const halfLen = ramp.length * (ramp.isCliffJumper ? 0.5 : 0.5);
+            if (dx < ramp.width * 0.5 && dz < halfLen && this.physics.isGrounded) {
                 this.physics.launchRamp(ramp.boostPower, this.sound, this.particles);
             }
         });
@@ -586,10 +634,12 @@ class SnowAnsherMaster {
                 }
             }
 
-            // Close-call near miss
+            // Close-call near miss (only for hazards on the run itself — flank trees never count)
             if (!obj.passed && dist < (obj.radius + 2.2) && pPos.z < obj.pos.z) {
                 obj.passed = true;
-                this.triggerCloseCall();
+                if (Math.abs(obj.pos.x) < this.physics.TRACK_WIDTH * 0.47) {
+                    this.triggerCloseCall();
+                }
             }
         }
     }
@@ -609,8 +659,8 @@ class SnowAnsherMaster {
     updateCamera(dt) {
         // Third-person chase camera with smooth lag
         const targetX = this.physics.position.x * 0.72;
-        const targetY = this.physics.position.y + 4.9 + this.physics.cameraDip;
-        const targetZ = this.physics.position.z + 10.8;
+        const targetY = this.physics.position.y + 4.2 + this.physics.cameraDip;
+        const targetZ = this.physics.position.z + 9.6;
 
         this.camera.position.x += (targetX - this.camera.position.x) * 10 * dt;
         this.camera.position.y += (targetY - this.camera.position.y) * 10 * dt;
@@ -619,15 +669,17 @@ class SnowAnsherMaster {
         // Look down the downhill slope
         const lookTarget = new THREE.Vector3(
             this.physics.position.x * 0.35,
-            this.physics.position.y - 1.2,
-            this.physics.position.z - 45
+            this.physics.position.y - 0.6,
+            this.physics.position.z - 42
         );
         this.camera.lookAt(lookTarget);
 
-        // Dynamic FOV with speed
+        // Dynamic FOV with speed (hard-clamped so a bad config value can never break the projection)
         const speedRatio = Math.min(1.0, this.physics.speed / this.physics.maxSpeed);
-        const targetFOV = this.config.fov + speedRatio * 20;
+        const targetFOV = (Number(this.config.fov) || 70) + speedRatio * 20;
         this.camera.fov += (targetFOV - this.camera.fov) * 6 * dt;
+        if (!isFinite(this.camera.fov)) this.camera.fov = 70;
+        this.camera.fov = Math.min(130, Math.max(30, this.camera.fov));
         this.camera.updateProjectionMatrix();
 
         // Speed Lines Vignette
@@ -635,14 +687,24 @@ class SnowAnsherMaster {
     }
 
     setOption(key, val) {
-        this.config[key] = val;
+        // Store TYPED values — strings break math downstream
+        // (config.fov + speedRatio would string-concat and blow up the camera FOV → floor vanishes)
+        if (key === 'fov') {
+            const n = parseInt(val);
+            this.config.fov = isNaN(n) ? 70 : n;
+        } else if (key === 'sens' || key === 'volume') {
+            const n = parseFloat(val);
+            if (!isNaN(n)) this.config[key] = n;
+        } else {
+            this.config[key] = val;
+        }
         localStorage.setItem('sr3d_' + key, val);
 
         if (key === 'fov') {
-            this.camera.fov = parseInt(val);
+            this.camera.fov = this.config.fov;
             this.camera.updateProjectionMatrix();
         } else if (key === 'volume') {
-            if (this.sound) this.sound.setMasterVolume(parseFloat(val));
+            if (this.sound) this.sound.setMasterVolume(this.config.volume);
         } else if (key === 'graphics') {
             location.reload();
         }
