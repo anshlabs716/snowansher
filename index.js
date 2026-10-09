@@ -125,7 +125,7 @@ class SnowAnsherMaster {
             if (!box) {
                 box = document.createElement('div');
                 box.id = 'fatal-message';
-                box.style.cssText = 'position:fixed;inset:0;z-index:2147483647;display:flex;'
+                box.style.cssText = 'position:fixed;inset:0;z-index:2147483646;display:flex;'
                     + 'align-items:center;justify-content:center;padding:24px;'
                     + 'background:rgba(3,10,20,0.95);color:#e8f1ff;'
                     + 'font:15px/1.6 system-ui,sans-serif;text-align:center;';
@@ -1055,7 +1055,7 @@ window.__snowDiag = function () {
 
     const d = document.createElement('div');
     d.id = 'snow-diag';
-    d.style.cssText = 'position:fixed;top:10px;left:10px;z-index:2147483647;'
+    d.style.cssText = 'position:fixed;top:10px;left:10px;z-index:2147483649;'
         + 'max-width:440px;background:rgba(4,12,24,.97);color:#dff0ff;'
         + 'border:1px solid #2b4a6b;border-radius:10px;padding:14px 16px;'
         + 'font:12px/1.55 system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.6);'
@@ -1107,7 +1107,7 @@ window.addEventListener('error', (e) => {
     btn.id = 'snow-emergency-start';
     btn.textContent = '▶ START GAME';
     btn.title = 'Emergency start — works even if menu is broken';
-    btn.style.cssText = 'position:fixed;bottom:10px;left:10px;z-index:2147483647;'
+    btn.style.cssText = 'position:fixed;bottom:10px;left:10px;z-index:2147483648;'
         + 'background:#2f7dff;color:#fff;border:0;border-radius:8px;'
         + 'padding:12px 18px;font-weight:700;font-size:14px;cursor:pointer;'
         + 'box-shadow:0 4px 20px rgba(0,0,0,.5);opacity:.95;';
@@ -1145,7 +1145,7 @@ window.addEventListener('keydown', (e) => {
     const badge = document.createElement('button');
     badge.textContent = '⚙';
     badge.title = 'Snow Ansher diagnostics (or press `)';
-    badge.style.cssText = 'position:fixed;bottom:10px;right:10px;z-index:2147483647;'
+    badge.style.cssText = 'position:fixed;bottom:10px;right:10px;z-index:2147483649;'
         + 'width:34px;height:34px;border-radius:50%;border:1px solid #2b4a6b;'
         + 'background:rgba(4,12,24,.9);color:#9fd0ff;cursor:pointer;font-size:16px;'
         + 'line-height:1;opacity:.7;padding:0;';
@@ -1164,7 +1164,7 @@ function boot() {
         window.game = null;
         const box = document.createElement('div');
         box.id = 'fatal-message';
-        box.style.cssText = 'position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;'
+        box.style.cssText = 'position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;'
             + 'justify-content:center;padding:24px;background:rgba(3,10,20,0.95);color:#e8f1ff;'
             + 'font:15px/1.6 system-ui,sans-serif;text-align:center;';
         box.innerHTML = '<div><div style="font-size:22px;font-weight:700;margin-bottom:10px">'
