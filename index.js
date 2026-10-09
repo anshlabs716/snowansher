@@ -1097,6 +1097,45 @@ window.addEventListener('error', (e) => {
     console.error('[SnowAnsher] uncaught error:', line);
 });
 
+// ALWAYS-visible emergency start button (bottom-left).
+// If ANYTHING breaks (CSP, extension overlay, WebGL fail, script load fail),
+// this button survives because it's added directly to body with max z-index
+// and binds directly to game.start(). Press it if the menu is dead.
+(function addEmergencyStart() {
+    if (!document.body) return;
+    const btn = document.createElement('button');
+    btn.id = 'snow-emergency-start';
+    btn.textContent = '▶ START GAME';
+    btn.title = 'Emergency start — works even if menu is broken';
+    btn.style.cssText = 'position:fixed;bottom:10px;left:10px;z-index:2147483647;'
+        + 'background:#2f7dff;color:#fff;border:0;border-radius:8px;'
+        + 'padding:12px 18px;font-weight:700;font-size:14px;cursor:pointer;'
+        + 'box-shadow:0 4px 20px rgba(0,0,0,.5);opacity:.95;';
+    btn.addEventListener('click', () => {
+        if (window.game && window.game.start) {
+            window.game.start('easy');
+            btn.style.display = 'none';
+        } else {
+            window.__snowDiag && window.__snowDiag();
+        }
+    });
+    document.body.appendChild(btn);
+    const check = setInterval(() => {
+        if (window.game && window.game.running) {
+            btn.style.display = 'none';
+            clearInterval(check);
+        }
+    }, 500);
+    setTimeout(() => clearInterval(check), 30000);
+})();
+
+// Auto-show diagnostics if boot takes >3 seconds (means something is stuck)
+setTimeout(() => {
+    if (window.game && !window.game.running && !document.getElementById('snow-diag')) {
+        if (window.__snowDiag) window.__snowDiag();
+    }
+}, 3000);
+
 // Hotkey + badge. The script is the last in <body>, so document.body exists.
 window.addEventListener('keydown', (e) => {
     if (e.key === '`' || e.key === 'F3') { e.preventDefault(); window.__snowDiag(); }
@@ -1134,14 +1173,6 @@ function boot() {
         document.body.appendChild(box);
     }
 }
-
-// Catch any error that escapes, including from inline handlers, and surface it.
-// An exception inside one inline onclick handler is otherwise invisible and looks
-// exactly like "the button does nothing".
-window.addEventListener('error', (e) => {
-    console.error('[SnowAnsher] uncaught error:', e.message,
-        (e.filename || '') + ':' + (e.lineno || '?'));
-});
 
 if (document.readyState === 'loading') {
     window.addEventListener('DOMContentLoaded', boot);
