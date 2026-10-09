@@ -19,13 +19,13 @@
 
 ## 🚀 Quick Start (Pick One)
 
-### Option 1 — **Single-file standalone (recommended for winBLOWS / offline users)**
+### Option 1 — **Single-file standalone (recommended for microslop winblows/ offline users)**
 ```bash
 git clone https://github.com/anshlabs716/snowansher.git
 cd snowansher
 # Open index-nuclear.html in your browser (double-click or right-click → Open With)
 ```
-> `index-nuclear.html` is a **stripped-down single-file build** with everything inlined (Three.js + 30 modules + CSS + SVG icons). Works via `file://` protocol. No Python, no server, no setup. Best for winBLOWS users or offline play.
+> `index-nuclear.html` is a **stripped-down single-file build** with everything inlined (Three.js + 30 modules + CSS + SVG icons). Works via `file://` protocol. No Python, no server, no setup. Best for winblows users or offline play.
 
 ---
 
