@@ -202,28 +202,30 @@ Used for:
 
 ## 🚀 Getting Started
 
-SnowAnsher is designed to run directly in a modern web browser.
+SnowAnsher runs directly in a modern web browser with WebGL support.
 
-### 1. Clone the repository
+### Quick Start (No Server Needed)
 
-~~~~bash
+**Option A — Single file, double-click to run (recommended):**
+```bash
 git clone https://github.com/anshlabs716/snowansher.git
 cd snowansher
-~~~~
+# Open index-nuclear.html in your browser (double-click or right-click → Open With)
+```
 
-### 2. Launch the game
+`index-nuclear.html` contains **everything inlined** (Three.js, all modules, CSS, icons) — zero external requests. Works via `file://` protocol.
 
-Open:
+---
 
-~~~~text
-index.html
-~~~~
+**Option B — Modular version (requires local server):**
+```bash
+git clone https://github.com/anshlabs716/snowansher.git
+cd snowansher
+python3 -m http.server 8080
+# Then open http://localhost:8080/index.html
+```
 
-in a modern web browser.
-
-No compiler or package manager is required for the basic version.
-
-> 💡 If your browser blocks certain local resources when opening `index.html` directly, running the project through a simple local web server may provide better compatibility.
+> **Why a server?** Browsers block relative script/module loads (`file://` protocol security). The modular `index.html` loads 30 local JS files + Three.js locally — this only works over HTTP(S).
 
 ---
 
