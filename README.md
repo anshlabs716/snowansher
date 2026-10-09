@@ -29,7 +29,7 @@ cd snowansher
 
 ---
 
-### Option 2 — **Modular version (recommended for winBLOWS users)**
+### Option 2 — **Modular version (recommended for microslop winblows users)**
 ```bash
 git clone https://github.com/anshlabs716/snowansher.git
 cd snowansher
