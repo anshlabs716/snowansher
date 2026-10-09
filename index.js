@@ -539,6 +539,24 @@ class SnowAnsherMaster {
     // ─── MASTER ANIMATION & RENDER TICK ───
     tick(time) {
         requestAnimationFrame((t) => this.tick(t));
+
+        // One exception anywhere in the frame killed the whole loop permanently:
+        // requestAnimationFrame was already queued at the top, but the throw
+        // unwound before the next frame re-armed nothing, so the game froze on the
+        // last good frame and every key and button went dead with no error shown.
+        // Firefox hit this far more often than Chromium. Isolate the frame body so a
+        // bad frame costs one frame instead of the whole session.
+        try {
+            this._frame(time);
+        } catch (e) {
+            if (!this._loopWarned) {
+                this._loopWarned = true;
+                console.error('[SnowAnsher] render loop error (recovered, continuing):', e && e.stack ? e.stack : e);
+            }
+        }
+    }
+
+    _frame(time) {
         const dt = Math.min(this.clock.getDelta(), 0.05);
 
         if (this.running && !this.paused) {
@@ -847,6 +865,17 @@ class SnowAnsherMaster {
             if (k === 'q') this.keys.keyQ = true;
             if (k === 'escape' || k === 'p') this.togglePause();
         });
+
+        // Losing focus mid-press means the keyup never fires, so the key stayed held
+        // and the sled steered into the trees forever. Release everything on blur.
+        const releaseAll = () => {
+            Object.keys(this.keys).forEach((k) => {
+                if (typeof this.keys[k] === 'boolean') this.keys[k] = false;
+            });
+            this.keys.touchSteer = 0;
+        };
+        window.addEventListener('blur', releaseAll);
+        document.addEventListener('visibilitychange', () => { if (document.hidden) releaseAll(); });
 
         window.addEventListener('keyup', (e) => {
             const k = e.key.toLowerCase();
