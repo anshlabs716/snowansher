@@ -416,6 +416,10 @@ class SnowAnsherMaster {
             // Giant Rolling Avalanche Boulder
             const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 10);
             this.obstacles.createRollingBoulder(x, y, z);
+        } else if (rand < 0.62) {
+            // CLIFF JUMP RAMP — big air over a gap!
+            const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 18);
+            this.obstacles.createCliffJumpRamp(x, y, z, (gx, gz) => this.physics.getGroundHeightAt(gx, gz), 1.0 + Math.random() * 0.5);
         } else if (rand < 0.70) {
             // Cute 3D Snowman
             const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 8);
