@@ -54,14 +54,50 @@ class SnowAnsherMaster {
         this.physics = null;
         this.rider = null;
         this.ui = null;
+        this.dead = false;   // set true by fatal(): renderer could not be created
+    }
+
+    /**
+     * Show a blocking, readable message instead of leaving a dead menu behind.
+     * Used when we cannot build a renderer, so the failure is visible.
+     */
+    fatal(message) {
+        this.dead = true;
+        const menu = document.getElementById('menu-overlay');
+        if (menu) {
+            let box = document.getElementById('fatal-message');
+            if (!box) {
+                box = document.createElement('div');
+                box.id = 'fatal-message';
+                box.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;'
+                    + 'align-items:center;justify-content:center;padding:24px;'
+                    + 'background:rgba(3,10,20,0.95);color:#e8f1ff;'
+                    + 'font:15px/1.6 system-ui,sans-serif;text-align:center;';
+                document.body.appendChild(box);
+            }
+            box.innerHTML = '<div><div style="font-size:22px;font-weight:700;margin-bottom:10px">'
+                + 'Snow Ansher cannot start</div><div style="opacity:.85">' + message
+                + '</div><div style="opacity:.6;margin-top:14px;font-size:13px">'
+                + 'Try a different browser, or enable hardware acceleration.</div></div>';
+        }
+        console.error('[SnowAnsher] fatal:', message);
     }
 
     init() {
-        this.setupRenderer();
-        this.setupSubsystems();
-        this.setupPlayerSledGroup();
-        this.loadSledModel(this.config.skin);
-        this.setupEventListeners();
+        if (!this.setupRenderer()) return; // renderer failed; fatal() already reported it
+
+        // Same reasoning for the rest of boot: any throw here leaves a half-built
+        // game whose menu buttons all fail. Surface the reason instead.
+        try {
+            this.setupSubsystems();
+            this.setupPlayerSledGroup();
+            this.loadSledModel(this.config.skin);
+            this.setupEventListeners();
+        } catch (e) {
+            console.error('[SnowAnsher] init failed:', e && e.stack ? e.stack : e);
+            this.fatal('Startup failed: ' + (e && e.message ? e.message : e));
+            return;
+        }
 
         // UI Engine Init
         this.ui = new GameUI(this);
@@ -86,6 +122,24 @@ class SnowAnsherMaster {
 
     setupRenderer() {
         const container = document.getElementById('canvas-container');
+
+        // WebGL is the single point of failure for the whole game: if renderer setup
+        // throws, setupSubsystems() never runs, this.sound stays null, and every menu
+        // button dies on `this.sound.init()` with nothing shown to the user. Guard the
+        // ENTIRE setup, not just the context probe, and report the real reason.
+        try {
+            const probe = document.createElement('canvas');
+            const gl = probe.getContext('webgl2') || probe.getContext('webgl');
+            if (!gl) throw new Error('this browser reports no WebGL context');
+            return this._buildRenderer(container);
+        } catch (e) {
+            console.error('[SnowAnsher] renderer setup failed:', e);
+            this.fatal('Could not start the 3D renderer: ' + (e && e.message ? e.message : e));
+            return false;
+        }
+    }
+
+    _buildRenderer(container) {
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0xb4cde4);
         this.scene.fog = new THREE.FogExp2(0xb4cde4, 0.0024);
@@ -103,7 +157,10 @@ class SnowAnsherMaster {
             this.config.graphics === 'performance' ? 1 : 1.5));
         this.renderer.toneMapping = THREE.NoToneMapping; // Flat, vivid low-poly colors (like the reference art)
         this.renderer.toneMappingExposure = 1.0;
-        this.renderer.outputEncoding = THREE.sRGBEncoding;
+        // r128 (the pinned CDN build) uses the *_Encoding names. Assigning an
+        // undefined constant silently disables sRGB output and washes out colours.
+        if (THREE.sRGBEncoding !== undefined) this.renderer.outputEncoding = THREE.sRGBEncoding;
+        else if (THREE.SRGBColorSpace !== undefined) this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
         if (this.config.graphics === 'ultra') {
             this.renderer.shadowMap.enabled = true;
@@ -111,6 +168,7 @@ class SnowAnsherMaster {
         }
 
         container.appendChild(this.renderer.domElement);
+        return true;
     }
 
     setupSubsystems() {
@@ -202,6 +260,10 @@ class SnowAnsherMaster {
     }
 
     start(difficulty = 'medium') {
+        if (this.dead || !this.sound) {
+            this.fatal('The renderer failed to start, so the run cannot begin.');
+            return;
+        }
         this.sound.init();
         this.sound.startMusic();
 
