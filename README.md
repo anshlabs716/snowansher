@@ -35,7 +35,7 @@ git clone https://github.com/anshlabs716/snowansher.git
 cd snowansher
 python3 -m http.server 8080
 ```
-Then open: **[http://localhost:8080/index.html](http://localhost:8080/index.html)**
+Then open: **[http://localhost:8080/index.html](http://localhost:8080/index.html)** (be patient though and wait till its done)
 
 > ⚠️ **index.html will NOT work via double-click** (browsers block `file://` relative script loads). You MUST run the Python server above. This is the full modular version — better for development.
 
