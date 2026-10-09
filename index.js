@@ -970,18 +970,35 @@ class SnowAnsherMaster {
             });
         });
 
-        // Mobile Touch Zones
-        const tLeft = document.getElementById('touch-left');
-        const tRight = document.getElementById('touch-right');
-        const tJump = document.getElementById('touch-jump');
+        // Mobile Touch Zones — ONLY enable on real touch devices.
+        // The CSS media query (hover: none) and (pointer: coarse) matches on
+        // touchscreen laptops too, which creates invisible overlays that steal
+        // clicks from the menu. Use explicit feature detection instead.
+        const isTouchDevice = 'ontouchstart' in window
+            || navigator.maxTouchPoints > 0
+            || navigator.msMaxTouchPoints > 0;
 
-        if (tLeft && tRight && tJump) {
-            tLeft.addEventListener('touchstart', (e) => { e.preventDefault(); this.keys.touchSteer = -1; });
-            tLeft.addEventListener('touchend', (e) => { e.preventDefault(); this.keys.touchSteer = 0; });
-            tRight.addEventListener('touchstart', (e) => { e.preventDefault(); this.keys.touchSteer = 1; });
-            tRight.addEventListener('touchend', (e) => { e.preventDefault(); this.keys.touchSteer = 0; });
-            tJump.addEventListener('touchstart', (e) => { e.preventDefault(); this.keys.jump = true; });
-            tJump.addEventListener('touchend', (e) => { e.preventDefault(); this.keys.jump = false; });
+        if (isTouchDevice) {
+            const tLeft = document.getElementById('touch-left');
+            const tRight = document.getElementById('touch-right');
+            const tJump = document.getElementById('touch-jump');
+
+            if (tLeft && tRight && tJump) {
+                tLeft.addEventListener('touchstart', (e) => { e.preventDefault(); this.keys.touchSteer = -1; }, { passive: false });
+                tLeft.addEventListener('touchend', (e) => { e.preventDefault(); this.keys.touchSteer = 0; }, { passive: false });
+                tRight.addEventListener('touchstart', (e) => { e.preventDefault(); this.keys.touchSteer = 1; }, { passive: false });
+                tRight.addEventListener('touchend', (e) => { e.preventDefault(); this.keys.touchSteer = 0; }, { passive: false });
+                tJump.addEventListener('touchstart', (e) => { e.preventDefault(); this.keys.jump = true; }, { passive: false });
+                tJump.addEventListener('touchend', (e) => { e.preventDefault(); this.keys.jump = false; }, { passive: false });
+
+                // Ensure the container is visible (the CSS media query is now just a fallback)
+                document.getElementById('touch-controls').style.display = 'block';
+            }
+        } else {
+            // Not a touch device — guarantee the zones are gone so they can never
+            // intercept mouse clicks, even if the media query misfires.
+            const tc = document.getElementById('touch-controls');
+            if (tc) tc.style.display = 'none';
         }
 
         window.addEventListener('resize', () => {
