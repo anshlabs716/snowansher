@@ -768,8 +768,14 @@ class SnowAnsherMaster {
 }
 
 // Global Launch
+// Expose on window as well as the module-scoped binding: the menu buttons in
+// index.html use inline handlers like onclick="game.start('medium')", and those
+// resolve against the global scope. With only `let game` the inline handlers
+// threw ReferenceError and every menu button did nothing.
 let game;
+window.game = null;
 window.addEventListener('DOMContentLoaded', () => {
     game = new SnowAnsherMaster();
+    window.game = game;
     game.init();
 });
