@@ -19,17 +19,17 @@
 
 ## 🚀 Quick Start (Pick One)
 
-### Option 1 — Single-file standalone, **double-click to run** (works offline, no server)
+### Option 1 — **Single-file standalone (recommended for winBLOWS / offline users)**
 ```bash
 git clone https://github.com/anshlabs716/snowansher.git
 cd snowansher
 # Open index-nuclear.html in your browser (double-click or right-click → Open With)
 ```
-> `index-nuclear.html` is a **stripped-down single-file build** with everything inlined (Three.js + 30 modules + CSS + SVG icons). Works via `file://` protocol. No Python, no server, no setup. Good for quick tests.
+> `index-nuclear.html` is a **stripped-down single-file build** with everything inlined (Three.js + 30 modules + CSS + SVG icons). Works via `file://` protocol. No Python, no server, no setup. Best for winBLOWS users or offline play.
 
 ---
 
-### Option 2 — **Modular version (recommended for winBLOWS users)**
+### Option 2 — Modular version (requires local server)
 ```bash
 git clone https://github.com/anshlabs716/snowansher.git
 cd snowansher
@@ -37,7 +37,7 @@ python3 -m http.server 8080
 ```
 Then open: **[http://localhost:8080/index.html](http://localhost:8080/index.html)**
 
-> ⚠️ **index.html will NOT work via double-click** (browsers block `file://` relative script loads). You MUST run the Python server above. This is the full modular version — better for development and winBLOWS users who have Python installed.
+> ⚠️ **index.html will NOT work via double-click** (browsers block `file://` relative script loads). You MUST run the Python server above. This is the full modular version — better for development.
 
 ---
 
