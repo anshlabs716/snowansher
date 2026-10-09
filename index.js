@@ -6,21 +6,77 @@
  * ============================================================================
  */
 
+/**
+ * Replace the global `localStorage` with a never-throwing shim before any module
+ * touches it. Firefox private browsing and blocked-site-data modes make access
+ * throw, and ~35 call sites across GameUI/GhostRacer/DailyChallenges read storage
+ * during construction — so a single throw left the whole game unclickable, with
+ * nothing visible on screen.
+ */
+(function installSafeLocalStorage() {
+    let usable = false;
+    try {
+        const probe = '__sr3d_probe__';
+        window.localStorage.setItem(probe, '1');
+        window.localStorage.removeItem(probe);
+        usable = true;
+    } catch (e) {
+        usable = false;
+    }
+    if (usable) return; // real storage works, leave it alone
+
+    const mem = new Map();
+    const shim = {
+        getItem: function (k) { return mem.has(String(k)) ? mem.get(String(k)) : null; },
+        setItem: function (k, v) { mem.set(String(k), String(v)); },
+        removeItem: function (k) { mem.delete(String(k)); },
+        clear: function () { mem.clear(); },
+        key: function (i) { const a = Array.from(mem.keys()); return a[i] === undefined ? null : a[i]; },
+        get length() { return mem.size; }
+    };
+    try {
+        Object.defineProperty(window, 'localStorage', { value: shim, configurable: true, writable: false });
+    } catch (e) {
+        try { window.localStorage = shim; } catch (e2) { /* last resort */ }
+    }
+    console.warn('[SnowAnsher] localStorage blocked by the browser; using in-memory storage.');
+})();
+
+/**
+ * Reads/writes go through the (now shimmed) localStorage installed by
+ * installSafeLocalStorage(), so a blocked store degrades to an in-memory map
+ * rather than throwing inside the constructor.
+ */
+function makeSafeStorage() {
+    return {
+        get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+        set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } },
+        remove(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } }
+    };
+}
+
 class SnowAnsherMaster {
     constructor() {
+        // Storage shim. Touching localStorage throws in Firefox private browsing and
+        // when "Block cookies and site data" is on, and this code runs in the
+        // CONSTRUCTOR — so a single throw here killed `new SnowAnsherMaster()`,
+        // window.game stayed null, and every menu button did nothing with no error
+        // visible anywhere. Probe once, then degrade to an in-memory map.
+        this.storage = makeSafeStorage();
+
         this.config = {
             // NOTE: keys must match what setOption() writes ('sr3d_' + key)
-            graphics: localStorage.getItem('sr3d_graphics') || localStorage.getItem('sr3d_gfx') || 'balanced',
-            sens: parseFloat(localStorage.getItem('sr3d_sens')) || 1.2,
-            fov: parseInt(localStorage.getItem('sr3d_fov')) || 70,
-            volume: parseFloat(localStorage.getItem('sr3d_volume') || localStorage.getItem('sr3d_vol')) || 0.75,
-            skin: parseInt(localStorage.getItem('sr3d_skin')) || 0
+            graphics: this.storage.get('sr3d_graphics') || this.storage.get('sr3d_gfx') || 'balanced',
+            sens: parseFloat(this.storage.get('sr3d_sens')) || 1.2,
+            fov: parseInt(this.storage.get('sr3d_fov')) || 70,
+            volume: parseFloat(this.storage.get('sr3d_volume') || this.storage.get('sr3d_vol')) || 0.75,
+            skin: parseInt(this.storage.get('sr3d_skin')) || 0
         };
 
         // Saved records & currencies
-        this.bestScore = parseInt(localStorage.getItem('sr3d_best')) || 0;
-        this.totalGifts = parseInt(localStorage.getItem('sr3d_gifts')) || 0;
-        this.unlockedSleds = JSON.parse(localStorage.getItem('sr3d_unlocked')) || [0];
+        this.bestScore = parseInt(this.storage.get('sr3d_best')) || 0;
+        this.totalGifts = parseInt(this.storage.get('sr3d_gifts')) || 0;
+        this.unlockedSleds = JSON.parse(this.storage.get('sr3d_unlocked') || '[0]') || [0];
 
         // Runtime states
         this.running = false;
@@ -843,8 +899,32 @@ class SnowAnsherMaster {
 // threw ReferenceError and every menu button did nothing.
 let game;
 window.game = null;
-window.addEventListener('DOMContentLoaded', () => {
-    game = new SnowAnsherMaster();
-    window.game = game;
-    game.init();
-});
+
+function boot() {
+    if (window.game) return;            // already booted
+    try {
+        game = new SnowAnsherMaster();
+        window.game = game;
+        game.init();
+    } catch (e) {
+        console.error('[SnowAnsher] boot failed:', e && e.stack ? e.stack : e);
+        window.game = null;
+        const box = document.createElement('div');
+        box.id = 'fatal-message';
+        box.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;'
+            + 'justify-content:center;padding:24px;background:rgba(3,10,20,0.95);color:#e8f1ff;'
+            + 'font:15px/1.6 system-ui,sans-serif;text-align:center;';
+        box.innerHTML = '<div><div style="font-size:22px;font-weight:700;margin-bottom:10px">'
+            + 'Snow Ansher cannot start</div><div style="opacity:.85">'
+            + (e && e.message ? e.message : e) + '</div></div>';
+        document.body.appendChild(box);
+    }
+}
+
+if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', boot);
+} else {
+    // Script loaded after DOMContentLoaded already fired (Firefox can schedule
+    // scripts differently). Waiting for the event would never boot the game.
+    boot();
+}
