@@ -225,8 +225,9 @@ class WorldEnvironment {
         // Determine if this chunk contains a cliff gap
         const chunkStartZ = centerZ + length / 2 * slopeCos;
         const chunkEndZ = centerZ - length / 2 * slopeCos;
-        const gapLength = 70;
-        const cliffInChunk = this.cliffPositions.find(cp => cp >= chunkEndZ && cp - gapLength <= chunkStartZ);
+        const gapLength = 44;
+        const wallWidth = 6;
+        const cliffInChunk = this.cliffPositions.find(cp => cp + wallWidth >= chunkEndZ && cp - gapLength - wallWidth <= chunkStartZ);
         const cliffZ = cliffInChunk || null;
 
         for (let i = 0; i < pos.count; i++) {
@@ -250,9 +251,9 @@ class WorldEnvironment {
             // Deep cliff trench: 60 m below the track for a 70 m crossing.
             // Entry and landing walls match GamePhysics ground height.
             if (cliffZ !== null) {
-                const cliffDepth = 60;
-                const gapLength = 70;
-                const wallWidth = 8;
+                const cliffDepth = 24;
+                const gapLength = 44;
+                const wallWidth = 6;
                 const landingEdgeZ = cliffZ - gapLength;
                 if (worldZ <= cliffZ && worldZ >= landingEdgeZ) {
                     yDisplacement -= cliffDepth;
@@ -296,13 +297,15 @@ class WorldEnvironment {
                 displacement = 2.5 * Math.tanh(Math.pow(rim * 0.15, 1.2) / 2.5);
             }
             displacement += Math.sin(x * 0.1) * Math.cos(worldZ * 0.07) * 0.45;
-            const cliff = this.cliffPositions.find(cp => worldZ <= cp + 8 && worldZ >= cp - 78);
+            const wallWidth = 6;
+            const gapLength = 44;
+            const cliff = this.cliffPositions.find(cp => worldZ <= cp + wallWidth && worldZ >= cp - gapLength - wallWidth);
             if (cliff !== undefined) {
-                const depth = 60;
-                const landing = cliff - 70;
+                const depth = 24;
+                const landing = cliff - gapLength;
                 if (worldZ <= cliff && worldZ >= landing) displacement -= depth;
-                else if (worldZ > cliff && worldZ < cliff + 8) displacement -= depth * (1 - (worldZ - cliff) / 8);
-                else if (worldZ < landing && worldZ > landing - 8) displacement -= depth * (1 - (landing - worldZ) / 8);
+                else if (worldZ > cliff && worldZ < cliff + wallWidth) displacement -= depth * (1 - (worldZ - cliff) / wallWidth);
+                else if (worldZ < landing && worldZ > landing - wallWidth) displacement -= depth * (1 - (landing - worldZ) / wallWidth);
             }
             pos.setZ(i, displacement);
         }
