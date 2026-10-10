@@ -4405,7 +4405,7 @@ class ObstaclesManager {
         const trunkGeo = new THREE.CylinderGeometry(0.26 * scale, 0.42 * scale, 2.6 * scale, 6);
         const trunk = new THREE.Mesh(trunkGeo, this.matPineTrunk);
         trunk.position.y = 1.3 * scale;
-        trunk.castShadow = (this.config.graphics === 'ultra');
+        trunk.castShadow = this.config.graphics === 'ultra';
         group.add(trunk);
 
         // 3 flat-shaded foliage tiers, each capped with a thick white snow blanket
@@ -4416,7 +4416,7 @@ class ObstaclesManager {
             const coneGeo = new THREE.ConeGeometry(rad, height, 6);
             const cone = new THREE.Mesh(coneGeo, this.matPineFoliage);
             cone.position.y = (2.4 + tier * 1.15) * scale;
-            cone.castShadow = (this.config.graphics === 'ultra');
+            cone.castShadow = this.config.graphics === 'ultra';
             group.add(cone);
 
             const snowGeo = new THREE.ConeGeometry(rad * 0.9, height * 0.5, 6);
@@ -4451,7 +4451,7 @@ class ObstaclesManager {
         const trunkGeo = new THREE.CylinderGeometry(0.3 * scale, 0.55 * scale, 6.5 * scale, 6);
         const trunk = new THREE.Mesh(trunkGeo, this.matBark);
         trunk.position.y = 3.25 * scale;
-        trunk.castShadow = (this.config.graphics === 'ultra');
+        trunk.castShadow = this.config.graphics === 'ultra';
         group.add(trunk);
 
         // Angular branches splayed outward from the upper trunk
@@ -4507,7 +4507,7 @@ class ObstaclesManager {
 
         const mesh = new THREE.Mesh(geo, mat);
         mesh.position.set(x, y + size, z);
-        mesh.castShadow = (this.config.graphics === 'ultra');
+        mesh.castShadow = this.config.graphics === 'ultra';
         this.scene.add(mesh);
 
         this.obstacles.push({
@@ -4600,7 +4600,7 @@ class ObstaclesManager {
             rock.position.set(ox, size * 0.55, oz);
             rock.scale.set(1.0, 0.72, 0.9 + Math.random() * 0.25); // squat, weathered boulder
             rock.rotation.set(Math.random() * 0.5, Math.random() * Math.PI * 2, Math.random() * 0.5);
-            rock.castShadow = (this.config.graphics === 'ultra');
+            rock.castShadow = this.config.graphics === 'ultra';
             group.add(rock);
 
             top = Math.max(top, size * 0.55 + size * 0.72);
@@ -4688,7 +4688,7 @@ class ObstaclesManager {
         const group = new THREE.Group();
         const rampWidth = 16.0 * scale;
         const rampLength = 30.0 * scale;
-        const rampHeight = 11.0 * scale;
+        const rampHeight = 7.0 * scale; // Reduced from 11 to 7 for less air
 
         // Support legs so the ramp reads as built structure, not a floating slab.
         const legMat = new THREE.MeshStandardMaterial({ color: 0x5d4037, roughness: 0.9 });
@@ -4697,18 +4697,17 @@ class ObstaclesManager {
             const legGeo = new THREE.BoxGeometry(rampWidth * 0.14, legH, rampWidth * 0.14);
             const leg = new THREE.Mesh(legGeo, legMat);
             leg.position.set(rampWidth * 0.32, legH * 0.5 - rampHeight * 0.1, rampLength * t);
-            leg.castShadow = (this.config && this.config.graphics === 'ultra');
+            leg.castShadow = this.config && this.config.graphics === 'ultra';
             group.add(leg);
         });
 
-        // Timber deck
+        // Timber deck - less steep launch angle (0.35 vs 0.46)
         const frameGeo = new THREE.BoxGeometry(rampWidth, 0.55, rampLength);
         const frameMat = new THREE.MeshStandardMaterial({ color: 0x6d4c41, roughness: 0.85 });
         const frame = new THREE.Mesh(frameGeo, frameMat);
-        // Steeper launch angle than a normal kicker — this is the point of the ramp.
-        frame.rotation.x = 0.46;
+        frame.rotation.x = 0.35; // Reduced from 0.46 for less height
         frame.position.set(0, rampHeight * 0.5, 0);
-        frame.castShadow = (this.config && this.config.graphics === 'ultra');
+        frame.castShadow = this.config && this.config.graphics === 'ultra';
         group.add(frame);
 
         // Snow-packed launch surface
@@ -4734,11 +4733,8 @@ class ObstaclesManager {
         group.position.set(x, baseY, z);
         this.scene.add(group);
 
-        // Launch power scales with the ramp so a bigger ramp clears a bigger gap.
-        // Tuned against gravity 42.0 so apexes are ~45m (scale 1.0) and ~130m
-        // (scale 1.5) — enough to cross a real chasm, not the 170m/385m lunge that
-        // a raw linear boost produced.
-        const boost = Math.round(61.5 * scale);
+        // Reduced boost power for less height - tuned for ~25m apex at scale 1.0
+        const boost = Math.round(38 * scale);
         this.ramps.push({
             mesh: group,
             width: rampWidth,
@@ -5843,7 +5839,9 @@ class MultiplayerBotRiders {
                 isGrounded: true,
                 mesh: null,
                 targetX: -8,
-                stuntTimer: 0
+                stuntTimer: 0,
+                dead: false,
+                respawnTimer: 0
             },
             {
                 name: "Blizzard",
@@ -5857,7 +5855,9 @@ class MultiplayerBotRiders {
                 isGrounded: true,
                 mesh: null,
                 targetX: 8,
-                stuntTimer: 0
+                stuntTimer: 0,
+                dead: false,
+                respawnTimer: 0
             },
             {
                 name: "Axel",
@@ -5871,7 +5871,9 @@ class MultiplayerBotRiders {
                 isGrounded: true,
                 mesh: null,
                 targetX: 0,
-                stuntTimer: 0
+                stuntTimer: 0,
+                dead: false,
+                respawnTimer: 0
             }
         ];
 
@@ -5967,7 +5969,17 @@ class MultiplayerBotRiders {
                 }
             });
 
-            // Keep within track limits
+        // Bot death collision check
+        obstaclesList.forEach(obj => {
+            const dz = Math.abs(bot.pos.z - obj.pos.z);
+            const dx = Math.abs(bot.pos.x - obj.pos.x);
+            if (dz < (obj.radius + 1.5) && dx < (obj.radius + 1.5) && obj.type !== 'gift' && obj.type !== 'powerup' && obj.type !== 'boost') {
+                this.killBot(bot);
+                return;
+            }
+        });
+
+        // Keep within track limits
             bot.targetX = THREE.MathUtils.clamp(bot.targetX, -this.physics.TRACK_WIDTH * 0.4, this.physics.TRACK_WIDTH * 0.4);
 
             // Interpolate position toward target lane
@@ -6009,6 +6021,30 @@ class MultiplayerBotRiders {
             }
         });
         return rank;
+    }
+
+    killBot(bot) {
+        if (bot.dead) return;
+        bot.dead = true;
+        bot.mesh.visible = false;
+        bot.respawnTimer = 3.0; // 3 seconds to respawn
+        console.log(`Bot ${bot.name} died!`);
+    }
+
+    respawnBot(bot) {
+        bot.dead = false;
+        bot.mesh.visible = true;
+        bot.respawnTimer = 0;
+        // Respawn behind player
+        const laneOffset = (this.bots.indexOf(bot) - 1) * 10;
+        const playerZ = this.physics.position.z;
+        bot.pos.set(laneOffset, this.physics.getGroundHeightAt(laneOffset, playerZ - 50), playerZ - 50);
+        bot.vel.set(0, 0, 0);
+        bot.isGrounded = true;
+        bot.targetX = laneOffset;
+        bot.mesh.position.copy(bot.pos);
+        bot.mesh.visible = true;
+        console.log(`Bot ${bot.name} respawned!`);
     }
 }
 
@@ -7530,6 +7566,7 @@ class SnowAnsherMaster {
         // Cliff jump ramps ONLY spawn at these positions (right before the drop).
         this.cliffPositions = [];
         this.generateCliffSchedule();
+        this.cliffRampsSpawned = new Set(); // Track which cliffs have their ramp spawned
 
         // User Input Keys
         this.keys = {
@@ -7850,9 +7887,26 @@ class SnowAnsherMaster {
         }
 
         if (atCliff) {
-            // CLIFF JUMP RAMP -- guaranteed spawn right before a cliff gap!
-            const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 18);
-            this.obstacles.createCliffJumpRamp(x, y, z, (gx, gz) => this.physics.getGroundHeightAt(gx, gz), 1.0 + Math.random() * 0.5);
+            // Only spawn ONE ramp per cliff - at the ideal distance (~55m before cliff)
+            // Mark this cliff as having its ramp spawned
+            const idealDist = 55; // ideal distance before cliff
+            let bestCp = null;
+            let bestDist = 999;
+            for (const cp of this.cliffPositions) {
+                const distBeforeCliff = z - cp;
+                if (distBeforeCliff > 30 && distBeforeCliff < 80) {
+                    const diff = Math.abs(distBeforeCliff - idealDist);
+                    if (diff < bestDist) {
+                        bestDist = diff;
+                        bestCp = cp;
+                    }
+                }
+            }
+            if (bestCp && !this.cliffRampsSpawned.has(bestCp)) {
+                this.cliffRampsSpawned.add(bestCp);
+                const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 18);
+                this.obstacles.createCliffJumpRamp(x, y, z, (gx, gz) => this.physics.getGroundHeightAt(gx, gz), 1.0 + Math.random() * 0.5);
+            }
             return; // Don't spawn other obstacles at cliff positions
         }
 
