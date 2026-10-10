@@ -212,7 +212,7 @@ class WorldEnvironment {
         const width = 160;
         const length = this.CHUNK_LENGTH;
         const segX = 36;
-        const segZ = 42;
+        const segZ = 180;
         const geo = new THREE.PlaneGeometry(width, length, segX, segZ);
 
         const pos = geo.attributes.position;
@@ -248,7 +248,7 @@ class WorldEnvironment {
             // Natural terrain moguls and ripples
             yDisplacement += Math.sin(x * 0.1) * Math.cos(worldZ * 0.07) * 0.45;
 
-            // Deep cliff trench: 60 m below the track for a 70 m crossing.
+            // Deep cliff trench: 24 m below the track for a 44 m crossing.
             // Entry and landing walls match GamePhysics ground height.
             if (cliffZ !== null) {
                 const cliffDepth = 24;
