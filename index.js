@@ -806,9 +806,10 @@ class SnowAnsherMaster {
                 pPos.z <= ramp.pos.z - ramp.length * 0.02 &&
                 pPos.z >= ramp.pos.z - ramp.length * 0.68
             );
-            if (!ramp.launched && dx < ramp.width * 0.5 && dz < halfLen + 2 &&
+            if ((!ramp.isCliffJumper || !ramp.launched) &&
+                dx < ramp.width * 0.5 && dz < halfLen + 2 &&
                 atLaunchLip && this.physics.isGrounded) {
-                ramp.launched = true;
+                if (ramp.isCliffJumper) ramp.launched = true;
                 this.physics.launchRamp(ramp.boostPower, this.sound, this.particles);
             }
         });
