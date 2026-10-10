@@ -3509,7 +3509,7 @@ if (typeof module !== 'undefined' && module.exports) {
  */
 
 class WorldEnvironment {
-    constructor(scene, renderer, config = {}) {
+    constructor(scene, renderer, config = {}, cp_cliffPositions = null) {
         this.scene = scene;
         this.renderer = renderer;
         this.config = config;
@@ -3531,6 +3531,10 @@ class WorldEnvironment {
         this.skiLifts = [];
         this.ambientParticles = [];
 
+        // Cliff schedule — must match SnowAnsherMaster.generateCliffSchedule()
+        this.cliffPositions = cp_cliffPositions || [];
+        if (!cp_cliffPositions) this.generateCliffSchedule();
+
         this.initEnvironment();
     }
 
@@ -3542,6 +3546,21 @@ class WorldEnvironment {
         this.setupTerrainSystem();
         // Ski-lift pylons disabled — the reference look is pure forest + snow + sky
         // this.setupSkiLiftPylons();
+    }
+
+    /**
+     * Generate deterministic cliff positions — must match SnowAnsherMaster.
+     * Called once in constructor. Cliffs spaced every ~400-600m with some randomness.
+     */
+    generateCliffSchedule() {
+        const firstCliff = -350;
+        const minGap = 380;
+        const maxGap = 580;
+        let z = firstCliff;
+        while (z > -15000) {
+            this.cliffPositions.push(z);
+            z -= minGap + Math.random() * (maxGap - minGap);
+        }
     }
 
     setupLighting() {
@@ -3705,6 +3724,12 @@ class WorldEnvironment {
         const centerZ = -index * (length * Math.cos(this.SLOPE_ANGLE));
         const slopeCos = Math.cos(this.SLOPE_ANGLE);
 
+        // Determine if this chunk contains a cliff gap
+        const chunkStartZ = centerZ + length / 2 * slopeCos;
+        const chunkEndZ = centerZ - length / 2 * slopeCos;
+        const cliffInChunk = this.cliffPositions.find(cp => cp >= chunkEndZ && cp <= chunkStartZ);
+        const cliffZ = cliffInChunk || null;
+
         for (let i = 0; i < pos.count; i++) {
             const x = pos.getX(i);
             const zLocal = pos.getY(i); // Local Y before slope rotation
@@ -3722,6 +3747,21 @@ class WorldEnvironment {
 
             // Natural terrain moguls and ripples
             yDisplacement += Math.sin(x * 0.1) * Math.cos(worldZ * 0.07) * 0.45;
+
+            // Create cliff gap: if this row is at a cliff position, drop the terrain sharply
+            if (cliffZ) {
+                const distToCliff = Math.abs(worldZ - cliffZ);
+                const cliffWidth = 8; // width of the transition zone
+                if (distToCliff < cliffWidth) {
+                    // Create a smooth but steep drop-off at the cliff
+                    const t = 1 - distToCliff / cliffWidth;
+                    yDisplacement -= 18 * t; // 18m drop
+                } else if (worldZ < cliffZ) {
+                    // Beyond the cliff: terrain continues much lower
+                    yDisplacement -= 18;
+                }
+            }
+
             pos.setZ(i, yDisplacement);
         }
 
@@ -5512,7 +5552,25 @@ if (typeof module !== 'undefined' && module.exports) {
  */
 
 class GamePhysics {
-    constructor(config = {}) {
+    /**
+     * Generate deterministic cliff positions — shared static method.
+     * Must match WorldEnvironment.generateCliffSchedule and SnowAnsherMaster.
+     * @returns {number[]} Array of Z positions where cliffs occur.
+     */
+    static generateCliffPositions() {
+        const positions = [];
+        const firstCliff = -350;
+        const minGap = 380;
+        const maxGap = 580;
+        let z = firstCliff;
+        while (z > -15000) {
+            positions.push(z);
+            z -= minGap + Math.random() * (maxGap - minGap);
+        }
+        return positions;
+    }
+
+    constructor(config = {}, cp_cliffPositions = null) {
         this.config = config;
 
         // Downhill Slope & Constants
@@ -5545,6 +5603,9 @@ class GamePhysics {
 
         // Camera dynamics
         this.cameraDip = 0.0;
+
+        // Cliff positions for physics ground height matching terrain
+        this.cliffPositions = cp_cliffPositions || GamePhysics.generateCliffPositions();
     }
 
     reset(difficulty = 'medium', sledStats = {}) {
@@ -5587,6 +5648,20 @@ class GamePhysics {
 
         // Undulating moguls
         y += Math.sin(x * 0.1) * Math.cos(z * 0.07) * 0.45;
+
+        // Cliff gaps — match WorldEnvironment terrain cliffs
+        const cliff = this.cliffPositions.find(cp => Math.abs(cp - z) < 8);
+        if (cliff) {
+            const dist = Math.abs(cliff - z);
+            const cliffWidth = 8;
+            if (dist < cliffWidth) {
+                const t = 1 - dist / cliffWidth;
+                y -= 18 * t; // smooth drop-off
+            } else if (z < cliff) {
+                y -= 18; // beyond cliff
+            }
+        }
+
         return y;
     }
 
@@ -7373,7 +7448,7 @@ if (typeof module !== 'undefined' && module.exports) {
  * Replace the global `localStorage` with a never-throwing shim before any module
  * touches it. Firefox private browsing and blocked-site-data modes make access
  * throw, and ~35 call sites across GameUI/GhostRacer/DailyChallenges read storage
- * during construction — so a single throw left the whole game unclickable, with
+ * during construction -- so a single throw left the whole game unclickable, with
  * nothing visible on screen.
  */
 (function installSafeLocalStorage() {
@@ -7422,7 +7497,7 @@ class SnowAnsherMaster {
     constructor() {
         // Storage shim. Touching localStorage throws in Firefox private browsing and
         // when "Block cookies and site data" is on, and this code runs in the
-        // CONSTRUCTOR — so a single throw here killed `new SnowAnsherMaster()`,
+        // CONSTRUCTOR -- so a single throw here killed `new SnowAnsherMaster()`,
         // window.game stayed null, and every menu button did nothing with no error
         // visible anywhere. Probe once, then degrade to an in-memory map.
         this.storage = makeSafeStorage();
@@ -7450,6 +7525,11 @@ class SnowAnsherMaster {
         this.giftsRun = 0;
         this.topSpeedReached = 0;
         this.closeCallsRun = 0;
+
+        // Cliff schedule -- deterministic positions where terrain has a gap.
+        // Cliff jump ramps ONLY spawn at these positions (right before the drop).
+        this.cliffPositions = [];
+        this.generateCliffSchedule();
 
         // User Input Keys
         this.keys = {
@@ -7502,6 +7582,22 @@ class SnowAnsherMaster {
         console.error('[SnowAnsher] fatal:', message);
     }
 
+    /**
+     * Generate deterministic cliff positions.
+     * Called once in constructor. Cliffs are spaced every ~400-600m with some randomness.
+     * Cliff jump ramps will ONLY spawn at these Z positions (right before the drop).
+     */
+    generateCliffSchedule() {
+        const firstCliff = -350; // first cliff at ~350m
+        const minGap = 380;
+        const maxGap = 580;
+        let z = firstCliff;
+        while (z > -15000) { // enough for a very long run
+            this.cliffPositions.push(z);
+            z -= minGap + Math.random() * (maxGap - minGap);
+        }
+    }
+
     init() {
         if (!this.setupRenderer()) return; // renderer failed; fatal() already reported it
 
@@ -7541,7 +7637,7 @@ class SnowAnsherMaster {
         this.clock = new THREE.Clock();
         requestAnimationFrame((t) => this.tick(t));
 
-        console.log('❄️ Snow Ansher 3D Master Engine Initialized (10K+ Code Architecture Active)!');
+        console.log('\u2744 Snow Ansher 3D Master Engine Initialized (10K+ Code Architecture Active)!');
     }
 
     setupRenderer() {
@@ -7597,13 +7693,14 @@ class SnowAnsherMaster {
 
     setupSubsystems() {
         this.sound = new AudioEngine();
-        this.world = new WorldEnvironment(this.scene, this.renderer, this.config);
+        // Pass shared cliff positions so terrain and physics stay in sync
+        this.world = new WorldEnvironment(this.scene, this.renderer, this.config, this.cliffPositions);
         this.obstacles = new ObstaclesManager(this.scene, this.config);
         // Obstacles sample the real terrain height so ramps/obstacles sit on the
         // ground rather than hovering at a guessed y.
         this.obstacles.getGroundHeightAt = (gx, gz) => this.physics.getGroundHeightAt(gx, gz);
         this.particles = new ParticleEngine(this.scene, this.config);
-        this.physics = new GamePhysics(this.config);
+        this.physics = new GamePhysics(this.config, this.cliffPositions);
         this.tricks = new TrickSystem();
         this.ghostRacer = new GhostRacerSystem(this.scene);
         this.biomes = new BiomesManager(this.scene, this.world);
@@ -7713,7 +7810,10 @@ class SnowAnsherMaster {
         this.obstacles.clearAll();
         if (this.structures) this.structures.clear();
         this.lastSpawnZ = -50;
-        for (let z = -70; z > -1600; z -= 30) {
+        // Only spawn initial track up to the spawn-ahead distance (950m)
+        // so the dynamic spawner in updateRunningGame can take over.
+        const initialSpawnLimit = 950;
+        for (let z = -70; z > -initialSpawnLimit; z -= 30) {
             this.spawnCourseRow(z);
             this.lastSpawnZ = z;
         }
@@ -7736,6 +7836,25 @@ class SnowAnsherMaster {
     spawnCourseRow(z) {
         const y = this.physics.getGroundHeightAt(0, z);
         const rand = Math.random();
+
+        // Check for cliff BEFORE random chain -- guaranteed cliff jump ramp
+        // We're moving downhill (Z decreasing), so "before" means Z is less negative than cliff
+        // e.g., cliff at -350, we're at -300: we're 50m BEFORE cliff (z - cp = 50)
+        let atCliff = false;
+        for (const cp of this.cliffPositions) {
+            const distBeforeCliff = z - cp; // positive when we're before cliff (higher Z)
+            if (distBeforeCliff > 30 && distBeforeCliff < 80) {
+                atCliff = true;
+                break;
+            }
+        }
+
+        if (atCliff) {
+            // CLIFF JUMP RAMP -- guaranteed spawn right before a cliff gap!
+            const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 18);
+            this.obstacles.createCliffJumpRamp(x, y, z, (gx, gz) => this.physics.getGroundHeightAt(gx, gz), 1.0 + Math.random() * 0.5);
+            return; // Don't spawn other obstacles at cliff positions
+        }
 
         // Dense low-poly forest walls hugging both banks of the run (Snow Rider look)
         const flankCount = (this.config.graphics === 'performance') ? 1 : 3;
@@ -7780,15 +7899,15 @@ class SnowAnsherMaster {
             const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 10);
             this.obstacles.createRollingBoulder(x, y, z);
         } else if (rand < 0.62) {
-            // CLIFF JUMP RAMP — big air over a gap!
-            const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 18);
-            this.obstacles.createCliffJumpRamp(x, y, z, (gx, gz) => this.physics.getGroundHeightAt(gx, gz), 1.0 + Math.random() * 0.5);
+            // Giant Rolling Avalanche Boulder (extra, non-cliff)
+            const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 10);
+            this.obstacles.createRollingBoulder(x, y, z);
         } else if (rand < 0.70) {
             // Cute 3D Snowman
             const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 8);
             this.obstacles.createSnowman(x, y, z);
         } else if (rand < 0.76) {
-            // Dark grey rock cluster — rare but lethal (hop over it)
+            // Dark grey rock cluster -- rare but lethal (hop over it)
             const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 12);
             this.obstacles.createRock(x, y, z);
         } else {
@@ -7903,12 +8022,12 @@ class SnowAnsherMaster {
         this.sound.playNearMiss();
         if (this.closeCallsRun >= 5) this.ui.unlockAchievement('close_call_master');
 
-        this.ui.dom.comboPopup.innerText = '★ CLOSE CALL! +50m ★';
+        this.ui.dom.comboPopup.innerText = '\u2605 CLOSE CALL! +50m \u2605';
         this.ui.dom.comboPopup.classList.add('show');
         setTimeout(() => this.ui.dom.comboPopup.classList.remove('show'), 700);
     }
 
-    // ─── MASTER ANIMATION & RENDER TICK ───
+    // --------- MASTER ANIMATION & RENDER TICK ---------
     tick(time) {
         requestAnimationFrame((t) => this.tick(t));
 
@@ -8149,7 +8268,7 @@ class SnowAnsherMaster {
                 }
             }
 
-            // Close-call near miss (only for hazards on the run itself — flank trees never count)
+            // Close-call near miss (only for hazards on the run itself -- flank trees never count)
             if (!obj.passed && dist < (obj.radius + 2.2) && pPos.z < obj.pos.z) {
                 obj.passed = true;
                 if (Math.abs(obj.pos.x) < this.physics.TRACK_WIDTH * 0.47) {
@@ -8202,8 +8321,8 @@ class SnowAnsherMaster {
     }
 
     setOption(key, val) {
-        // Store TYPED values — strings break math downstream
-        // (config.fov + speedRatio would string-concat and blow up the camera FOV → floor vanishes)
+        // Store TYPED values -- strings break math downstream
+        // (config.fov + speedRatio would string-concat and blow up the camera FOV \u2192 floor vanishes)
         if (key === 'fov') {
             const n = parseInt(val);
             this.config.fov = isNaN(n) ? 70 : n;
@@ -8232,7 +8351,7 @@ class SnowAnsherMaster {
      * Inline handlers are compiled as page-level script, so anything that stops
      * them (a strict Content-Security-Policy from the browser, an extension, or
      * 'javascript:' URLs being disabled) silently kills ALL of them at once while
-     * the page still looks perfect — the buttons just do nothing. Brave allowed
+     * the page still looks perfect -- the buttons just do nothing. Brave allowed
      * them; Chrome and Firefox did not.
      *
      * Binding in JS does not depend on inline-script permission, so the menu works
@@ -8280,7 +8399,7 @@ class SnowAnsherMaster {
         // Confirm our programmatic listeners are attached to the controls, by
         // dispatching a real click and seeing whether the game reacts. If the
         // browser blocked our script entirely, bindUiControls would never have run
-        // and we would not be here — but a silent partial bind would still be
+        // and we would not be here -- but a silent partial bind would still be
         // caught here.
         const probe = document.querySelector('.mode-card');
         if (!probe) return;
@@ -8337,7 +8456,7 @@ class SnowAnsherMaster {
             });
         });
 
-        // Mobile Touch Zones — ONLY enable on real touch devices.
+        // Mobile Touch Zones -- ONLY enable on real touch devices.
         // The CSS media query (hover: none) and (pointer: coarse) matches on
         // touchscreen laptops too, which creates invisible overlays that steal
         // clicks from the menu. Use explicit feature detection instead.
@@ -8362,7 +8481,7 @@ class SnowAnsherMaster {
                 document.getElementById('touch-controls').style.display = 'block';
             }
         } else {
-            // Not a touch device — guarantee the zones are gone so they can never
+            // Not a touch device -- guarantee the zones are gone so they can never
             // intercept mouse clicks, even if the media query misfires.
             const tc = document.getElementById('touch-controls');
             if (tc) tc.style.display = 'none';
@@ -8386,7 +8505,7 @@ window.game = null;
 
 // ---- Diagnostics ----------------------------------------------------------
 // A tiny always-available panel so a dead or blocked menu is never a mystery.
-// Press ` (backtick) / F3, or click the ⚙ badge. It is bound with
+// Press ` (backtick) / F3, or click the \u2699 badge. It is bound with
 // addEventListener and sits at the maximum z-index, so it still works when
 // something else (an extension overlay, a strict CSP, a stuck layer) is
 // swallowing the normal menu. The FORCE START button drives the game directly.
@@ -8401,7 +8520,7 @@ window.__snowDiag = function () {
         const c = document.createElement('canvas');
         const gl = c.getContext('webgl2') || c.getContext('webgl');
         if (!gl) {
-            glInfo = 'NO WebGL CONTEXT — 3D cannot run here';
+            glInfo = 'NO WebGL CONTEXT -- 3D cannot run here';
         } else {
             const ext = gl.getExtension('WEBGL_debug_renderer_info');
             glInfo = ext
@@ -8417,7 +8536,7 @@ window.__snowDiag = function () {
     } catch (e) { ls = 'BLOCKED: ' + (e && e.message ? e.message : e); }
 
     const errList = window.__snowErrs.length
-        ? window.__snowErrs.slice(-8).map((e) => '• ' + e).join('\n')
+        ? window.__snowErrs.slice(-8).map((e) => '* ' + e).join('\n')
         : 'none recorded';
 
     const d = document.createElement('div');
@@ -8428,8 +8547,8 @@ window.__snowDiag = function () {
         + 'font:12px/1.55 system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.6);'
         + 'white-space:pre-wrap;word-break:break-word;';
     d.innerHTML =
-        '<div style="font-weight:700;font-size:14px;margin-bottom:8px">❄ Snow Ansher diagnostics</div>'
-        + 'boot:        ' + (g ? 'OK — game object exists' : 'FAILED — no game object') + '\n'
+        '<div style="font-weight:700;font-size:14px;margin-bottom:8px">\u2744 Snow Ansher diagnostics</div>'
+        + 'boot:        ' + (g ? 'OK -- game object exists' : 'FAILED -- no game object') + '\n'
         + 'state:       dead=' + (g ? g.dead : '?') + '  running=' + (g ? g.running : '?') + '\n'
         + 'three.js:    ' + (typeof THREE !== 'undefined' ? 'loaded' : 'NOT LOADED (CDN blocked?)') + '\n'
         + 'WebGL:       ' + glInfo + '\n'
@@ -8448,9 +8567,9 @@ window.__snowDiag = function () {
         b.addEventListener('click', fn);
         return b;
     };
-    bar.appendChild(mkBtn('snow-diag-start', '▶ FORCE START', '#2f7dff', () => { if (g) g.start('easy'); }));
-    bar.appendChild(mkBtn('snow-diag-reload', '↻ hard reload', '#33475f', () => location.reload()));
-    bar.appendChild(mkBtn('snow-diag-close', '✕ close', '#33475f', () => d.remove()));
+    bar.appendChild(mkBtn('snow-diag-start', '\u25b6 FORCE START', '#2f7dff', () => { if (g) g.start('easy'); }));
+    bar.appendChild(mkBtn('snow-diag-reload', '@@@ hard reload', '#33475f', () => location.reload()));
+    bar.appendChild(mkBtn('snow-diag-close', 'x close', '#33475f', () => d.remove()));
     d.appendChild(bar);
     document.body.appendChild(d);
 };
@@ -8472,8 +8591,8 @@ window.addEventListener('error', (e) => {
     if (!document.body) return;
     const btn = document.createElement('button');
     btn.id = 'snow-emergency-start';
-    btn.textContent = '▶ START GAME';
-    btn.title = 'Emergency start — works even if menu is broken';
+    btn.textContent = '\u25b6 START GAME';
+    btn.title = 'Emergency start -- works even if menu is broken';
     btn.style.cssText = 'position:fixed;bottom:10px;left:10px;z-index:2147483648;'
         + 'background:#2f7dff;color:#fff;border:0;border-radius:8px;'
         + 'padding:12px 18px;font-weight:700;font-size:14px;cursor:pointer;'
@@ -8510,7 +8629,7 @@ window.addEventListener('keydown', (e) => {
 (function addDiagBadge() {
     if (!document.body) return;
     const badge = document.createElement('button');
-    badge.textContent = '⚙';
+    badge.textContent = '\u2699';
     badge.title = 'Snow Ansher diagnostics (or press `)';
     badge.style.cssText = 'position:fixed;bottom:10px;right:10px;z-index:2147483649;'
         + 'width:34px;height:34px;border-radius:50%;border:1px solid #2b4a6b;'
