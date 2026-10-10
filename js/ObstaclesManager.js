@@ -347,9 +347,9 @@ class ObstaclesManager {
      */
     createCliffJumpRamp(x, y, z, groundFn = null, scale = 1.0) {
         const group = new THREE.Group();
-        const rampWidth = 16.0 * scale;
-        const rampLength = 30.0 * scale;
-        const rampHeight = 7.0 * scale; // Reduced from 11 to 7 for less air
+        const rampWidth = 22.0 * scale;
+        const rampLength = 48.0 * scale;
+        const rampHeight = 13.0 * scale; // Oversized kicker built to clear the deep chasm
 
         // Support legs so the ramp reads as built structure, not a floating slab.
         const legMat = new THREE.MeshStandardMaterial({ color: 0x5d4037, roughness: 0.9 });
@@ -394,8 +394,8 @@ class ObstaclesManager {
         group.position.set(x, baseY, z);
         this.scene.add(group);
 
-        // Reduced boost power for less height - tuned for ~25m apex at scale 1.0
-        const boost = Math.round(38 * scale);
+        // Strong launch for the 60 m-deep, 70 m-long cliff crossing.
+        const boost = Math.round(58 * scale);
         this.ramps.push({
             mesh: group,
             width: rampWidth,
