@@ -66,7 +66,7 @@ class ObstaclesManager {
         const trunkGeo = new THREE.CylinderGeometry(0.26 * scale, 0.42 * scale, 2.6 * scale, 6);
         const trunk = new THREE.Mesh(trunkGeo, this.matPineTrunk);
         trunk.position.y = 1.3 * scale;
-        trunk.castShadow = (this.config.graphics === 'ultra');
+        trunk.castShadow = this.config.graphics === 'ultra';
         group.add(trunk);
 
         // 3 flat-shaded foliage tiers, each capped with a thick white snow blanket
@@ -77,7 +77,7 @@ class ObstaclesManager {
             const coneGeo = new THREE.ConeGeometry(rad, height, 6);
             const cone = new THREE.Mesh(coneGeo, this.matPineFoliage);
             cone.position.y = (2.4 + tier * 1.15) * scale;
-            cone.castShadow = (this.config.graphics === 'ultra');
+            cone.castShadow = this.config.graphics === 'ultra';
             group.add(cone);
 
             const snowGeo = new THREE.ConeGeometry(rad * 0.9, height * 0.5, 6);
@@ -112,7 +112,7 @@ class ObstaclesManager {
         const trunkGeo = new THREE.CylinderGeometry(0.3 * scale, 0.55 * scale, 6.5 * scale, 6);
         const trunk = new THREE.Mesh(trunkGeo, this.matBark);
         trunk.position.y = 3.25 * scale;
-        trunk.castShadow = (this.config.graphics === 'ultra');
+        trunk.castShadow = this.config.graphics === 'ultra';
         group.add(trunk);
 
         // Angular branches splayed outward from the upper trunk
@@ -168,7 +168,7 @@ class ObstaclesManager {
 
         const mesh = new THREE.Mesh(geo, mat);
         mesh.position.set(x, y + size, z);
-        mesh.castShadow = (this.config.graphics === 'ultra');
+        mesh.castShadow = this.config.graphics === 'ultra';
         this.scene.add(mesh);
 
         this.obstacles.push({
@@ -261,7 +261,7 @@ class ObstaclesManager {
             rock.position.set(ox, size * 0.55, oz);
             rock.scale.set(1.0, 0.72, 0.9 + Math.random() * 0.25); // squat, weathered boulder
             rock.rotation.set(Math.random() * 0.5, Math.random() * Math.PI * 2, Math.random() * 0.5);
-            rock.castShadow = (this.config.graphics === 'ultra');
+            rock.castShadow = this.config.graphics === 'ultra';
             group.add(rock);
 
             top = Math.max(top, size * 0.55 + size * 0.72);
@@ -349,7 +349,7 @@ class ObstaclesManager {
         const group = new THREE.Group();
         const rampWidth = 16.0 * scale;
         const rampLength = 30.0 * scale;
-        const rampHeight = 11.0 * scale;
+        const rampHeight = 7.0 * scale; // Reduced from 11 to 7 for less air
 
         // Support legs so the ramp reads as built structure, not a floating slab.
         const legMat = new THREE.MeshStandardMaterial({ color: 0x5d4037, roughness: 0.9 });
@@ -358,18 +358,17 @@ class ObstaclesManager {
             const legGeo = new THREE.BoxGeometry(rampWidth * 0.14, legH, rampWidth * 0.14);
             const leg = new THREE.Mesh(legGeo, legMat);
             leg.position.set(rampWidth * 0.32, legH * 0.5 - rampHeight * 0.1, rampLength * t);
-            leg.castShadow = (this.config && this.config.graphics === 'ultra');
+            leg.castShadow = this.config && this.config.graphics === 'ultra';
             group.add(leg);
         });
 
-        // Timber deck
+        // Timber deck - less steep launch angle (0.35 vs 0.46)
         const frameGeo = new THREE.BoxGeometry(rampWidth, 0.55, rampLength);
         const frameMat = new THREE.MeshStandardMaterial({ color: 0x6d4c41, roughness: 0.85 });
         const frame = new THREE.Mesh(frameGeo, frameMat);
-        // Steeper launch angle than a normal kicker — this is the point of the ramp.
-        frame.rotation.x = 0.46;
+        frame.rotation.x = 0.35; // Reduced from 0.46 for less height
         frame.position.set(0, rampHeight * 0.5, 0);
-        frame.castShadow = (this.config && this.config.graphics === 'ultra');
+        frame.castShadow = this.config && this.config.graphics === 'ultra';
         group.add(frame);
 
         // Snow-packed launch surface
@@ -395,11 +394,8 @@ class ObstaclesManager {
         group.position.set(x, baseY, z);
         this.scene.add(group);
 
-        // Launch power scales with the ramp so a bigger ramp clears a bigger gap.
-        // Tuned against gravity 42.0 so apexes are ~45m (scale 1.0) and ~130m
-        // (scale 1.5) — enough to cross a real chasm, not the 170m/385m lunge that
-        // a raw linear boost produced.
-        const boost = Math.round(61.5 * scale);
+        // Reduced boost power for less height - tuned for ~25m apex at scale 1.0
+        const boost = Math.round(38 * scale);
         this.ramps.push({
             mesh: group,
             width: rampWidth,

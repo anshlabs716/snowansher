@@ -92,6 +92,7 @@ class SnowAnsherMaster {
         // Cliff jump ramps ONLY spawn at these positions (right before the drop).
         this.cliffPositions = [];
         this.generateCliffSchedule();
+        this.cliffRampsSpawned = new Set(); // Track which cliffs have their ramp spawned
 
         // User Input Keys
         this.keys = {
@@ -412,9 +413,26 @@ class SnowAnsherMaster {
         }
 
         if (atCliff) {
-            // CLIFF JUMP RAMP -- guaranteed spawn right before a cliff gap!
-            const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 18);
-            this.obstacles.createCliffJumpRamp(x, y, z, (gx, gz) => this.physics.getGroundHeightAt(gx, gz), 1.0 + Math.random() * 0.5);
+            // Only spawn ONE ramp per cliff - at the ideal distance (~55m before cliff)
+            // Mark this cliff as having its ramp spawned
+            const idealDist = 55; // ideal distance before cliff
+            let bestCp = null;
+            let bestDist = 999;
+            for (const cp of this.cliffPositions) {
+                const distBeforeCliff = z - cp;
+                if (distBeforeCliff > 30 && distBeforeCliff < 80) {
+                    const diff = Math.abs(distBeforeCliff - idealDist);
+                    if (diff < bestDist) {
+                        bestDist = diff;
+                        bestCp = cp;
+                    }
+                }
+            }
+            if (bestCp && !this.cliffRampsSpawned.has(bestCp)) {
+                this.cliffRampsSpawned.add(bestCp);
+                const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 18);
+                this.obstacles.createCliffJumpRamp(x, y, z, (gx, gz) => this.physics.getGroundHeightAt(gx, gz), 1.0 + Math.random() * 0.5);
+            }
             return; // Don't spawn other obstacles at cliff positions
         }
 

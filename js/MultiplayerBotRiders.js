@@ -25,7 +25,9 @@ class MultiplayerBotRiders {
                 isGrounded: true,
                 mesh: null,
                 targetX: -8,
-                stuntTimer: 0
+                stuntTimer: 0,
+                dead: false,
+                respawnTimer: 0
             },
             {
                 name: "Blizzard",
@@ -39,7 +41,9 @@ class MultiplayerBotRiders {
                 isGrounded: true,
                 mesh: null,
                 targetX: 8,
-                stuntTimer: 0
+                stuntTimer: 0,
+                dead: false,
+                respawnTimer: 0
             },
             {
                 name: "Axel",
@@ -53,7 +57,9 @@ class MultiplayerBotRiders {
                 isGrounded: true,
                 mesh: null,
                 targetX: 0,
-                stuntTimer: 0
+                stuntTimer: 0,
+                dead: false,
+                respawnTimer: 0
             }
         ];
 
@@ -149,7 +155,17 @@ class MultiplayerBotRiders {
                 }
             });
 
-            // Keep within track limits
+        // Bot death collision check
+        obstaclesList.forEach(obj => {
+            const dz = Math.abs(bot.pos.z - obj.pos.z);
+            const dx = Math.abs(bot.pos.x - obj.pos.x);
+            if (dz < (obj.radius + 1.5) && dx < (obj.radius + 1.5) && obj.type !== 'gift' && obj.type !== 'powerup' && obj.type !== 'boost') {
+                this.killBot(bot);
+                return;
+            }
+        });
+
+        // Keep within track limits
             bot.targetX = THREE.MathUtils.clamp(bot.targetX, -this.physics.TRACK_WIDTH * 0.4, this.physics.TRACK_WIDTH * 0.4);
 
             // Interpolate position toward target lane
@@ -191,6 +207,30 @@ class MultiplayerBotRiders {
             }
         });
         return rank;
+    }
+
+    killBot(bot) {
+        if (bot.dead) return;
+        bot.dead = true;
+        bot.mesh.visible = false;
+        bot.respawnTimer = 3.0; // 3 seconds to respawn
+        console.log(`Bot ${bot.name} died!`);
+    }
+
+    respawnBot(bot) {
+        bot.dead = false;
+        bot.mesh.visible = true;
+        bot.respawnTimer = 0;
+        // Respawn behind player
+        const laneOffset = (this.bots.indexOf(bot) - 1) * 10;
+        const playerZ = this.physics.position.z;
+        bot.pos.set(laneOffset, this.physics.getGroundHeightAt(laneOffset, playerZ - 50), playerZ - 50);
+        bot.vel.set(0, 0, 0);
+        bot.isGrounded = true;
+        bot.targetX = laneOffset;
+        bot.mesh.position.copy(bot.pos);
+        bot.mesh.visible = true;
+        console.log(`Bot ${bot.name} respawned!`);
     }
 }
 
