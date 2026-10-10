@@ -387,9 +387,12 @@ class ObstaclesManager {
             frame.add(chev);
         }
 
-        // Base pinned to terrain where the ramp meets the ground.
+        // Pin the uphill footing to the actual snow surface and keep the deck
+        // from floating above it.
         let baseY = y;
-        if (typeof groundFn === 'function') baseY = groundFn(x, z + rampLength * 0.5);
+        if (typeof groundFn === 'function') {
+            baseY = groundFn(x, z + rampLength * 0.5) - rampHeight * 0.5;
+        }
 
         group.position.set(x, baseY, z);
         this.scene.add(group);
