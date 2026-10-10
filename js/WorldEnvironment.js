@@ -205,6 +205,10 @@ class WorldEnvironment {
             const z = start - i * this.CHUNK_LENGTH * Math.cos(this.SLOPE_ANGLE);
             chunk.mesh.position.z = z;
             chunk.mesh.position.y = -z * Math.tan(this.SLOPE_ANGLE);
+
+            // Rebuild world-space sculpting immediately after a reset. Otherwise
+            // recycled chunks can display stale cliff geometry for several frames.
+            this.deformTerrainChunk(chunk);
         });
     }
 

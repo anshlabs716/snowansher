@@ -399,8 +399,9 @@ class ObstaclesManager {
         group.position.set(x, baseY, z);
         this.scene.add(group);
 
-        // Strong launch for the 60 m-deep, 70 m-long cliff crossing.
-        const boost = Math.round(58 * scale);
+        // A controlled launch clears the trench without carrying the sled
+        // hundreds of metres into the next cliff's landing zone.
+        const boost = Math.round(20 * scale);
         this.ramps.push({
             mesh: group,
             width: rampWidth,

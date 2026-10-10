@@ -3707,6 +3707,10 @@ class WorldEnvironment {
             const z = start - i * this.CHUNK_LENGTH * Math.cos(this.SLOPE_ANGLE);
             chunk.mesh.position.z = z;
             chunk.mesh.position.y = -z * Math.tan(this.SLOPE_ANGLE);
+
+            // Rebuild world-space sculpting immediately after a reset. Otherwise
+            // recycled chunks can display stale cliff geometry for several frames.
+            this.deformTerrainChunk(chunk);
         });
     }
 
@@ -4776,8 +4780,9 @@ class ObstaclesManager {
         group.position.set(x, baseY, z);
         this.scene.add(group);
 
-        // Strong launch for the 60 m-deep, 70 m-long cliff crossing.
-        const boost = Math.round(58 * scale);
+        // A controlled launch clears the trench without carrying the sled
+        // hundreds of metres into the next cliff's landing zone.
+        const boost = Math.round(20 * scale);
         this.ramps.push({
             mesh: group,
             width: rampWidth,
@@ -7889,8 +7894,10 @@ class SnowAnsherMaster {
             this.world.resetTerrainAround(this.physics.position.z);
         }
 
-        // Reset course hazards
+        // Reset course hazards and allow each scheduled cliff ramp to respawn
+        // on every new run (the obstacle list itself is cleared below).
         this.obstacles.clearAll();
+        this.cliffRampsSpawned.clear();
         if (this.structures) this.structures.clear();
         this.lastSpawnZ = -50;
         // Only spawn initial track up to the spawn-ahead distance (950m)
@@ -7962,6 +7969,11 @@ class SnowAnsherMaster {
             }
             return; // Don't spawn other obstacles at cliff positions
         }
+
+        // Keep the entire cliff approach and landing corridor clear of random
+        // hazards. Otherwise a correct jump can land directly inside a tree,
+        // boulder, or snowman that was spawned on the far side of the trench.
+        if (this.cliffPositions.some(cp => Math.abs(z - cp) <= 180)) return;
 
         // Dense low-poly forest walls hugging both banks of the run (Snow Rider look)
         const flankCount = (this.config.graphics === 'performance') ? 1 : 3;
