@@ -7,7 +7,7 @@
  */
 
 class WorldEnvironment {
-    constructor(scene, renderer, config = {}) {
+    constructor(scene, renderer, config = {}, cp_cliffPositions = null) {
         this.scene = scene;
         this.renderer = renderer;
         this.config = config;
@@ -29,6 +29,10 @@ class WorldEnvironment {
         this.skiLifts = [];
         this.ambientParticles = [];
 
+        // Cliff schedule — must match SnowAnsherMaster.generateCliffSchedule()
+        this.cliffPositions = cp_cliffPositions || [];
+        if (!cp_cliffPositions) this.generateCliffSchedule();
+
         this.initEnvironment();
     }
 
@@ -40,6 +44,21 @@ class WorldEnvironment {
         this.setupTerrainSystem();
         // Ski-lift pylons disabled — the reference look is pure forest + snow + sky
         // this.setupSkiLiftPylons();
+    }
+
+    /**
+     * Generate deterministic cliff positions — must match SnowAnsherMaster.
+     * Called once in constructor. Cliffs spaced every ~400-600m with some randomness.
+     */
+    generateCliffSchedule() {
+        const firstCliff = -350;
+        const minGap = 380;
+        const maxGap = 580;
+        let z = firstCliff;
+        while (z > -15000) {
+            this.cliffPositions.push(z);
+            z -= minGap + Math.random() * (maxGap - minGap);
+        }
     }
 
     setupLighting() {
@@ -203,6 +222,12 @@ class WorldEnvironment {
         const centerZ = -index * (length * Math.cos(this.SLOPE_ANGLE));
         const slopeCos = Math.cos(this.SLOPE_ANGLE);
 
+        // Determine if this chunk contains a cliff gap
+        const chunkStartZ = centerZ + length / 2 * slopeCos;
+        const chunkEndZ = centerZ - length / 2 * slopeCos;
+        const cliffInChunk = this.cliffPositions.find(cp => cp >= chunkEndZ && cp <= chunkStartZ);
+        const cliffZ = cliffInChunk || null;
+
         for (let i = 0; i < pos.count; i++) {
             const x = pos.getX(i);
             const zLocal = pos.getY(i); // Local Y before slope rotation
@@ -220,6 +245,21 @@ class WorldEnvironment {
 
             // Natural terrain moguls and ripples
             yDisplacement += Math.sin(x * 0.1) * Math.cos(worldZ * 0.07) * 0.45;
+
+            // Create cliff gap: if this row is at a cliff position, drop the terrain sharply
+            if (cliffZ) {
+                const distToCliff = Math.abs(worldZ - cliffZ);
+                const cliffWidth = 8; // width of the transition zone
+                if (distToCliff < cliffWidth) {
+                    // Create a smooth but steep drop-off at the cliff
+                    const t = 1 - distToCliff / cliffWidth;
+                    yDisplacement -= 18 * t; // 18m drop
+                } else if (worldZ < cliffZ) {
+                    // Beyond the cliff: terrain continues much lower
+                    yDisplacement -= 18;
+                }
+            }
+
             pos.setZ(i, yDisplacement);
         }
 

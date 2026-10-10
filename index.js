@@ -88,6 +88,11 @@ class SnowAnsherMaster {
         this.topSpeedReached = 0;
         this.closeCallsRun = 0;
 
+        // Cliff schedule — deterministic positions where terrain has a gap.
+        // Cliff jump ramps ONLY spawn at these positions (right before the drop).
+        this.cliffPositions = [];
+        this.generateCliffSchedule();
+
         // User Input Keys
         this.keys = {
             left: false,
@@ -137,6 +142,22 @@ class SnowAnsherMaster {
                 + 'Try a different browser, or enable hardware acceleration.</div></div>';
         }
         console.error('[SnowAnsher] fatal:', message);
+    }
+
+    /**
+     * Generate deterministic cliff positions.
+     * Called once in constructor. Cliffs are spaced every ~400-600m with some randomness.
+     * Cliff jump ramps will ONLY spawn at these Z positions (right before the drop).
+     */
+    generateCliffSchedule() {
+        const firstCliff = -350; // first cliff at ~350m
+        const minGap = 380;
+        const maxGap = 580;
+        let z = firstCliff;
+        while (z > -15000) { // enough for a very long run
+            this.cliffPositions.push(z);
+            z -= minGap + Math.random() * (maxGap - minGap);
+        }
     }
 
     init() {
@@ -234,13 +255,14 @@ class SnowAnsherMaster {
 
     setupSubsystems() {
         this.sound = new AudioEngine();
-        this.world = new WorldEnvironment(this.scene, this.renderer, this.config);
+        // Pass shared cliff positions so terrain and physics stay in sync
+        this.world = new WorldEnvironment(this.scene, this.renderer, this.config, this.cliffPositions);
         this.obstacles = new ObstaclesManager(this.scene, this.config);
         // Obstacles sample the real terrain height so ramps/obstacles sit on the
         // ground rather than hovering at a guessed y.
         this.obstacles.getGroundHeightAt = (gx, gz) => this.physics.getGroundHeightAt(gx, gz);
         this.particles = new ParticleEngine(this.scene, this.config);
-        this.physics = new GamePhysics(this.config);
+        this.physics = new GamePhysics(this.config, this.cliffPositions);
         this.tricks = new TrickSystem();
         this.ghostRacer = new GhostRacerSystem(this.scene);
         this.biomes = new BiomesManager(this.scene, this.world);
@@ -350,7 +372,10 @@ class SnowAnsherMaster {
         this.obstacles.clearAll();
         if (this.structures) this.structures.clear();
         this.lastSpawnZ = -50;
-        for (let z = -70; z > -1600; z -= 30) {
+        // Only spawn initial track up to the spawn-ahead distance (950m)
+        // so the dynamic spawner in updateRunningGame can take over.
+        const initialSpawnLimit = 950;
+        for (let z = -70; z > -initialSpawnLimit; z -= 30) {
             this.spawnCourseRow(z);
             this.lastSpawnZ = z;
         }
@@ -412,14 +437,28 @@ class SnowAnsherMaster {
             // Rainbow Ice Grind Rail
             const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 16);
             this.obstacles.createGrindRail(x, y, z, 40);
+        // Check for cliff BEFORE random chain — guaranteed cliff jump ramp
+        let atCliff = false;
+        for (const cp of this.cliffPositions) {
+            const distBeforeCliff = z - cp; // positive when we're before cliff (higher Z)
+            if (distBeforeCliff > 30 && distBeforeCliff < 80) {
+                atCliff = true;
+                break;
+            }
+        }
+
+        if (atCliff) {
+            // CLIFF JUMP RAMP — guaranteed spawn right before a cliff gap!
+            const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 18);
+            this.obstacles.createCliffJumpRamp(x, y, z, (gx, gz) => this.physics.getGroundHeightAt(gx, gz), 1.0 + Math.random() * 0.5);
         } else if (rand < 0.58) {
             // Giant Rolling Avalanche Boulder
             const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 10);
             this.obstacles.createRollingBoulder(x, y, z);
         } else if (rand < 0.62) {
-            // CLIFF JUMP RAMP — big air over a gap!
-            const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 18);
-            this.obstacles.createCliffJumpRamp(x, y, z, (gx, gz) => this.physics.getGroundHeightAt(gx, gz), 1.0 + Math.random() * 0.5);
+            // Giant Rolling Avalanche Boulder (extra, non-cliff)
+            const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 10);
+            this.obstacles.createRollingBoulder(x, y, z);
         } else if (rand < 0.70) {
             // Cute 3D Snowman
             const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 8);

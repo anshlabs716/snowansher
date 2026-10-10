@@ -7,7 +7,25 @@
  */
 
 class GamePhysics {
-    constructor(config = {}) {
+    /**
+     * Generate deterministic cliff positions — shared static method.
+     * Must match WorldEnvironment.generateCliffSchedule and SnowAnsherMaster.
+     * @returns {number[]} Array of Z positions where cliffs occur.
+     */
+    static generateCliffPositions() {
+        const positions = [];
+        const firstCliff = -350;
+        const minGap = 380;
+        const maxGap = 580;
+        let z = firstCliff;
+        while (z > -15000) {
+            positions.push(z);
+            z -= minGap + Math.random() * (maxGap - minGap);
+        }
+        return positions;
+    }
+
+    constructor(config = {}, cp_cliffPositions = null) {
         this.config = config;
 
         // Downhill Slope & Constants
@@ -40,6 +58,9 @@ class GamePhysics {
 
         // Camera dynamics
         this.cameraDip = 0.0;
+
+        // Cliff positions for physics ground height matching terrain
+        this.cliffPositions = cp_cliffPositions || GamePhysics.generateCliffPositions();
     }
 
     reset(difficulty = 'medium', sledStats = {}) {
@@ -82,6 +103,20 @@ class GamePhysics {
 
         // Undulating moguls
         y += Math.sin(x * 0.1) * Math.cos(z * 0.07) * 0.45;
+
+        // Cliff gaps — match WorldEnvironment terrain cliffs
+        const cliff = this.cliffPositions.find(cp => Math.abs(cp - z) < 8);
+        if (cliff) {
+            const dist = Math.abs(cliff - z);
+            const cliffWidth = 8;
+            if (dist < cliffWidth) {
+                const t = 1 - dist / cliffWidth;
+                y -= 18 * t; // smooth drop-off
+            } else if (z < cliff) {
+                y -= 18; // beyond cliff
+            }
+        }
+
         return y;
     }
 
