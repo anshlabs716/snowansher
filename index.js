@@ -369,8 +369,10 @@ class SnowAnsherMaster {
             this.world.resetTerrainAround(this.physics.position.z);
         }
 
-        // Reset course hazards
+        // Reset course hazards and allow each scheduled cliff ramp to respawn
+        // on every new run (the obstacle list itself is cleared below).
         this.obstacles.clearAll();
+        this.cliffRampsSpawned.clear();
         if (this.structures) this.structures.clear();
         this.lastSpawnZ = -50;
         // Only spawn initial track up to the spawn-ahead distance (950m)
@@ -442,6 +444,11 @@ class SnowAnsherMaster {
             }
             return; // Don't spawn other obstacles at cliff positions
         }
+
+        // Keep the entire cliff approach and landing corridor clear of random
+        // hazards. Otherwise a correct jump can land directly inside a tree,
+        // boulder, or snowman that was spawned on the far side of the trench.
+        if (this.cliffPositions.some(cp => Math.abs(z - cp) <= 110)) return;
 
         // Dense low-poly forest walls hugging both banks of the run (Snow Rider look)
         const flankCount = (this.config.graphics === 'performance') ? 1 : 3;
