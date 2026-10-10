@@ -448,7 +448,7 @@ class SnowAnsherMaster {
         // Keep the entire cliff approach and landing corridor clear of random
         // hazards. Otherwise a correct jump can land directly inside a tree,
         // boulder, or snowman that was spawned on the far side of the trench.
-        if (this.cliffPositions.some(cp => Math.abs(z - cp) <= 110)) return;
+        if (this.cliffPositions.some(cp => Math.abs(z - cp) <= 180)) return;
 
         // Dense low-poly forest walls hugging both banks of the run (Snow Rider look)
         const flankCount = (this.config.graphics === 'performance') ? 1 : 3;
