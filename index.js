@@ -436,8 +436,8 @@ class SnowAnsherMaster {
                 const scale = 1.25;
                 const rampLength = 48.0 * scale;
                 const rampHeight = 13.0 * scale;
-                const rampCenterZ = bestCp + rampLength * 0.5;
-                const rampY = this.physics.getGroundHeightAt(x, rampCenterZ + rampLength * 0.5) - rampHeight * 0.5;
+                const rampCenterZ = bestCp + rampLength * 0.5 + 5;
+                const rampY = this.physics.getGroundHeightAt(x, rampCenterZ + rampLength * 0.5);
                 this.obstacles.createCliffJumpRamp(x, rampY, rampCenterZ, (gx, gz) => this.physics.getGroundHeightAt(gx, gz), scale);
             }
             return; // Don't spawn other obstacles at cliff positions
@@ -775,8 +775,13 @@ class SnowAnsherMaster {
             const dz = Math.abs(pPos.z - ramp.pos.z);
             // Cliff jumpers are long (up to 45u), so test their whole deck, not half.
             // The old half-length window meant big ramps were easy to miss at speed.
-            const halfLen = ramp.length * (ramp.isCliffJumper ? 0.5 : 0.5);
-            if (dx < ramp.width * 0.5 && dz < halfLen && this.physics.isGrounded) {
+            const halfLen = ramp.length * 0.5;
+            // Only launch near the downhill lip, not at the uphill end of the deck.
+            const atLaunchLip = !ramp.isCliffJumper || (
+                pPos.z <= ramp.pos.z - ramp.length * 0.25 &&
+                pPos.z >= ramp.pos.z - ramp.length * 0.65
+            );
+            if (dx < ramp.width * 0.5 && dz < halfLen && atLaunchLip && this.physics.isGrounded) {
                 this.physics.launchRamp(ramp.boostPower, this.sound, this.particles);
             }
         });
@@ -809,7 +814,7 @@ class SnowAnsherMaster {
         // A rider who launches from the oversized kicker remains airborne and can clear it.
         if (this.physics.isGrounded) {
             const landedInsideChasm = this.cliffPositions.some(cp =>
-                pPos.z <= cp && pPos.z >= cp - 70
+                pPos.z <= cp && pPos.z >= cp - 44
             );
             if (landedInsideChasm) this.triggerCrash();
         }
