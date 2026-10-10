@@ -10,7 +10,7 @@
  * Replace the global `localStorage` with a never-throwing shim before any module
  * touches it. Firefox private browsing and blocked-site-data modes make access
  * throw, and ~35 call sites across GameUI/GhostRacer/DailyChallenges read storage
- * during construction — so a single throw left the whole game unclickable, with
+ * during construction -- so a single throw left the whole game unclickable, with
  * nothing visible on screen.
  */
 (function installSafeLocalStorage() {
@@ -59,7 +59,7 @@ class SnowAnsherMaster {
     constructor() {
         // Storage shim. Touching localStorage throws in Firefox private browsing and
         // when "Block cookies and site data" is on, and this code runs in the
-        // CONSTRUCTOR — so a single throw here killed `new SnowAnsherMaster()`,
+        // CONSTRUCTOR -- so a single throw here killed `new SnowAnsherMaster()`,
         // window.game stayed null, and every menu button did nothing with no error
         // visible anywhere. Probe once, then degrade to an in-memory map.
         this.storage = makeSafeStorage();
@@ -88,7 +88,7 @@ class SnowAnsherMaster {
         this.topSpeedReached = 0;
         this.closeCallsRun = 0;
 
-        // Cliff schedule — deterministic positions where terrain has a gap.
+        // Cliff schedule -- deterministic positions where terrain has a gap.
         // Cliff jump ramps ONLY spawn at these positions (right before the drop).
         this.cliffPositions = [];
         this.generateCliffSchedule();
@@ -199,7 +199,7 @@ class SnowAnsherMaster {
         this.clock = new THREE.Clock();
         requestAnimationFrame((t) => this.tick(t));
 
-        console.log('❄️ Snow Ansher 3D Master Engine Initialized (10K+ Code Architecture Active)!');
+        console.log('\u2744 Snow Ansher 3D Master Engine Initialized (10K+ Code Architecture Active)!');
     }
 
     setupRenderer() {
@@ -399,6 +399,25 @@ class SnowAnsherMaster {
         const y = this.physics.getGroundHeightAt(0, z);
         const rand = Math.random();
 
+        // Check for cliff BEFORE random chain -- guaranteed cliff jump ramp
+        // We're moving downhill (Z decreasing), so "before" means Z is less negative than cliff
+        // e.g., cliff at -350, we're at -300: we're 50m BEFORE cliff (z - cp = 50)
+        let atCliff = false;
+        for (const cp of this.cliffPositions) {
+            const distBeforeCliff = z - cp; // positive when we're before cliff (higher Z)
+            if (distBeforeCliff > 30 && distBeforeCliff < 80) {
+                atCliff = true;
+                break;
+            }
+        }
+
+        if (atCliff) {
+            // CLIFF JUMP RAMP -- guaranteed spawn right before a cliff gap!
+            const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 18);
+            this.obstacles.createCliffJumpRamp(x, y, z, (gx, gz) => this.physics.getGroundHeightAt(gx, gz), 1.0 + Math.random() * 0.5);
+            return; // Don't spawn other obstacles at cliff positions
+        }
+
         // Dense low-poly forest walls hugging both banks of the run (Snow Rider look)
         const flankCount = (this.config.graphics === 'performance') ? 1 : 3;
         for (const side of [-1, 1]) {
@@ -437,20 +456,6 @@ class SnowAnsherMaster {
             // Rainbow Ice Grind Rail
             const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 16);
             this.obstacles.createGrindRail(x, y, z, 40);
-        // Check for cliff BEFORE random chain — guaranteed cliff jump ramp
-        let atCliff = false;
-        for (const cp of this.cliffPositions) {
-            const distBeforeCliff = z - cp; // positive when we're before cliff (higher Z)
-            if (distBeforeCliff > 30 && distBeforeCliff < 80) {
-                atCliff = true;
-                break;
-            }
-        }
-
-        if (atCliff) {
-            // CLIFF JUMP RAMP — guaranteed spawn right before a cliff gap!
-            const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 18);
-            this.obstacles.createCliffJumpRamp(x, y, z, (gx, gz) => this.physics.getGroundHeightAt(gx, gz), 1.0 + Math.random() * 0.5);
         } else if (rand < 0.58) {
             // Giant Rolling Avalanche Boulder
             const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 10);
@@ -464,7 +469,7 @@ class SnowAnsherMaster {
             const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 8);
             this.obstacles.createSnowman(x, y, z);
         } else if (rand < 0.76) {
-            // Dark grey rock cluster — rare but lethal (hop over it)
+            // Dark grey rock cluster -- rare but lethal (hop over it)
             const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 12);
             this.obstacles.createRock(x, y, z);
         } else {
@@ -579,12 +584,12 @@ class SnowAnsherMaster {
         this.sound.playNearMiss();
         if (this.closeCallsRun >= 5) this.ui.unlockAchievement('close_call_master');
 
-        this.ui.dom.comboPopup.innerText = '★ CLOSE CALL! +50m ★';
+        this.ui.dom.comboPopup.innerText = '\u2605 CLOSE CALL! +50m \u2605';
         this.ui.dom.comboPopup.classList.add('show');
         setTimeout(() => this.ui.dom.comboPopup.classList.remove('show'), 700);
     }
 
-    // ─── MASTER ANIMATION & RENDER TICK ───
+    // --------- MASTER ANIMATION & RENDER TICK ---------
     tick(time) {
         requestAnimationFrame((t) => this.tick(t));
 
@@ -825,7 +830,7 @@ class SnowAnsherMaster {
                 }
             }
 
-            // Close-call near miss (only for hazards on the run itself — flank trees never count)
+            // Close-call near miss (only for hazards on the run itself -- flank trees never count)
             if (!obj.passed && dist < (obj.radius + 2.2) && pPos.z < obj.pos.z) {
                 obj.passed = true;
                 if (Math.abs(obj.pos.x) < this.physics.TRACK_WIDTH * 0.47) {
@@ -878,8 +883,8 @@ class SnowAnsherMaster {
     }
 
     setOption(key, val) {
-        // Store TYPED values — strings break math downstream
-        // (config.fov + speedRatio would string-concat and blow up the camera FOV → floor vanishes)
+        // Store TYPED values -- strings break math downstream
+        // (config.fov + speedRatio would string-concat and blow up the camera FOV \u2192 floor vanishes)
         if (key === 'fov') {
             const n = parseInt(val);
             this.config.fov = isNaN(n) ? 70 : n;
@@ -908,7 +913,7 @@ class SnowAnsherMaster {
      * Inline handlers are compiled as page-level script, so anything that stops
      * them (a strict Content-Security-Policy from the browser, an extension, or
      * 'javascript:' URLs being disabled) silently kills ALL of them at once while
-     * the page still looks perfect — the buttons just do nothing. Brave allowed
+     * the page still looks perfect -- the buttons just do nothing. Brave allowed
      * them; Chrome and Firefox did not.
      *
      * Binding in JS does not depend on inline-script permission, so the menu works
@@ -956,7 +961,7 @@ class SnowAnsherMaster {
         // Confirm our programmatic listeners are attached to the controls, by
         // dispatching a real click and seeing whether the game reacts. If the
         // browser blocked our script entirely, bindUiControls would never have run
-        // and we would not be here — but a silent partial bind would still be
+        // and we would not be here -- but a silent partial bind would still be
         // caught here.
         const probe = document.querySelector('.mode-card');
         if (!probe) return;
@@ -1013,7 +1018,7 @@ class SnowAnsherMaster {
             });
         });
 
-        // Mobile Touch Zones — ONLY enable on real touch devices.
+        // Mobile Touch Zones -- ONLY enable on real touch devices.
         // The CSS media query (hover: none) and (pointer: coarse) matches on
         // touchscreen laptops too, which creates invisible overlays that steal
         // clicks from the menu. Use explicit feature detection instead.
@@ -1038,7 +1043,7 @@ class SnowAnsherMaster {
                 document.getElementById('touch-controls').style.display = 'block';
             }
         } else {
-            // Not a touch device — guarantee the zones are gone so they can never
+            // Not a touch device -- guarantee the zones are gone so they can never
             // intercept mouse clicks, even if the media query misfires.
             const tc = document.getElementById('touch-controls');
             if (tc) tc.style.display = 'none';
@@ -1062,7 +1067,7 @@ window.game = null;
 
 // ---- Diagnostics ----------------------------------------------------------
 // A tiny always-available panel so a dead or blocked menu is never a mystery.
-// Press ` (backtick) / F3, or click the ⚙ badge. It is bound with
+// Press ` (backtick) / F3, or click the \u2699 badge. It is bound with
 // addEventListener and sits at the maximum z-index, so it still works when
 // something else (an extension overlay, a strict CSP, a stuck layer) is
 // swallowing the normal menu. The FORCE START button drives the game directly.
@@ -1077,7 +1082,7 @@ window.__snowDiag = function () {
         const c = document.createElement('canvas');
         const gl = c.getContext('webgl2') || c.getContext('webgl');
         if (!gl) {
-            glInfo = 'NO WebGL CONTEXT — 3D cannot run here';
+            glInfo = 'NO WebGL CONTEXT -- 3D cannot run here';
         } else {
             const ext = gl.getExtension('WEBGL_debug_renderer_info');
             glInfo = ext
@@ -1093,7 +1098,7 @@ window.__snowDiag = function () {
     } catch (e) { ls = 'BLOCKED: ' + (e && e.message ? e.message : e); }
 
     const errList = window.__snowErrs.length
-        ? window.__snowErrs.slice(-8).map((e) => '• ' + e).join('\n')
+        ? window.__snowErrs.slice(-8).map((e) => '* ' + e).join('\n')
         : 'none recorded';
 
     const d = document.createElement('div');
@@ -1104,8 +1109,8 @@ window.__snowDiag = function () {
         + 'font:12px/1.55 system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.6);'
         + 'white-space:pre-wrap;word-break:break-word;';
     d.innerHTML =
-        '<div style="font-weight:700;font-size:14px;margin-bottom:8px">❄ Snow Ansher diagnostics</div>'
-        + 'boot:        ' + (g ? 'OK — game object exists' : 'FAILED — no game object') + '\n'
+        '<div style="font-weight:700;font-size:14px;margin-bottom:8px">\u2744 Snow Ansher diagnostics</div>'
+        + 'boot:        ' + (g ? 'OK -- game object exists' : 'FAILED -- no game object') + '\n'
         + 'state:       dead=' + (g ? g.dead : '?') + '  running=' + (g ? g.running : '?') + '\n'
         + 'three.js:    ' + (typeof THREE !== 'undefined' ? 'loaded' : 'NOT LOADED (CDN blocked?)') + '\n'
         + 'WebGL:       ' + glInfo + '\n'
@@ -1124,9 +1129,9 @@ window.__snowDiag = function () {
         b.addEventListener('click', fn);
         return b;
     };
-    bar.appendChild(mkBtn('snow-diag-start', '▶ FORCE START', '#2f7dff', () => { if (g) g.start('easy'); }));
-    bar.appendChild(mkBtn('snow-diag-reload', '↻ hard reload', '#33475f', () => location.reload()));
-    bar.appendChild(mkBtn('snow-diag-close', '✕ close', '#33475f', () => d.remove()));
+    bar.appendChild(mkBtn('snow-diag-start', '\u25b6 FORCE START', '#2f7dff', () => { if (g) g.start('easy'); }));
+    bar.appendChild(mkBtn('snow-diag-reload', '@@@ hard reload', '#33475f', () => location.reload()));
+    bar.appendChild(mkBtn('snow-diag-close', 'x close', '#33475f', () => d.remove()));
     d.appendChild(bar);
     document.body.appendChild(d);
 };
@@ -1148,8 +1153,8 @@ window.addEventListener('error', (e) => {
     if (!document.body) return;
     const btn = document.createElement('button');
     btn.id = 'snow-emergency-start';
-    btn.textContent = '▶ START GAME';
-    btn.title = 'Emergency start — works even if menu is broken';
+    btn.textContent = '\u25b6 START GAME';
+    btn.title = 'Emergency start -- works even if menu is broken';
     btn.style.cssText = 'position:fixed;bottom:10px;left:10px;z-index:2147483648;'
         + 'background:#2f7dff;color:#fff;border:0;border-radius:8px;'
         + 'padding:12px 18px;font-weight:700;font-size:14px;cursor:pointer;'
@@ -1186,7 +1191,7 @@ window.addEventListener('keydown', (e) => {
 (function addDiagBadge() {
     if (!document.body) return;
     const badge = document.createElement('button');
-    badge.textContent = '⚙';
+    badge.textContent = '\u2699';
     badge.title = 'Snow Ansher diagnostics (or press `)';
     badge.style.cssText = 'position:fixed;bottom:10px;right:10px;z-index:2147483649;'
         + 'width:34px;height:34px;border-radius:50%;border:1px solid #2b4a6b;'
