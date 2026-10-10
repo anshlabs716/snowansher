@@ -3727,8 +3727,8 @@ class WorldEnvironment {
         // Determine if this chunk contains a cliff gap
         const chunkStartZ = centerZ + length / 2 * slopeCos;
         const chunkEndZ = centerZ - length / 2 * slopeCos;
-        const gapLength = 70;
-        const cliffInChunk = this.cliffPositions.find(cp => cp >= chunkEndZ && cp - gapLength <= chunkStartZ);
+        const gapLength = 44;
+        const cliffInChunk = this.cliffPositions.find(cp => cp + wallWidth >= chunkEndZ && cp - gapLength - wallWidth <= chunkStartZ);
         const cliffZ = cliffInChunk || null;
 
         for (let i = 0; i < pos.count; i++) {
@@ -3752,9 +3752,9 @@ class WorldEnvironment {
             // Deep cliff trench: 60 m below the track for a 70 m crossing.
             // Entry and landing walls match GamePhysics ground height.
             if (cliffZ !== null) {
-                const cliffDepth = 60;
-                const gapLength = 70;
-                const wallWidth = 8;
+                const cliffDepth = 24;
+                const gapLength = 44;
+                const wallWidth = 6;
                 const landingEdgeZ = cliffZ - gapLength;
                 if (worldZ <= cliffZ && worldZ >= landingEdgeZ) {
                     yDisplacement -= cliffDepth;
@@ -3798,7 +3798,7 @@ class WorldEnvironment {
                 displacement = 2.5 * Math.tanh(Math.pow(rim * 0.15, 1.2) / 2.5);
             }
             displacement += Math.sin(x * 0.1) * Math.cos(worldZ * 0.07) * 0.45;
-            const cliff = this.cliffPositions.find(cp => worldZ <= cp + 8 && worldZ >= cp - 78);
+            const cliff = this.cliffPositions.find(cp => worldZ <= cp + wallWidth && worldZ >= cp - gapLength - wallWidth);
             if (cliff !== undefined) {
                 const depth = 60;
                 const landing = cliff - 70;
@@ -4285,8 +4285,9 @@ const SlopeTrackPatterns = {
 
                 // Approach ramp, then a flight across the void, then the landing side.
                 const zRamp = startZ - 30;
-                const yRamp = -zRamp * Math.tan(manager.SLOPE_ANGLE);
-                manager.createCliffJumpRamp(0, yRamp, zRamp, gf, 1.0);
+                const yRamp = gf(0, zRamp + 24 * 1.35);
+                // Put the BIG kicker before the gap; launch from its downhill lip.
+                manager.createCliffJumpRamp(0, yRamp, zRamp, gf, 1.35);
 
                 // Airborne gift arc spanning the gap so a clean jump is rewarded.
                 const gapZ = zRamp - 55;
@@ -4297,11 +4298,9 @@ const SlopeTrackPatterns = {
                 }
                 manager.createPowerupOrb(0, gapY + 26, gapZ - 40, 'rocket');
 
-                // Second, bigger ramp further down the mountain.
+                // Keep the reward after the gap, but do not put the jump ramp after it.
                 const z2 = startZ - 140;
-                const y2 = -z2 * Math.tan(manager.SLOPE_ANGLE);
-                manager.createCliffJumpRamp(4, y2, z2, gf, 1.35);
-                manager.createGiftBox(-4, -z2 * Math.tan(manager.SLOPE_ANGLE) + 20, z2 - 50);
+                manager.createGiftBox(-4, gf(-4, z2) + 20, z2);
             }
         },
 
@@ -5690,11 +5689,11 @@ class GamePhysics {
         y += Math.sin(x * 0.1) * Math.cos(z * 0.07) * 0.45;
 
         // Match the rendered 60 m-deep, 70 m-long cliff trench exactly.
-        const cliff = this.cliffPositions.find(cp => z <= cp + 8 && z >= cp - 78);
+        const cliff = this.cliffPositions.find(cp => z <= cp + wallWidth && z >= cp - gapLength - wallWidth);
         if (cliff !== undefined) {
-            const cliffDepth = 60;
-            const gapLength = 70;
-            const wallWidth = 8;
+            const cliffDepth = 24;
+            const gapLength = 44;
+            const wallWidth = 6;
             const landingEdgeZ = cliff - gapLength;
             if (z <= cliff && z >= landingEdgeZ) {
                 y -= cliffDepth;
@@ -7957,8 +7956,8 @@ class SnowAnsherMaster {
                 const scale = 1.25;
                 const rampLength = 48.0 * scale;
                 const rampHeight = 13.0 * scale;
-                const rampCenterZ = bestCp + rampLength * 0.5;
-                const rampY = this.physics.getGroundHeightAt(x, rampCenterZ + rampLength * 0.5) - rampHeight * 0.5;
+                const rampCenterZ = bestCp + rampLength * 0.5 + 5;
+                const rampY = this.physics.getGroundHeightAt(x, rampCenterZ + rampLength * 0.5);
                 this.obstacles.createCliffJumpRamp(x, rampY, rampCenterZ, (gx, gz) => this.physics.getGroundHeightAt(gx, gz), scale);
             }
             return; // Don't spawn other obstacles at cliff positions
@@ -8296,8 +8295,13 @@ class SnowAnsherMaster {
             const dz = Math.abs(pPos.z - ramp.pos.z);
             // Cliff jumpers are long (up to 45u), so test their whole deck, not half.
             // The old half-length window meant big ramps were easy to miss at speed.
-            const halfLen = ramp.length * (ramp.isCliffJumper ? 0.5 : 0.5);
-            if (dx < ramp.width * 0.5 && dz < halfLen && this.physics.isGrounded) {
+            const halfLen = ramp.length * 0.5;
+            // Cliff jumpers launch only at the downhill lip, never at the uphill entrance.
+            const atLaunchLip = !ramp.isCliffJumper || (
+                pPos.z <= ramp.pos.z - ramp.length * 0.25 &&
+                pPos.z >= ramp.pos.z - ramp.length * 0.65
+            );
+            if (dx < ramp.width * 0.5 && dz < halfLen && atLaunchLip && this.physics.isGrounded) {
                 this.physics.launchRamp(ramp.boostPower, this.sound, this.particles);
             }
         });
@@ -8330,7 +8334,7 @@ class SnowAnsherMaster {
         // A rider who launches from the oversized kicker remains airborne and can clear it.
         if (this.physics.isGrounded) {
             const landedInsideChasm = this.cliffPositions.some(cp =>
-                pPos.z <= cp && pPos.z >= cp - 70
+                pPos.z <= cp && pPos.z >= cp - 44
             );
             if (landedInsideChasm) this.triggerCrash();
         }
