@@ -798,18 +798,19 @@ class SnowAnsherMaster {
 
         
 
-        // Cliff death: if player passes a cliff position without a ramp, they fall into the gap
-        const cliffDeathZ = this.cliffPositions.reduce((prev, cp) => {
-            if (pPos.z < cp && pPos.z > prev) return pPos.z;
-            return prev;
-        }, -Infinity);
-        if (pPos.z < -30 && pPos.z > cliffDeathZ && this.physics.isGrounded) {
-            // Check if they had an active cliff jumper ramp
-            const hadRamp = this.obstacles.ramps.some(r => 
-                Math.abs(pPos.z - r.pos.z) < 80 && r.isCliffJumper
+        // Cliff death is only possible immediately after crossing an actual cliff.
+        // The old reducer returned the player's current Z (and stayed -Infinity before
+        // the first cliff), which made the condition fire as soon as Z passed -30:
+        // an invisible death wall at the start of every run.
+        if (this.physics.isGrounded) {
+            const passedCliff = this.cliffPositions.find(cp =>
+                pPos.z < cp && pPos.z > cp - 35
             );
-            if (!hadRamp) {
-                this.triggerCrash();
+            if (passedCliff !== undefined) {
+                const hadRamp = this.obstacles.ramps.some(r =>
+                    Math.abs(pPos.z - r.pos.z) < 80 && r.isCliffJumper
+                );
+                if (!hadRamp) this.triggerCrash();
             }
         }
 
