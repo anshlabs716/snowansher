@@ -779,7 +779,7 @@ class SnowAnsherMaster {
             // Only launch near the downhill lip, not at the uphill end of the deck.
             const atLaunchLip = !ramp.isCliffJumper || (
                 pPos.z <= ramp.pos.z - ramp.length * 0.25 &&
-                pPos.z >= ramp.pos.z - ramp.length * 0.65
+                pPos.z >= ramp.pos.z - ramp.length * 0.48
             );
             if (dx < ramp.width * 0.5 && dz < halfLen && atLaunchLip && this.physics.isGrounded) {
                 this.physics.launchRamp(ramp.boostPower, this.sound, this.particles);
