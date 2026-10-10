@@ -3,7 +3,7 @@
 import re
 import pathlib
 
-ROOT = pathlib.Path('/home/ansh/vscode/snowansher')
+ROOT = pathlib.Path(__file__).resolve().parent
 
 # Order of JS files as they appear in index.html
 JS_FILES = [
