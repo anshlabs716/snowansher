@@ -35,7 +35,7 @@ git clone https://github.com/anshlabs716/snowansher.git
 cd snowansher
 python3 -m http.server 8080
 ```
-Then open: **[http://localhost:8080/index.html](http://localhost:8080/index.html)** (be patient though and wait till its done)
+Then open: **[http://localhost:8080/index.html](http://localhost:8080/index.html)**
 
 > ⚠️ **index.html will NOT work via double-click unless you use brave origin thats the only one i have tested that works with the double clicking index.html** (most browsers don't load it properly then clicking doesn't work or it bugs out badly). You MUST run the Python server above. This is the full version with all the features.
 
