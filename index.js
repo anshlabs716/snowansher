@@ -430,8 +430,9 @@ class SnowAnsherMaster {
             }
             if (bestCp && !this.cliffRampsSpawned.has(bestCp)) {
                 this.cliffRampsSpawned.add(bestCp);
-                const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 18);
-                this.obstacles.createCliffJumpRamp(x, y, z, (gx, gz) => this.physics.getGroundHeightAt(gx, gz), 1.0 + Math.random() * 0.5);
+                // Keep the mega kicker in the centre lane and large enough to read clearly.
+                const x = 0;
+                this.obstacles.createCliffJumpRamp(x, y, z, (gx, gz) => this.physics.getGroundHeightAt(gx, gz), 1.25);
             }
             return; // Don't spawn other obstacles at cliff positions
         }
@@ -798,20 +799,13 @@ class SnowAnsherMaster {
 
         
 
-        // Cliff death is only possible immediately after crossing an actual cliff.
-        // The old reducer returned the player's current Z (and stayed -Infinity before
-        // the first cliff), which made the condition fire as soon as Z passed -30:
-        // an invisible death wall at the start of every run.
+        // The chasm is deadly only while the rider is grounded inside its 70 m span.
+        // A rider who launches from the oversized kicker remains airborne and can clear it.
         if (this.physics.isGrounded) {
-            const passedCliff = this.cliffPositions.find(cp =>
-                pPos.z < cp && pPos.z > cp - 35
+            const landedInsideChasm = this.cliffPositions.some(cp =>
+                pPos.z <= cp && pPos.z >= cp - 70
             );
-            if (passedCliff !== undefined) {
-                const hadRamp = this.obstacles.ramps.some(r =>
-                    Math.abs(pPos.z - r.pos.z) < 80 && r.isCliffJumper
-                );
-                if (!hadRamp) this.triggerCrash();
-            }
+            if (landedInsideChasm) this.triggerCrash();
         }
 
 // Collectible Gifts
