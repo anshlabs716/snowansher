@@ -3714,7 +3714,7 @@ class WorldEnvironment {
         const width = 160;
         const length = this.CHUNK_LENGTH;
         const segX = 36;
-        const segZ = 42;
+        const segZ = 180;
         const geo = new THREE.PlaneGeometry(width, length, segX, segZ);
 
         const pos = geo.attributes.position;
@@ -3749,7 +3749,7 @@ class WorldEnvironment {
             // Natural terrain moguls and ripples
             yDisplacement += Math.sin(x * 0.1) * Math.cos(worldZ * 0.07) * 0.45;
 
-            // Deep cliff trench: 60 m below the track for a 70 m crossing.
+            // Deep cliff trench: 24 m below the track for a 44 m crossing.
             // Entry and landing walls match GamePhysics ground height.
             if (cliffZ !== null) {
                 const cliffDepth = 24;
@@ -5688,7 +5688,7 @@ class GamePhysics {
         // Undulating moguls
         y += Math.sin(x * 0.1) * Math.cos(z * 0.07) * 0.45;
 
-        // Match the rendered 60 m-deep, 70 m-long cliff trench exactly.
+        // Match the rendered 24 m-deep, 44 m-long cliff trench exactly.
         const cliff = this.cliffPositions.find(cp => z <= cp + wallWidth && z >= cp - gapLength - wallWidth);
         if (cliff !== undefined) {
             const cliffDepth = 24;
@@ -8330,14 +8330,9 @@ class SnowAnsherMaster {
 
         
 
-        // The chasm is deadly only while the rider is grounded inside its 70 m span.
-        // A rider who launches from the oversized kicker remains airborne and can clear it.
-        if (this.physics.isGrounded) {
-            const landedInsideChasm = this.cliffPositions.some(cp =>
-                pPos.z <= cp && pPos.z >= cp - 44
-            );
-            if (landedInsideChasm) this.triggerCrash();
-        }
+        // The trench has a real, collidable floor. Landing in it is rough but not an
+        // automatic crash; this lets a run recover if the jump falls short.
+        // Obstacles and actual falls still use their normal collision/death handling.
 
 // Collectible Gifts
         for (let i = this.obstacles.gifts.length - 1; i >= 0; i--) {
