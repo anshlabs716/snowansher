@@ -240,7 +240,7 @@ class WorldEnvironment {
             let yDisplacement = 0;
             if (absX > this.TRACK_WIDTH * 0.44) {
                 const rim = (absX - this.TRACK_WIDTH * 0.44);
-                yDisplacement = 9.0 * Math.tanh(Math.pow(rim * 0.22, 1.85) / 9.0);
+                yDisplacement = 2.5 * Math.tanh(Math.pow(rim * 0.15, 1.2) / 2.5);
             }
 
             // Natural terrain moguls and ripples

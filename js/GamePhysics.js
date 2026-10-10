@@ -138,7 +138,7 @@ class GamePhysics {
         this.position.x += this.velocity.x * dt;
 
         // Track limits with halfpipe bank rebound
-        const maxBound = this.TRACK_WIDTH * 0.48;
+        const maxBound = this.TRACK_WIDTH * 0.6;
         if (this.position.x > maxBound) {
             this.position.x = maxBound;
             this.velocity.x = -this.velocity.x * 0.3; // elastic bumper bounce

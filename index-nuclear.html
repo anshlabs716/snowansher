@@ -796,7 +796,7 @@
                     <div class="hud-label">DISTANCE</div>
                     <div><span class="hud-val" id="hud-dist">0</span><span class="unit">M</span></div>
                 </div>
-                <div id="combo-popup">★ CLOSE CALL! +50m ★</div>
+                <div id="combo-popup"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> CLOSE CALL! +50m <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
 
                 <!-- Active Powerups Tray -->
                 <div id="powerup-tray">
@@ -962,7 +962,7 @@
     <!-- Game Over Overlay -->
     <div id="gameover-overlay" class="overlay hidden">
         <div class="menu-modal gameover-modal">
-            <div id="new-record-tag" class="highscore-badge">★ NEW RECORD! ★</div>
+            <div id="new-record-tag" class="highscore-badge"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> NEW RECORD! <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
             <h1 style="font-family: 'Orbitron'; font-size: 42px; color: var(--danger); text-shadow: 0 0 25px rgba(255, 71, 87, 0.5);">WIPEOUT!</h1>
             <p style="color: rgba(255,255,255,0.6); letter-spacing: 3px; font-weight: 700; margin-top: 4px;">HEAVY IMPACT DETECTED</p>
 
@@ -3742,7 +3742,7 @@ class WorldEnvironment {
             let yDisplacement = 0;
             if (absX > this.TRACK_WIDTH * 0.44) {
                 const rim = (absX - this.TRACK_WIDTH * 0.44);
-                yDisplacement = 9.0 * Math.tanh(Math.pow(rim * 0.22, 1.85) / 9.0);
+                yDisplacement = 2.5 * Math.tanh(Math.pow(rim * 0.15, 1.2) / 2.5);
             }
 
             // Natural terrain moguls and ripples
@@ -5240,7 +5240,7 @@ class TrickSystem {
         const popup = document.getElementById('combo-popup');
         if (popup) {
             const multiText = multi > 1.0 ? ` (x${multi.toFixed(1)})` : '';
-            popup.innerText = `★ ${name} +${Math.floor(this.trickScore)}m${multiText} ★`;
+            popup.innerHTML = `<svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> ${name} +${Math.floor(this.trickScore)}m${multiText} <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
             popup.classList.add('show');
             setTimeout(() => popup.classList.remove('show'), 800);
         }
@@ -5679,7 +5679,7 @@ class GamePhysics {
         this.position.x += this.velocity.x * dt;
 
         // Track limits with halfpipe bank rebound
-        const maxBound = this.TRACK_WIDTH * 0.48;
+        const maxBound = this.TRACK_WIDTH * 0.6;
         if (this.position.x > maxBound) {
             this.position.x = maxBound;
             this.velocity.x = -this.velocity.x * 0.3; // elastic bumper bounce
@@ -5980,7 +5980,7 @@ class MultiplayerBotRiders {
         });
 
         // Keep within track limits
-            bot.targetX = THREE.MathUtils.clamp(bot.targetX, -this.physics.TRACK_WIDTH * 0.48, this.physics.TRACK_WIDTH * 0.48);
+            bot.targetX = THREE.MathUtils.clamp(bot.targetX, -this.physics.TRACK_WIDTH * 0.6, this.physics.TRACK_WIDTH * 0.6);
 
             // Interpolate position toward target lane
             bot.pos.x += (bot.targetX - bot.pos.x) * 4.0 * dt;
@@ -6646,7 +6646,7 @@ class BiomesManager {
     dispatchBiomeAlert(biomeName) {
         const popup = document.getElementById('combo-popup');
         if (popup) {
-            popup.innerText = `🏔️ ENTERING: ${biomeName.toUpperCase()} 🏔️`;
+            popup.innerHTML = `<svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M14 6l-4.22 5.63 1.72 1.39L14 9.33 18.5 13.02l1.72-1.39L16 6H14zM2 20h20L12 4 2 20z"/></svg> ENTERING: ${biomeName.toUpperCase()} <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M14 6l-4.22 5.63 1.72 1.39L14 9.33 18.5 13.02l1.72-1.39L16 6H14zM2 20h20L12 4 2 20z"/></svg>`;
             popup.classList.add('show');
             setTimeout(() => popup.classList.remove('show'), 1200);
         }

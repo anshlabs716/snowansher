@@ -113,7 +113,7 @@ class BiomesManager {
     dispatchBiomeAlert(biomeName) {
         const popup = document.getElementById('combo-popup');
         if (popup) {
-            popup.innerText = `🏔️ ENTERING: ${biomeName.toUpperCase()} 🏔️`;
+            popup.innerHTML = `<svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M14 6l-4.22 5.63 1.72 1.39L14 9.33 18.5 13.02l1.72-1.39L16 6H14zM2 20h20L12 4 2 20z"/></svg> ENTERING: ${biomeName.toUpperCase()} <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M14 6l-4.22 5.63 1.72 1.39L14 9.33 18.5 13.02l1.72-1.39L16 6H14zM2 20h20L12 4 2 20z"/></svg>`;
             popup.classList.add('show');
             setTimeout(() => popup.classList.remove('show'), 1200);
         }
