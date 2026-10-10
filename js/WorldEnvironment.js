@@ -246,17 +246,21 @@ class WorldEnvironment {
             // Natural terrain moguls and ripples
             yDisplacement += Math.sin(x * 0.1) * Math.cos(worldZ * 0.07) * 0.45;
 
-            // Create cliff gap: if this row is at a cliff position, drop the terrain sharply
-            if (cliffZ) {
-                const distToCliff = Math.abs(worldZ - cliffZ);
-                const cliffWidth = 8; // width of the transition zone
-                if (distToCliff < cliffWidth) {
-                    // Create a smooth but steep drop-off at the cliff
-                    const t = 1 - distToCliff / cliffWidth;
-                    yDisplacement -= 18 * t; // 18m drop
-                } else if (worldZ < cliffZ) {
-                    // Beyond the cliff: terrain continues much lower
-                    yDisplacement -= 18;
+            // Deep cliff trench: 60 m below the track for a 70 m crossing.
+            // Entry and landing walls match GamePhysics ground height.
+            if (cliffZ !== null) {
+                const cliffDepth = 60;
+                const gapLength = 70;
+                const wallWidth = 8;
+                const landingEdgeZ = cliffZ - gapLength;
+                if (worldZ <= cliffZ && worldZ >= landingEdgeZ) {
+                    yDisplacement -= cliffDepth;
+                } else if (worldZ > cliffZ && worldZ < cliffZ + wallWidth) {
+                    const t = 1 - (worldZ - cliffZ) / wallWidth;
+                    yDisplacement -= cliffDepth * t;
+                } else if (worldZ < landingEdgeZ && worldZ > landingEdgeZ - wallWidth) {
+                    const t = 1 - (landingEdgeZ - worldZ) / wallWidth;
+                    yDisplacement -= cliffDepth * t;
                 }
             }
 
