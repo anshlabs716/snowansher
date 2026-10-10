@@ -89,7 +89,7 @@
             align-items: center;
             gap: 16px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), 0 0 25px var(--accent-glow);
-            backdrop-filter: blur(16px);
+            backdrop-filter: none;
             transform: translateX(120%);
             transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             pointer-events: none;
@@ -127,8 +127,8 @@
 
         .hud-card {
             background: var(--glass-bg);
-            backdrop-filter: blur(14px);
-            -webkit-backdrop-filter: blur(14px);
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
             border: 1px solid var(--glass-border);
             border-radius: 14px;
             padding: 12px 20px;
@@ -185,7 +185,7 @@
 
         .distance-display {
             background: var(--glass-bg);
-            backdrop-filter: blur(14px);
+            backdrop-filter: none;
             border: 1px solid var(--glass-border);
             border-radius: 16px;
             padding: 10px 30px;
@@ -260,7 +260,7 @@
 
         .speedometer {
             background: var(--glass-bg);
-            backdrop-filter: blur(14px);
+            backdrop-filter: none;
             border: 1px solid var(--glass-border);
             border-radius: 14px;
             padding: 14px 24px;
@@ -8270,7 +8270,24 @@ class SnowAnsherMaster {
             }
         });
 
-        // Collectible Gifts
+        
+
+        // Cliff death: if player passes a cliff position without a ramp, they fall into the gap
+        const cliffDeathZ = this.cliffPositions.reduce((prev, cp) => {
+            if (pPos.z < cp && pPos.z > prev) return pPos.z;
+            return prev;
+        }, -Infinity);
+        if (pPos.z < -30 && pPos.z > cliffDeathZ && this.physics.isGrounded) {
+            // Check if they had an active cliff jumper ramp
+            const hadRamp = this.obstacles.ramps.some(r => 
+                Math.abs(pPos.z - r.pos.z) < 80 && r.isCliffJumper
+            );
+            if (!hadRamp) {
+                this.triggerCrash();
+            }
+        }
+
+// Collectible Gifts
         for (let i = this.obstacles.gifts.length - 1; i >= 0; i--) {
             const gift = this.obstacles.gifts[i];
             const dist = pPos.distanceTo(gift.pos);

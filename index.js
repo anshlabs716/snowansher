@@ -796,7 +796,24 @@ class SnowAnsherMaster {
             }
         });
 
-        // Collectible Gifts
+        
+
+        // Cliff death: if player passes a cliff position without a ramp, they fall into the gap
+        const cliffDeathZ = this.cliffPositions.reduce((prev, cp) => {
+            if (pPos.z < cp && pPos.z > prev) return pPos.z;
+            return prev;
+        }, -Infinity);
+        if (pPos.z < -30 && pPos.z > cliffDeathZ && this.physics.isGrounded) {
+            // Check if they had an active cliff jumper ramp
+            const hadRamp = this.obstacles.ramps.some(r => 
+                Math.abs(pPos.z - r.pos.z) < 80 && r.isCliffJumper
+            );
+            if (!hadRamp) {
+                this.triggerCrash();
+            }
+        }
+
+// Collectible Gifts
         for (let i = this.obstacles.gifts.length - 1; i >= 0; i--) {
             const gift = this.obstacles.gifts[i];
             const dist = pPos.distanceTo(gift.pos);
