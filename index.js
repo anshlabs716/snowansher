@@ -810,14 +810,9 @@ class SnowAnsherMaster {
 
         
 
-        // The chasm is deadly only while the rider is grounded inside its 70 m span.
-        // A rider who launches from the oversized kicker remains airborne and can clear it.
-        if (this.physics.isGrounded) {
-            const landedInsideChasm = this.cliffPositions.some(cp =>
-                pPos.z <= cp && pPos.z >= cp - 44
-            );
-            if (landedInsideChasm) this.triggerCrash();
-        }
+        // The trench has a real, collidable floor. Landing in it is rough but not an
+        // automatic crash; this lets a run recover if the jump falls short.
+        // Obstacles and actual falls still use their normal collision/death handling.
 
 // Collectible Gifts
         for (let i = this.obstacles.gifts.length - 1; i >= 0; i--) {
