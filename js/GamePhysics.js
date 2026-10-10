@@ -94,11 +94,11 @@ class GamePhysics {
         // Base downhill slope
         let y = -z * Math.tan(this.SLOPE_ANGLE);
 
-        // Banked halfpipe outer rims (smooth 9m plateau so the world opens into a meadow)
+        // Keep collision height identical to the visible terrain mesh.
         const absX = Math.abs(x);
         if (absX > this.TRACK_WIDTH * 0.44) {
             const rim = absX - this.TRACK_WIDTH * 0.44;
-            y += 9.0 * Math.tanh(Math.pow(rim * 0.22, 1.85) / 9.0);
+            y += 2.5 * Math.tanh(Math.pow(rim * 0.15, 1.2) / 2.5);
         }
 
         // Undulating moguls
