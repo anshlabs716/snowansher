@@ -104,16 +104,19 @@ class GamePhysics {
         // Undulating moguls
         y += Math.sin(x * 0.1) * Math.cos(z * 0.07) * 0.45;
 
-        // Cliff gaps — match WorldEnvironment terrain cliffs
-        const cliff = this.cliffPositions.find(cp => Math.abs(cp - z) < 8);
-        if (cliff) {
-            const dist = Math.abs(cliff - z);
-            const cliffWidth = 8;
-            if (dist < cliffWidth) {
-                const t = 1 - dist / cliffWidth;
-                y -= 18 * t; // smooth drop-off
-            } else if (z < cliff) {
-                y -= 18; // beyond cliff
+        // Match the rendered 60 m-deep, 70 m-long cliff trench exactly.
+        const cliff = this.cliffPositions.find(cp => z <= cp + 8 && z >= cp - 78);
+        if (cliff !== undefined) {
+            const cliffDepth = 60;
+            const gapLength = 70;
+            const wallWidth = 8;
+            const landingEdgeZ = cliff - gapLength;
+            if (z <= cliff && z >= landingEdgeZ) {
+                y -= cliffDepth;
+            } else if (z > cliff && z < cliff + wallWidth) {
+                y -= cliffDepth * (1 - (z - cliff) / wallWidth);
+            } else if (z < landingEdgeZ && z > landingEdgeZ - wallWidth) {
+                y -= cliffDepth * (1 - (landingEdgeZ - z) / wallWidth);
             }
         }
 
