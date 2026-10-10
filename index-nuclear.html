@@ -3748,17 +3748,21 @@ class WorldEnvironment {
             // Natural terrain moguls and ripples
             yDisplacement += Math.sin(x * 0.1) * Math.cos(worldZ * 0.07) * 0.45;
 
-            // Create cliff gap: if this row is at a cliff position, drop the terrain sharply
-            if (cliffZ) {
-                const distToCliff = Math.abs(worldZ - cliffZ);
-                const cliffWidth = 8; // width of the transition zone
-                if (distToCliff < cliffWidth) {
-                    // Create a smooth but steep drop-off at the cliff
-                    const t = 1 - distToCliff / cliffWidth;
-                    yDisplacement -= 18 * t; // 18m drop
-                } else if (worldZ < cliffZ) {
-                    // Beyond the cliff: terrain continues much lower
-                    yDisplacement -= 18;
+            // Deep cliff trench: 60 m below the track for a 70 m crossing.
+            // Entry and landing walls match GamePhysics ground height.
+            if (cliffZ !== null) {
+                const cliffDepth = 60;
+                const gapLength = 70;
+                const wallWidth = 8;
+                const landingEdgeZ = cliffZ - gapLength;
+                if (worldZ <= cliffZ && worldZ >= landingEdgeZ) {
+                    yDisplacement -= cliffDepth;
+                } else if (worldZ > cliffZ && worldZ < cliffZ + wallWidth) {
+                    const t = 1 - (worldZ - cliffZ) / wallWidth;
+                    yDisplacement -= cliffDepth * t;
+                } else if (worldZ < landingEdgeZ && worldZ > landingEdgeZ - wallWidth) {
+                    const t = 1 - (landingEdgeZ - worldZ) / wallWidth;
+                    yDisplacement -= cliffDepth * t;
                 }
             }
 
@@ -4686,9 +4690,9 @@ class ObstaclesManager {
      */
     createCliffJumpRamp(x, y, z, groundFn = null, scale = 1.0) {
         const group = new THREE.Group();
-        const rampWidth = 16.0 * scale;
-        const rampLength = 30.0 * scale;
-        const rampHeight = 7.0 * scale; // Reduced from 11 to 7 for less air
+        const rampWidth = 22.0 * scale;
+        const rampLength = 48.0 * scale;
+        const rampHeight = 13.0 * scale; // Oversized kicker built to clear the deep chasm
 
         // Support legs so the ramp reads as built structure, not a floating slab.
         const legMat = new THREE.MeshStandardMaterial({ color: 0x5d4037, roughness: 0.9 });
@@ -4733,8 +4737,8 @@ class ObstaclesManager {
         group.position.set(x, baseY, z);
         this.scene.add(group);
 
-        // Reduced boost power for less height - tuned for ~25m apex at scale 1.0
-        const boost = Math.round(38 * scale);
+        // Strong launch for the 60 m-deep, 70 m-long cliff crossing.
+        const boost = Math.round(58 * scale);
         this.ramps.push({
             mesh: group,
             width: rampWidth,
@@ -5645,16 +5649,19 @@ class GamePhysics {
         // Undulating moguls
         y += Math.sin(x * 0.1) * Math.cos(z * 0.07) * 0.45;
 
-        // Cliff gaps — match WorldEnvironment terrain cliffs
-        const cliff = this.cliffPositions.find(cp => Math.abs(cp - z) < 8);
-        if (cliff) {
-            const dist = Math.abs(cliff - z);
-            const cliffWidth = 8;
-            if (dist < cliffWidth) {
-                const t = 1 - dist / cliffWidth;
-                y -= 18 * t; // smooth drop-off
-            } else if (z < cliff) {
-                y -= 18; // beyond cliff
+        // Match the rendered 60 m-deep, 70 m-long cliff trench exactly.
+        const cliff = this.cliffPositions.find(cp => z <= cp + 8 && z >= cp - 78);
+        if (cliff !== undefined) {
+            const cliffDepth = 60;
+            const gapLength = 70;
+            const wallWidth = 8;
+            const landingEdgeZ = cliff - gapLength;
+            if (z <= cliff && z >= landingEdgeZ) {
+                y -= cliffDepth;
+            } else if (z > cliff && z < cliff + wallWidth) {
+                y -= cliffDepth * (1 - (z - cliff) / wallWidth);
+            } else if (z < landingEdgeZ && z > landingEdgeZ - wallWidth) {
+                y -= cliffDepth * (1 - (landingEdgeZ - z) / wallWidth);
             }
         }
 
@@ -7904,8 +7911,9 @@ class SnowAnsherMaster {
             }
             if (bestCp && !this.cliffRampsSpawned.has(bestCp)) {
                 this.cliffRampsSpawned.add(bestCp);
-                const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 18);
-                this.obstacles.createCliffJumpRamp(x, y, z, (gx, gz) => this.physics.getGroundHeightAt(gx, gz), 1.0 + Math.random() * 0.5);
+                // Keep the mega kicker in the centre lane and large enough to read clearly.
+                const x = 0;
+                this.obstacles.createCliffJumpRamp(x, y, z, (gx, gz) => this.physics.getGroundHeightAt(gx, gz), 1.25);
             }
             return; // Don't spawn other obstacles at cliff positions
         }
@@ -8272,20 +8280,13 @@ class SnowAnsherMaster {
 
         
 
-        // Cliff death is only possible immediately after crossing an actual cliff.
-        // The old reducer returned the player's current Z (and stayed -Infinity before
-        // the first cliff), which made the condition fire as soon as Z passed -30:
-        // an invisible death wall at the start of every run.
+        // The chasm is deadly only while the rider is grounded inside its 70 m span.
+        // A rider who launches from the oversized kicker remains airborne and can clear it.
         if (this.physics.isGrounded) {
-            const passedCliff = this.cliffPositions.find(cp =>
-                pPos.z < cp && pPos.z > cp - 35
+            const landedInsideChasm = this.cliffPositions.some(cp =>
+                pPos.z <= cp && pPos.z >= cp - 70
             );
-            if (passedCliff !== undefined) {
-                const hadRamp = this.obstacles.ramps.some(r =>
-                    Math.abs(pPos.z - r.pos.z) < 80 && r.isCliffJumper
-                );
-                if (!hadRamp) this.triggerCrash();
-            }
+            if (landedInsideChasm) this.triggerCrash();
         }
 
 // Collectible Gifts
