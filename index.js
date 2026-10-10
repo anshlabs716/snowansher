@@ -445,10 +445,9 @@ class SnowAnsherMaster {
             return; // Don't spawn other obstacles at cliff positions
         }
 
-        // Keep the entire cliff approach and landing corridor clear of random
-        // hazards. Otherwise a correct jump can land directly inside a tree,
-        // boulder, or snowman that was spawned on the far side of the trench.
-        if (this.cliffPositions.some(cp => Math.abs(z - cp) <= 180)) return;
+        // Keep forest scenery alive throughout the run, including around cliffs.
+        // Only gameplay hazards are suppressed in the takeoff/landing corridor.
+        const inCliffCorridor = this.cliffPositions.some(cp => Math.abs(z - cp) <= 180);
 
         // Dense low-poly forest walls hugging both banks of the run (Snow Rider look)
         const flankCount = (this.config.graphics === 'performance') ? 1 : 3;
@@ -464,6 +463,10 @@ class SnowAnsherMaster {
                 }
             }
         }
+
+        // Keep random gameplay hazards out of the cliff takeoff/landing corridor,
+        // but do not skip the trees above: that made the whole world look empty.
+        if (inCliffCorridor) return;
 
         if (rand < 0.1) {
             // Holiday Gift Box
@@ -671,6 +674,20 @@ class SnowAnsherMaster {
         const effectiveDt = this.powerups.hasActive('slowmo') ? dt * 0.6 : dt;
         this.physics.update(effectiveDt, this.keys, this.currentSledData.stats, this.sound, this.particles);
 
+        // A cliff is a fatal gap, not a safe trench with a walkable floor. If the
+        // sled drops below the track surface while between the two cliff edges,
+        // trigger the normal game-over flow. A successful jump stays above this line.
+        const cliffGap = this.cliffPositions.find(cp =>
+            this.physics.position.z <= cp && this.physics.position.z >= cp - 44
+        );
+        if (cliffGap !== undefined) {
+            const trackSurfaceY = -this.physics.position.z * Math.tan(this.physics.SLOPE_ANGLE);
+            if (this.physics.position.y < trackSurfaceY - 8) {
+                this.triggerCrash();
+                return;
+            }
+        }
+
         // Distance & Speed Tracking
         const multi = this.powerups.hasActive('multiplier') ? 2.0 : 1.0;
         this.distance += (this.physics.speed * dt * 0.5) * multi;
@@ -783,12 +800,15 @@ class SnowAnsherMaster {
             // Cliff jumpers are long (up to 45u), so test their whole deck, not half.
             // The old half-length window meant big ramps were easy to miss at speed.
             const halfLen = ramp.length * 0.5;
-            // Only launch near the downhill lip, not at the uphill end of the deck.
+            // High-speed frames can skip a narrow launch window; cover the downhill
+            // half of the deck and launch once when the sled is still grounded.
             const atLaunchLip = !ramp.isCliffJumper || (
-                pPos.z <= ramp.pos.z - ramp.length * 0.25 &&
-                pPos.z >= ramp.pos.z - ramp.length * 0.48
+                pPos.z <= ramp.pos.z - ramp.length * 0.02 &&
+                pPos.z >= ramp.pos.z - ramp.length * 0.68
             );
-            if (dx < ramp.width * 0.5 && dz < halfLen && atLaunchLip && this.physics.isGrounded) {
+            if (!ramp.launched && dx < ramp.width * 0.5 && dz < halfLen + 2 &&
+                atLaunchLip && this.physics.isGrounded) {
+                ramp.launched = true;
                 this.physics.launchRamp(ramp.boostPower, this.sound, this.particles);
             }
         });
