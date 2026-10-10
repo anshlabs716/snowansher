@@ -280,6 +280,37 @@ class WorldEnvironment {
         this.terrainChunks.push({ mesh, index });
     }
 
+    // Keep visible terrain and collision terrain aligned after chunk recycling.
+    deformTerrainChunk(chunk) {
+        const geo = chunk.mesh.geometry;
+        const pos = geo.attributes.position;
+        const slopeCos = Math.cos(this.SLOPE_ANGLE);
+        for (let i = 0; i < pos.count; i++) {
+            const x = pos.getX(i);
+            const zLocal = pos.getY(i);
+            const worldZ = chunk.mesh.position.z - zLocal * slopeCos;
+            const absX = Math.abs(x);
+            let displacement = 0;
+            if (absX > this.TRACK_WIDTH * 0.44) {
+                const rim = absX - this.TRACK_WIDTH * 0.44;
+                displacement = 2.5 * Math.tanh(Math.pow(rim * 0.15, 1.2) / 2.5);
+            }
+            displacement += Math.sin(x * 0.1) * Math.cos(worldZ * 0.07) * 0.45;
+            const cliff = this.cliffPositions.find(cp => worldZ <= cp + 8 && worldZ >= cp - 78);
+            if (cliff !== undefined) {
+                const depth = 60;
+                const landing = cliff - 70;
+                if (worldZ <= cliff && worldZ >= landing) displacement -= depth;
+                else if (worldZ > cliff && worldZ < cliff + 8) displacement -= depth * (1 - (worldZ - cliff) / 8);
+                else if (worldZ < landing && worldZ > landing - 8) displacement -= depth * (1 - (landing - worldZ) / 8);
+            }
+            pos.setZ(i, displacement);
+        }
+        pos.needsUpdate = true;
+        geo.computeVertexNormals();
+        geo.computeBoundingSphere();
+    }
+
     setupSkiLiftPylons() {
         this.liftGroup = new THREE.Group();
         const metalMat = new THREE.MeshStandardMaterial({ color: 0x57606f, metalness: 0.8, roughness: 0.3 });
@@ -447,6 +478,9 @@ class WorldEnvironment {
                 chunk.mesh.position.z = playerPos.z - aheadReach;
                 // Keep the recycled chunk exactly on the shared slope surface
                 chunk.mesh.position.y = -chunk.mesh.position.z * Math.tan(this.SLOPE_ANGLE);
+                // Rebuild sculpted terrain at its NEW world position. Otherwise a
+                // recycled chunk carries an old cliff while physics keeps the gap fixed.
+                this.deformTerrainChunk(chunk);
             }
         });
 
