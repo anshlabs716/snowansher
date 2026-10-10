@@ -473,20 +473,17 @@ class WorldEnvironment {
         // Recycle terrain chunks seamlessly along the slope line y = -z * tan(SLOPE)
         const chunkCos = this.CHUNK_LENGTH * Math.cos(this.SLOPE_ANGLE); // chunk footprint along Z
 
-        // Ground vanished under the sled at speed: the recycle test only fired once a
-        // chunk was a full chunk-length BEHIND the player, so the mesh lagged the sled
-        // and you outran the terrain. Recycle as soon as a chunk falls behind, and keep
-        // a generous run of ground ahead of the sled at all times.
+        // Recycle behind-player chunks immediately beyond the furthest downhill
+        // chunk. This keeps all six terrain meshes contiguous instead of bunching
+        // them up at a fixed player-relative Z and leaving visible holes.
         const recycleBehind = this.CHUNK_LENGTH * 1.5;
-        const aheadReach = this.CHUNK_LENGTH * 4;
-
         this.terrainChunks.forEach(chunk => {
             if (chunk.mesh.position.z > playerPos.z + recycleBehind) {
-                chunk.mesh.position.z = playerPos.z - aheadReach;
-                // Keep the recycled chunk exactly on the shared slope surface
+                const furthestDownhillZ = Math.min(
+                    ...this.terrainChunks.map(existing => existing.mesh.position.z)
+                );
+                chunk.mesh.position.z = furthestDownhillZ - this.CHUNK_LENGTH * Math.cos(this.SLOPE_ANGLE);
                 chunk.mesh.position.y = -chunk.mesh.position.z * Math.tan(this.SLOPE_ANGLE);
-                // Rebuild sculpted terrain at its NEW world position. Otherwise a
-                // recycled chunk carries an old cliff while physics keeps the gap fixed.
                 this.deformTerrainChunk(chunk);
             }
         });
