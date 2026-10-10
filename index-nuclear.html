@@ -5980,7 +5980,7 @@ class MultiplayerBotRiders {
         });
 
         // Keep within track limits
-            bot.targetX = THREE.MathUtils.clamp(bot.targetX, -this.physics.TRACK_WIDTH * 0.4, this.physics.TRACK_WIDTH * 0.4);
+            bot.targetX = THREE.MathUtils.clamp(bot.targetX, -this.physics.TRACK_WIDTH * 0.48, this.physics.TRACK_WIDTH * 0.48);
 
             // Interpolate position toward target lane
             bot.pos.x += (bot.targetX - bot.pos.x) * 4.0 * dt;
