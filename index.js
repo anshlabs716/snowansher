@@ -430,9 +430,15 @@ class SnowAnsherMaster {
             }
             if (bestCp && !this.cliffRampsSpawned.has(bestCp)) {
                 this.cliffRampsSpawned.add(bestCp);
-                // Keep the mega kicker in the centre lane and large enough to read clearly.
+                // Place the ramp from the cliff's scheduled Z, not from whichever
+                // random obstacle-spawn tick happened to notice the cliff.
                 const x = 0;
-                this.obstacles.createCliffJumpRamp(x, y, z, (gx, gz) => this.physics.getGroundHeightAt(gx, gz), 1.25);
+                const scale = 1.25;
+                const rampLength = 48.0 * scale;
+                const rampHeight = 13.0 * scale;
+                const rampCenterZ = bestCp + rampLength * 0.5;
+                const rampY = this.physics.getGroundHeightAt(x, rampCenterZ + rampLength * 0.5) - rampHeight * 0.5;
+                this.obstacles.createCliffJumpRamp(x, rampY, rampCenterZ, (gx, gz) => this.physics.getGroundHeightAt(gx, gz), scale);
             }
             return; // Don't spawn other obstacles at cliff positions
         }
