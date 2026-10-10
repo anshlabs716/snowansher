@@ -387,11 +387,13 @@ class ObstaclesManager {
             frame.add(chev);
         }
 
-        // Pin the uphill footing to the actual snow surface and keep the deck
-        // from floating above it.
+        // Align the uphill end of the sloped deck with the snow. The rotation
+        // raises the downhill (-Z) lip; account for that rotation when anchoring.
         let baseY = y;
         if (typeof groundFn === 'function') {
-            baseY = groundFn(x, z + rampLength * 0.5) - rampHeight * 0.5;
+            baseY = groundFn(x, z + rampLength * 0.5)
+                + rampLength * 0.5 * Math.sin(0.35)
+                - rampHeight * 0.5 * Math.cos(0.35);
         }
 
         group.position.set(x, baseY, z);
