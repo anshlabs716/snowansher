@@ -768,6 +768,64 @@
             #touch-controls { display: block; }
         }
     </style>
+<link rel="icon" type="image/svg+xml" href="./favicon.svg">
+    <link rel="apple-touch-icon" href="./favicon.svg">
+<style id="snow-colour-icon-system">
+/* Full-colour icon system: icons use semantic colours instead of inheriting one monochrome tint. */
+.snow-fa-icon { color:#c4b5fd; filter:drop-shadow(0 1px 3px currentColor); }
+i.fa-gift, svg.snow-fa-icon[data-icon="fa-gift"] { color:#fb7185 !important; }
+i.fa-heart, svg.snow-fa-icon[data-icon="fa-heart"] { color:#fb7185 !important; }
+i.fa-times, svg.snow-fa-icon[data-icon="fa-times"] { color:#fb7185 !important; }
+i.fa-close, svg.snow-fa-icon[data-icon="fa-close"] { color:#fb7185 !important; }
+i.fa-minus, svg.snow-fa-icon[data-icon="fa-minus"] { color:#fb7185 !important; }
+i.fa-trophy, svg.snow-fa-icon[data-icon="fa-trophy"] { color:#fbbf24 !important; }
+i.fa-medal, svg.snow-fa-icon[data-icon="fa-medal"] { color:#fbbf24 !important; }
+i.fa-coins, svg.snow-fa-icon[data-icon="fa-coins"] { color:#fbbf24 !important; }
+i.fa-shield-alt, svg.snow-fa-icon[data-icon="fa-shield-alt"] { color:#60a5fa !important; }
+i.fa-shield, svg.snow-fa-icon[data-icon="fa-shield"] { color:#60a5fa !important; }
+i.fa-info-circle, svg.snow-fa-icon[data-icon="fa-info-circle"] { color:#60a5fa !important; }
+i.fa-arrow-left, svg.snow-fa-icon[data-icon="fa-arrow-left"] { color:#60a5fa !important; }
+i.fa-arrow-right, svg.snow-fa-icon[data-icon="fa-arrow-right"] { color:#60a5fa !important; }
+i.fa-arrow-up, svg.snow-fa-icon[data-icon="fa-arrow-up"] { color:#60a5fa !important; }
+i.fa-arrow-down, svg.snow-fa-icon[data-icon="fa-arrow-down"] { color:#60a5fa !important; }
+i.fa-magnet, svg.snow-fa-icon[data-icon="fa-magnet"] { color:#f97316 !important; }
+i.fa-lock, svg.snow-fa-icon[data-icon="fa-lock"] { color:#f97316 !important; }
+i.fa-rocket, svg.snow-fa-icon[data-icon="fa-rocket"] { color:#c084fc !important; }
+i.fa-question-circle, svg.snow-fa-icon[data-icon="fa-question-circle"] { color:#c084fc !important; }
+i.fa-star, svg.snow-fa-icon[data-icon="fa-star"] { color:#facc15 !important; }
+i.fa-bolt, svg.snow-fa-icon[data-icon="fa-bolt"] { color:#facc15 !important; }
+i.fa-play, svg.snow-fa-icon[data-icon="fa-play"] { color:#34d399 !important; }
+i.fa-chart-line, svg.snow-fa-icon[data-icon="fa-chart-line"] { color:#34d399 !important; }
+i.fa-pause, svg.snow-fa-icon[data-icon="fa-pause"] { color:#f59e0b !important; }
+i.fa-home, svg.snow-fa-icon[data-icon="fa-home"] { color:#38bdf8 !important; }
+i.fa-eye, svg.snow-fa-icon[data-icon="fa-eye"] { color:#38bdf8 !important; }
+i.fa-rotate, svg.snow-fa-icon[data-icon="fa-rotate"] { color:#38bdf8 !important; }
+i.fa-cog, svg.snow-fa-icon[data-icon="fa-cog"] { color:#a78bfa !important; }
+i.fa-keyboard, svg.snow-fa-icon[data-icon="fa-keyboard"] { color:#a78bfa !important; }
+i.fa-sliders-h, svg.snow-fa-icon[data-icon="fa-sliders-h"] { color:#a78bfa !important; }
+i.fa-wrench, svg.snow-fa-icon[data-icon="fa-wrench"] { color:#fb923c !important; }
+i.fa-volume-up, svg.snow-fa-icon[data-icon="fa-volume-up"] { color:#22d3ee !important; }
+i.fa-volume-down, svg.snow-fa-icon[data-icon="fa-volume-down"] { color:#22d3ee !important; }
+i.fa-volume-mute, svg.snow-fa-icon[data-icon="fa-volume-mute"] { color:#94a3b8 !important; }
+i.fa-music, svg.snow-fa-icon[data-icon="fa-music"] { color:#e879f9 !important; }
+i.fa-snowflake, svg.snow-fa-icon[data-icon="fa-snowflake"] { color:#67e8f9 !important; }
+i.fa-tree, svg.snow-fa-icon[data-icon="fa-tree"] { color:#4ade80 !important; }
+i.fa-check, svg.snow-fa-icon[data-icon="fa-check"] { color:#4ade80 !important; }
+i.fa-unlock, svg.snow-fa-icon[data-icon="fa-unlock"] { color:#4ade80 !important; }
+i.fa-plus, svg.snow-fa-icon[data-icon="fa-plus"] { color:#4ade80 !important; }
+i.fa-flag, svg.snow-fa-icon[data-icon="fa-flag"] { color:#f87171 !important; }
+i.fa-shopping-cart, svg.snow-fa-icon[data-icon="fa-shopping-cart"] { color:#2dd4bf !important; }
+i.fa-gamepad, svg.snow-fa-icon[data-icon="fa-gamepad"] { color:#f472b6 !important; }
+
+/* Give icon-bearing controls their own colour treatment without changing their behaviour. */
+.hud-icon-box { background:linear-gradient(145deg,rgba(56,189,248,.22),rgba(167,139,250,.14)) !important; border-color:rgba(125,211,252,.34) !important; }
+.hud-icon-box.gold { background:linear-gradient(145deg,rgba(251,191,36,.25),rgba(249,115,22,.12)) !important; }
+.mode-card i { filter:drop-shadow(0 0 10px currentColor); }
+.tab-btn i, .tab-btn svg { filter:drop-shadow(0 1px 4px currentColor); }
+.btn-action i, .btn-action svg { color:#10233f !important; filter:drop-shadow(0 1px 1px rgba(255,255,255,.3)); }
+button i, button svg { transition:color .18s ease, filter .18s ease, transform .18s ease; }
+button:hover i, button:hover svg { filter:drop-shadow(0 0 7px currentColor); }
+</style>
 </head>
 <body>
     <!-- 3D Canvas WebGL Render Layer -->
@@ -3972,20 +4030,17 @@ class WorldEnvironment {
         // Recycle terrain chunks seamlessly along the slope line y = -z * tan(SLOPE)
         const chunkCos = this.CHUNK_LENGTH * Math.cos(this.SLOPE_ANGLE); // chunk footprint along Z
 
-        // Ground vanished under the sled at speed: the recycle test only fired once a
-        // chunk was a full chunk-length BEHIND the player, so the mesh lagged the sled
-        // and you outran the terrain. Recycle as soon as a chunk falls behind, and keep
-        // a generous run of ground ahead of the sled at all times.
+        // Recycle behind-player chunks immediately beyond the furthest downhill
+        // chunk. This keeps all six terrain meshes contiguous instead of bunching
+        // them up at a fixed player-relative Z and leaving visible holes.
         const recycleBehind = this.CHUNK_LENGTH * 1.5;
-        const aheadReach = this.CHUNK_LENGTH * 4;
-
         this.terrainChunks.forEach(chunk => {
             if (chunk.mesh.position.z > playerPos.z + recycleBehind) {
-                chunk.mesh.position.z = playerPos.z - aheadReach;
-                // Keep the recycled chunk exactly on the shared slope surface
+                const furthestDownhillZ = Math.min(
+                    ...this.terrainChunks.map(existing => existing.mesh.position.z)
+                );
+                chunk.mesh.position.z = furthestDownhillZ - this.CHUNK_LENGTH * Math.cos(this.SLOPE_ANGLE);
                 chunk.mesh.position.y = -chunk.mesh.position.z * Math.tan(this.SLOPE_ANGLE);
-                // Rebuild sculpted terrain at its NEW world position. Otherwise a
-                // recycled chunk carries an old cliff while physics keeps the gap fixed.
                 this.deformTerrainChunk(chunk);
             }
         });
@@ -7970,10 +8025,9 @@ class SnowAnsherMaster {
             return; // Don't spawn other obstacles at cliff positions
         }
 
-        // Keep the entire cliff approach and landing corridor clear of random
-        // hazards. Otherwise a correct jump can land directly inside a tree,
-        // boulder, or snowman that was spawned on the far side of the trench.
-        if (this.cliffPositions.some(cp => Math.abs(z - cp) <= 180)) return;
+        // Keep forest scenery alive throughout the run, including around cliffs.
+        // Only gameplay hazards are suppressed in the takeoff/landing corridor.
+        const inCliffCorridor = this.cliffPositions.some(cp => Math.abs(z - cp) <= 180);
 
         // Dense low-poly forest walls hugging both banks of the run (Snow Rider look)
         const flankCount = (this.config.graphics === 'performance') ? 1 : 3;
@@ -7989,6 +8043,10 @@ class SnowAnsherMaster {
                 }
             }
         }
+
+        // Keep random gameplay hazards out of the cliff takeoff/landing corridor,
+        // but do not skip the trees above: that made the whole world look empty.
+        if (inCliffCorridor) return;
 
         if (rand < 0.1) {
             // Holiday Gift Box
@@ -8196,6 +8254,20 @@ class SnowAnsherMaster {
         const effectiveDt = this.powerups.hasActive('slowmo') ? dt * 0.6 : dt;
         this.physics.update(effectiveDt, this.keys, this.currentSledData.stats, this.sound, this.particles);
 
+        // A cliff is a fatal gap, not a safe trench with a walkable floor. If the
+        // sled drops below the track surface while between the two cliff edges,
+        // trigger the normal game-over flow. A successful jump stays above this line.
+        const cliffGap = this.cliffPositions.find(cp =>
+            this.physics.position.z <= cp && this.physics.position.z >= cp - 44
+        );
+        if (cliffGap !== undefined) {
+            const trackSurfaceY = -this.physics.position.z * Math.tan(this.physics.SLOPE_ANGLE);
+            if (this.physics.position.y < trackSurfaceY - 8) {
+                this.triggerCrash();
+                return;
+            }
+        }
+
         // Distance & Speed Tracking
         const multi = this.powerups.hasActive('multiplier') ? 2.0 : 1.0;
         this.distance += (this.physics.speed * dt * 0.5) * multi;
@@ -8308,12 +8380,16 @@ class SnowAnsherMaster {
             // Cliff jumpers are long (up to 45u), so test their whole deck, not half.
             // The old half-length window meant big ramps were easy to miss at speed.
             const halfLen = ramp.length * 0.5;
-            // Cliff jumpers launch only at the downhill lip, never at the uphill entrance.
+            // High-speed frames can skip a narrow launch window; cover the downhill
+            // half of the deck and launch once when the sled is still grounded.
             const atLaunchLip = !ramp.isCliffJumper || (
-                pPos.z <= ramp.pos.z - ramp.length * 0.25 &&
-                pPos.z >= ramp.pos.z - ramp.length * 0.48
+                pPos.z <= ramp.pos.z - ramp.length * 0.02 &&
+                pPos.z >= ramp.pos.z - ramp.length * 0.68
             );
-            if (dx < ramp.width * 0.5 && dz < halfLen && atLaunchLip && this.physics.isGrounded) {
+            if ((!ramp.isCliffJumper || !ramp.launched) &&
+                dx < ramp.width * 0.5 && dz < halfLen + 2 &&
+                atLaunchLip && this.physics.isGrounded) {
+                if (ramp.isCliffJumper) ramp.launched = true;
                 this.physics.launchRamp(ramp.boostPower, this.sound, this.particles);
             }
         });
@@ -8871,6 +8947,7 @@ if (document.readyState === 'loading') {
             const svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
             svg.setAttribute("viewBox","0 0 24 24");
             svg.setAttribute("class","snow-fa-icon");
+            svg.setAttribute("data-icon", key || "fa-star");
             svg.setAttribute("aria-hidden","true");
             const path = document.createElementNS("http://www.w3.org/2000/svg","path");
             path.setAttribute("d", paths[key] || fallback);
