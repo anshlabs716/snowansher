@@ -3727,7 +3727,8 @@ class WorldEnvironment {
         // Determine if this chunk contains a cliff gap
         const chunkStartZ = centerZ + length / 2 * slopeCos;
         const chunkEndZ = centerZ - length / 2 * slopeCos;
-        const cliffInChunk = this.cliffPositions.find(cp => cp >= chunkEndZ && cp <= chunkStartZ);
+        const gapLength = 70;
+        const cliffInChunk = this.cliffPositions.find(cp => cp >= chunkEndZ && cp - gapLength <= chunkStartZ);
         const cliffZ = cliffInChunk || null;
 
         for (let i = 0; i < pos.count; i++) {
