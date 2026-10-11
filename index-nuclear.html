@@ -3746,7 +3746,7 @@ class WorldEnvironment {
             }
 
             // Natural terrain moguls and ripples
-            yDisplacement += Math.sin(x * 0.1) * Math.cos(worldZ * 0.07) * 0.45;
+            yDisplacement += Math.sin(x * 0.1) * Math.cos(worldZ * 0.07) * 0.8;
 
             // Create cliff gap: if this row is at a cliff position, drop the terrain sharply
             if (cliffZ) {
@@ -5590,7 +5590,7 @@ class GamePhysics {
         this.jumpHoldTime = 0.0;
         this.jumpImpulse = 22.0;      // Tap clears snowmen (4.1m) & snowballs (~6.8m); hold for big trick air
         this.gravity = 42.0;           // Responsive gravity
-        this.hangTimeMultiplier = 0.72; // Light floatiness at jump apex
+        this.hangTimeMultiplier = 0.5; // Light floatiness at jump apex
 
         // Lateral steering & drift
         this.steerInput = 0.0;
@@ -8242,7 +8242,7 @@ class SnowAnsherMaster {
             const dz = Math.abs(pPos.z - ramp.pos.z);
             // Cliff jumpers are long (up to 45u), so test their whole deck, not half.
             // The old half-length window meant big ramps were easy to miss at speed.
-            const halfLen = ramp.length * (ramp.isCliffJumper ? 0.85 : 0.5);
+            const halfLen = ramp.length * (ramp.isCliffJumper || ramp.isMega ? 0.85 : 0.5);
             if (dx < ramp.width * 0.5 && dz < halfLen && this.physics.isGrounded) {
                 this.physics.launchRamp(ramp.boostPower, this.sound, this.particles);
             }

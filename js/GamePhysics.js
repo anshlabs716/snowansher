@@ -49,7 +49,7 @@ class GamePhysics {
         this.jumpHoldTime = 0.0;
         this.jumpImpulse = 22.0;      // Tap clears snowmen (4.1m) & snowballs (~6.8m); hold for big trick air
         this.gravity = 42.0;           // Responsive gravity
-        this.hangTimeMultiplier = 0.72; // Light floatiness at jump apex
+        this.hangTimeMultiplier = 0.5; // Light floatiness at jump apex
 
         // Lateral steering & drift
         this.steerInput = 0.0;

@@ -244,7 +244,7 @@ class WorldEnvironment {
             }
 
             // Natural terrain moguls and ripples
-            yDisplacement += Math.sin(x * 0.1) * Math.cos(worldZ * 0.07) * 0.45;
+            yDisplacement += Math.sin(x * 0.1) * Math.cos(worldZ * 0.07) * 0.8;
 
             // Create cliff gap: if this row is at a cliff position, drop the terrain sharply
             if (cliffZ) {

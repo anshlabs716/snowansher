@@ -768,7 +768,7 @@ class SnowAnsherMaster {
             const dz = Math.abs(pPos.z - ramp.pos.z);
             // Cliff jumpers are long (up to 45u), so test their whole deck, not half.
             // The old half-length window meant big ramps were easy to miss at speed.
-            const halfLen = ramp.length * (ramp.isCliffJumper ? 0.85 : 0.5);
+            const halfLen = ramp.length * (ramp.isCliffJumper || ramp.isMega ? 0.85 : 0.5);
             if (dx < ramp.width * 0.5 && dz < halfLen && this.physics.isGrounded) {
                 this.physics.launchRamp(ramp.boostPower, this.sound, this.particles);
             }
