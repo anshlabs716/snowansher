@@ -357,11 +357,18 @@ This makes bugs much easier to reproduce.
 
 **Ansh Bhatia**
 
-### 🤖 Development Assistance
+#### Things done:
+
+- Created this repo
+- Made all the files and things
+
+### Development Assistance
 
 - shozanthebozan
 
----
+#### Things done:
+- Edit a lot of what Ansh has done
+- Verify things are going correctly
 
 ## License
 
