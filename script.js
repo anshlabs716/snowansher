@@ -452,16 +452,19 @@ class SnowAnsherMaster {
 
         // Keep forest scenery alive throughout the run, including around cliffs.
         // Only gameplay hazards are suppressed in the takeoff/landing corridor.
-        const inCliffCorridor = this.cliffPositions.some(cp => Math.abs(z - cp) <= 180);
+        // Keep random gameplay hazards out of the cliff takeoff/landing corridor,
+        // but do not skip the trees above: that made the whole world look empty.
+        // Corridor sized to cover ramp takeoff (cliff+65) and trench landing (cliff-90).
+        const inCliffCorridor = this.cliffPositions.some(cp => Math.abs(z - cp) <= 90);
 
         // Dense low-poly forest walls hugging both banks of the run (Snow Rider look)
-        const flankCount = (this.config.graphics === 'performance') ? 1 : 3;
+        const flankCount = (this.config.graphics === 'performance') ? 2 : 5;
         for (const side of [-1, 1]) {
             for (let f = 0; f < flankCount; f++) {
                 const x = side * (this.physics.TRACK_WIDTH * 0.52 + 3 + Math.random() * 11);
                 const fz = z + (Math.random() - 0.5) * 22;
                 const fy = this.physics.getGroundHeightAt(x, fz);
-                if (Math.random() < 0.68) {
+                if (Math.random() < 0.85) {
                     this.obstacles.createPineTree(x, fy, fz);
                 } else {
                     this.obstacles.createBareTree(x, fy, fz);
@@ -473,54 +476,60 @@ class SnowAnsherMaster {
         // but do not skip the trees above: that made the whole world look empty.
         if (inCliffCorridor) return;
 
-        if (rand < 0.1) {
+        if (rand < 0.07) {
             // Holiday Gift Box
             const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 8);
             this.obstacles.createGiftBox(x, y, z);
-        } else if (rand < 0.16) {
+        } else if (rand < 0.12) {
             // Power-Up Capsule
             const types = ['shield', 'magnet', 'rocket', 'multiplier'];
             const chosen = types[Math.floor(Math.random() * types.length)];
             const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 10);
             this.obstacles.createPowerupOrb(x, y, z, chosen);
-        } else if (rand < 0.24) {
+        } else if (rand < 0.18) {
             // Speed Boost Chevron Pad
             const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 12);
             this.obstacles.createBoostPad(x, y, z);
-        } else if (rand < 0.35) {
-            // MEGA Ski Jump Kicker (Launch high into the sky!)
-            const isMega = (Math.random() < 0.45);
+        } else if (rand < 0.26) {
+            // Normal ski jump kicker (mega kickers removed -- always a normal ramp now)
             const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 14);
-            this.obstacles.createMegaRamp(x, y, z, isMega, (gx, gz) => this.physics.getGroundHeightAt(gx, gz));
-        } else if (rand < 0.44) {
+            this.obstacles.createMegaRamp(x, y, z, false, (gx, gz) => this.physics.getGroundHeightAt(gx, gz));
+        } else if (rand < 0.32) {
             // Rainbow Ice Grind Rail
             const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 16);
             this.obstacles.createGrindRail(x, y, z, 40);
-        } else if (rand < 0.58) {
-            // Giant Rolling Avalanche Boulder
+        } else if (rand < 0.46) {
+            // Giant rolling avalanche snowball
             const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 10);
             this.obstacles.createRollingBoulder(x, y, z);
-        } else if (rand < 0.62) {
-            // Giant Rolling Avalanche Boulder (extra, non-cliff)
+        } else if (rand < 0.53) {
+            // Extra snowball (sometimes a pair rolls down together)
             const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 10);
             this.obstacles.createRollingBoulder(x, y, z);
-        } else if (rand < 0.70) {
-            // Cute 3D Snowman
-            const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 8);
-            this.obstacles.createSnowman(x, y, z);
-        } else if (rand < 0.76) {
-            // Dark grey rock cluster -- rare but lethal (hop over it)
-            const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 12);
-            this.obstacles.createRock(x, y, z);
+        } else if (rand < 0.67) {
+            // Cute 3D Snowman (often a snowman pair)
+            const pairs = (Math.random() < 0.35) ? 2 : 1;
+            for (let s = 0; s < pairs; s++) {
+                const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 8);
+                this.obstacles.createSnowman(x, y, z + s * 6);
+            }
+        } else if (rand < 0.79) {
+            // Dark grey rock cluster -- lethal (hop over it)
+            const pairs = (Math.random() < 0.3) ? 2 : 1;
+            for (let s = 0; s < pairs; s++) {
+                const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 12);
+                this.obstacles.createRock(x, y, z + s * 5);
+            }
         } else {
             // Snow pines / bare winter trees right on the run
-            const count = (Math.random() < 0.4) ? 2 : 1;
+            const count = (Math.random() < 0.55) ? 3 : 2;
             for (let c = 0; c < count; c++) {
                 const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 6);
+                const fz = z + (c - count * 0.5) * 7;
                 if (Math.random() < 0.65) {
-                    this.obstacles.createPineTree(x, y, z);
+                    this.obstacles.createPineTree(x, y, fz);
                 } else {
-                    this.obstacles.createBareTree(x, y, z);
+                    this.obstacles.createBareTree(x, y, fz);
                 }
             }
         }
