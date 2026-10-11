@@ -234,10 +234,45 @@ Performance will depend on your hardware, browser, and selected graphics setting
 
 ~~~~text
 snowansher/
-├── index.html
-├── index.js
-├── LICENSE
-└── README.md
+|
+├── js/                          
+│   ├── Shaders.js                 # Custom visual shaders
+│   ├── AudioEngine.js             # Sound effects and audio
+│   ├── AudioSynthesizerBank.js    # Procedural sound synthesis
+│   ├── SoundtrackData.js          # Music composition data
+│   ├── RiderModel.js              # 3D rider model and animation
+│   ├── StuntAnimationLibrary.js   # Stunt animation definitions
+│   ├── SledCollection.js          # Sled definitions and models
+│   ├── CosmeticsCatalog.js        # Cosmetic item definitions
+│   ├── WorldEnvironment.js        # Main game environment
+│   ├── ProceduralDecorations.js   # Procedural scenery
+│   ├── SlopeTrackPatterns.js      # Track and obstacle patterns
+│   ├── ObstaclesManager.js        # Obstacles and pickups
+│   ├── PowerupSystem.js           # Power-up effects and timers
+│   ├── TrickSystem.js             # Tricks and trick scoring
+│   ├── ParticleEngine.js          # Particle effects
+│   ├── GamePhysics.js             # Player movement and physics
+│   ├── MultiplayerBotRiders.js    # AI-controlled rival riders
+│   ├── AchievementsCatalog.js     # Achievement definitions
+│   ├── GameUI.js                  # Game interface and menus
+│   ├── GhostRacer.js              # Previous-run ghost system
+│   ├── BiomesManager.js           # Biome and environment changes
+│   ├── WeatherFX.js               # Weather and atmospheric effects
+│   ├── Customizer.js              # Rider and sled customisation
+│   ├── TelemetryAndLeaderboard.js # Run statistics and leaderboard
+│   ├── TerrainBiomesMesher.js     # Special terrain geometry
+│   ├── StuntComboEngine.js        # Stunt combo tracking
+│   ├── DailyChallenges.js         # Daily challenge system
+│   └── VisualPostProcessor.js     # Final rendering effects
+│
+├── .gitignore                   
+├── LICENSE                        # Apache License 2.0
+├── README.md                      # Project documentation
+├── SECURITY.md                    # Security reporting policy 
+├── favicon.svg                    # Browser tab icon
+├── index.html                     # Game interface
+├── index.js                       # Game controller
+└── three.r128.min.js              # Locally bundled Three.js library
 ~~~~
 
 ---
