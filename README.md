@@ -36,7 +36,7 @@ Serving HTTP on 0.0.0.0 port 8000 (http://0.0.0.0:8000/) ...
 
 ## 📑 Table of Contents
 
-  - [About](#about)
+  - [About](#about-the-game)
   - [Features](#features)
   - [Gameplay](#gameplay)
   - [Physics](#physics)
@@ -69,7 +69,7 @@ Serving HTTP on 0.0.0.0 port 8000 (http://0.0.0.0:8000/) ...
   - [Support](#support)
   - [SnowAnsher](#snowansher)
 
-## About
+## About the game
 
 **SnowAnsher** is a browser-based 3D snowboarding game inspired by classic snow-riding games.
 
