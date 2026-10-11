@@ -53,9 +53,6 @@ Serving HTTP on 0.0.0.0 port 8000 (http://0.0.0.0:8000/) ...
   - [Vanilla JavaScript](#vanilla-javascript)
   - [Three.js](#threejs)
   - [Cannon.js](#cannonjs)
-  - [Getting Started](#getting-started)
-  - [1. Clone the repository](#1-clone-the-repository)
-  - [2. Launch the game](#2-launch-the-game)
   - [Browser Compatibility](#browser-compatibility)
   - [Project Structure](#project-structure)
   - [Architecture](#architecture)
@@ -216,34 +213,6 @@ Used for:
 
 ---
 
-## Getting Started
-
-SnowAnsher runs directly in a modern web browser with WebGL support.
-
-### Quick Start (No Server Needed)
-
-**Option A — Single file, double-click to run (recommended):**
-```bash
-git clone https://github.com/anshlabs716/snowansher.git
-cd snowansher
-# Open index-nuclear.html in your browser (double-click or right-click → Open With)
-```
-
-`index-nuclear.html` contains **everything inlined** (Three.js, all modules, CSS, icons) — zero external requests. Works via `file://` protocol.
-
----
-
-**Option B — Modular version (requires local server):**
-```bash
-git clone https://github.com/anshlabs716/snowansher.git
-cd snowansher
-python3 -m http.server 8080
-# Then open http://localhost:8080/index.html
-```
-
-> **Why a server?** Browsers block relative script/module loads (`file://` protocol security). The modular `index.html` loads 30 local JS files + Three.js locally — this only works over HTTP(S).
-
----
 
 ## Browser Compatibility
 
@@ -251,7 +220,7 @@ SnowAnsher is designed for modern browsers with WebGL support.
 
 Recommended browsers include:
 
-- Firefox
+- Firefox/Firefox Forks
 - Chromium
 - Microslop Edging
 - Safari
