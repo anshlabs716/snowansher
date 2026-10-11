@@ -60,8 +60,6 @@ Serving HTTP on 0.0.0.0 port 8000 (http://0.0.0.0:8000/) ...
   - [Contributing](#contributing)
   - [Bug Reports](#bug-reports)
   - [Credits](#credits)
-  - [Director](#director)
-  - [Development Assistance](#development-assistance)
   - [License](#license)
   - [Support](#support)
   - [SnowAnsher](#snowansher)
