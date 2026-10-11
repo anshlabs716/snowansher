@@ -26,7 +26,7 @@ git clone https://github.com/anshlabs716/snowansher.git
 cd snowansher
 python3 -m http.server -d .
 ```
-Then open the link which python is serving this on, for example, here my link was `http://0.0.0.0:8000/`
+Then open the link which python is serving this on, for example, here my link was ```http://0.0.0.0:8000/```
 ```
 ~/GitHub/snowansher $> python3 -m http.server -d .
 Serving HTTP on 0.0.0.0 port 8000 (http://0.0.0.0:8000/) ...
