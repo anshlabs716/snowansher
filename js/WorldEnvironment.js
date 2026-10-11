@@ -205,6 +205,10 @@ class WorldEnvironment {
             const z = start - i * this.CHUNK_LENGTH * Math.cos(this.SLOPE_ANGLE);
             chunk.mesh.position.z = z;
             chunk.mesh.position.y = -z * Math.tan(this.SLOPE_ANGLE);
+
+            // Rebuild world-space sculpting immediately after a reset. Otherwise
+            // recycled chunks can display stale cliff geometry for several frames.
+            this.deformTerrainChunk(chunk);
         });
     }
 
@@ -212,7 +216,7 @@ class WorldEnvironment {
         const width = 160;
         const length = this.CHUNK_LENGTH;
         const segX = 36;
-        const segZ = 42;
+        const segZ = 180;
         const geo = new THREE.PlaneGeometry(width, length, segX, segZ);
 
         const pos = geo.attributes.position;
@@ -225,7 +229,9 @@ class WorldEnvironment {
         // Determine if this chunk contains a cliff gap
         const chunkStartZ = centerZ + length / 2 * slopeCos;
         const chunkEndZ = centerZ - length / 2 * slopeCos;
-        const cliffInChunk = this.cliffPositions.find(cp => cp >= chunkEndZ && cp <= chunkStartZ);
+        const gapLength = 44;
+        const wallWidth = 6;
+        const cliffInChunk = this.cliffPositions.find(cp => cp + wallWidth >= chunkEndZ && cp - gapLength - wallWidth <= chunkStartZ);
         const cliffZ = cliffInChunk || null;
 
         for (let i = 0; i < pos.count; i++) {
@@ -246,17 +252,21 @@ class WorldEnvironment {
             // Natural terrain moguls and ripples
             yDisplacement += Math.sin(x * 0.1) * Math.cos(worldZ * 0.07) * 0.8;
 
-            // Create cliff gap: if this row is at a cliff position, drop the terrain sharply
-            if (cliffZ) {
-                const distToCliff = Math.abs(worldZ - cliffZ);
-                const cliffWidth = 8; // width of the transition zone
-                if (distToCliff < cliffWidth) {
-                    // Create a smooth but steep drop-off at the cliff
-                    const t = 1 - distToCliff / cliffWidth;
-                    yDisplacement -= 12 * t; // 12m drop (reduced from 18m for 2.5m rim)
-                } else if (worldZ < cliffZ) {
-                    // Beyond the cliff: terrain continues much lower
-                    yDisplacement -= 12;
+            // Deep cliff trench: 24 m below the track for a 44 m crossing.
+            // Entry and landing walls match GamePhysics ground height.
+            if (cliffZ !== null) {
+                const cliffDepth = 24;
+                const gapLength = 44;
+                const wallWidth = 6;
+                const landingEdgeZ = cliffZ - gapLength;
+                if (worldZ <= cliffZ && worldZ >= landingEdgeZ) {
+                    yDisplacement -= cliffDepth;
+                } else if (worldZ > cliffZ && worldZ < cliffZ + wallWidth) {
+                    const t = 1 - (worldZ - cliffZ) / wallWidth;
+                    yDisplacement -= cliffDepth * t;
+                } else if (worldZ < landingEdgeZ && worldZ > landingEdgeZ - wallWidth) {
+                    const t = 1 - (landingEdgeZ - worldZ) / wallWidth;
+                    yDisplacement -= cliffDepth * t;
                 }
             }
 
@@ -273,6 +283,39 @@ class WorldEnvironment {
 
         this.scene.add(mesh);
         this.terrainChunks.push({ mesh, index });
+    }
+
+    // Keep visible terrain and collision terrain aligned after chunk recycling.
+    deformTerrainChunk(chunk) {
+        const geo = chunk.mesh.geometry;
+        const pos = geo.attributes.position;
+        const slopeCos = Math.cos(this.SLOPE_ANGLE);
+        for (let i = 0; i < pos.count; i++) {
+            const x = pos.getX(i);
+            const zLocal = pos.getY(i);
+            const worldZ = chunk.mesh.position.z - zLocal * slopeCos;
+            const absX = Math.abs(x);
+            let displacement = 0;
+            if (absX > this.TRACK_WIDTH * 0.44) {
+                const rim = absX - this.TRACK_WIDTH * 0.44;
+                displacement = 2.5 * Math.tanh(Math.pow(rim * 0.15, 1.2) / 2.5);
+            }
+            displacement += Math.sin(x * 0.1) * Math.cos(worldZ * 0.07) * 0.8;
+            const wallWidth = 6;
+            const gapLength = 44;
+            const cliff = this.cliffPositions.find(cp => worldZ <= cp + wallWidth && worldZ >= cp - gapLength - wallWidth);
+            if (cliff !== undefined) {
+                const depth = 24;
+                const landing = cliff - gapLength;
+                if (worldZ <= cliff && worldZ >= landing) displacement -= depth;
+                else if (worldZ > cliff && worldZ < cliff + wallWidth) displacement -= depth * (1 - (worldZ - cliff) / wallWidth);
+                else if (worldZ < landing && worldZ > landing - wallWidth) displacement -= depth * (1 - (landing - worldZ) / wallWidth);
+            }
+            pos.setZ(i, displacement);
+        }
+        pos.needsUpdate = true;
+        geo.computeVertexNormals();
+        geo.computeBoundingSphere();
     }
 
     setupSkiLiftPylons() {
@@ -430,18 +473,18 @@ class WorldEnvironment {
         // Recycle terrain chunks seamlessly along the slope line y = -z * tan(SLOPE)
         const chunkCos = this.CHUNK_LENGTH * Math.cos(this.SLOPE_ANGLE); // chunk footprint along Z
 
-        // Ground vanished under the sled at speed: the recycle test only fired once a
-        // chunk was a full chunk-length BEHIND the player, so the mesh lagged the sled
-        // and you outran the terrain. Recycle as soon as a chunk falls behind, and keep
-        // a generous run of ground ahead of the sled at all times.
+        // Recycle behind-player chunks immediately beyond the furthest downhill
+        // chunk. This keeps all six terrain meshes contiguous instead of bunching
+        // them up at a fixed player-relative Z and leaving visible holes.
         const recycleBehind = this.CHUNK_LENGTH * 1.5;
-        const aheadReach = this.CHUNK_LENGTH * 4;
-
         this.terrainChunks.forEach(chunk => {
             if (chunk.mesh.position.z > playerPos.z + recycleBehind) {
-                chunk.mesh.position.z = playerPos.z - aheadReach;
-                // Keep the recycled chunk exactly on the shared slope surface
+                const furthestDownhillZ = Math.min(
+                    ...this.terrainChunks.map(existing => existing.mesh.position.z)
+                );
+                chunk.mesh.position.z = furthestDownhillZ - this.CHUNK_LENGTH * Math.cos(this.SLOPE_ANGLE);
                 chunk.mesh.position.y = -chunk.mesh.position.z * Math.tan(this.SLOPE_ANGLE);
+                this.deformTerrainChunk(chunk);
             }
         });
 

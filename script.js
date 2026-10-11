@@ -70,8 +70,13 @@ class SnowAnsherMaster {
             sens: parseFloat(this.storage.get('sr3d_sens')) || 1.2,
             fov: parseInt(this.storage.get('sr3d_fov')) || 70,
             volume: parseFloat(this.storage.get('sr3d_volume') || this.storage.get('sr3d_vol')) || 0.75,
-            skin: parseInt(this.storage.get('sr3d_skin')) || 0
+            skin: parseInt(this.storage.get('sr3d_skin')) || 0,
+            theme: this.storage.get('sr3d_theme') || 'dark' // DARK THEME IS DEFAULT
         };
+
+        // Apply saved theme immediately (dark is the default)
+        const savedTheme = this.config.theme;
+        document.documentElement.setAttribute('data-theme', savedTheme === 'light' ? 'light' : (savedTheme === 'midnight' ? 'midnight' : 'dark'));
 
         // Saved records & currencies
         this.bestScore = parseInt(this.storage.get('sr3d_best')) || 0;
@@ -369,8 +374,10 @@ class SnowAnsherMaster {
             this.world.resetTerrainAround(this.physics.position.z);
         }
 
-        // Reset course hazards
+        // Reset course hazards and allow each scheduled cliff ramp to respawn
+        // on every new run (the obstacle list itself is cleared below).
         this.obstacles.clearAll();
+        this.cliffRampsSpawned.clear();
         if (this.structures) this.structures.clear();
         this.lastSpawnZ = -50;
         // Only spawn initial track up to the spawn-ahead distance (950m)
@@ -430,11 +437,22 @@ class SnowAnsherMaster {
             }
             if (bestCp && !this.cliffRampsSpawned.has(bestCp)) {
                 this.cliffRampsSpawned.add(bestCp);
-                const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 18);
-                this.obstacles.createCliffJumpRamp(x, y, z, (gx, gz) => this.physics.getGroundHeightAt(gx, gz), 1.0 + Math.random() * 0.5);
+                // Place the ramp from the cliff's scheduled Z, not from whichever
+                // random obstacle-spawn tick happened to notice the cliff.
+                const x = 0;
+                const scale = 1.25;
+                const rampLength = 48.0 * scale;
+                const rampHeight = 13.0 * scale;
+                const rampCenterZ = bestCp + rampLength * 0.5 + 5;
+                const rampY = this.physics.getGroundHeightAt(x, rampCenterZ + rampLength * 0.5);
+                this.obstacles.createCliffJumpRamp(x, rampY, rampCenterZ, (gx, gz) => this.physics.getGroundHeightAt(gx, gz), scale);
             }
             return; // Don't spawn other obstacles at cliff positions
         }
+
+        // Keep forest scenery alive throughout the run, including around cliffs.
+        // Only gameplay hazards are suppressed in the takeoff/landing corridor.
+        const inCliffCorridor = this.cliffPositions.some(cp => Math.abs(z - cp) <= 180);
 
         // Dense low-poly forest walls hugging both banks of the run (Snow Rider look)
         const flankCount = (this.config.graphics === 'performance') ? 1 : 3;
@@ -450,6 +468,10 @@ class SnowAnsherMaster {
                 }
             }
         }
+
+        // Keep random gameplay hazards out of the cliff takeoff/landing corridor,
+        // but do not skip the trees above: that made the whole world look empty.
+        if (inCliffCorridor) return;
 
         if (rand < 0.1) {
             // Holiday Gift Box
@@ -657,6 +679,20 @@ class SnowAnsherMaster {
         const effectiveDt = this.powerups.hasActive('slowmo') ? dt * 0.6 : dt;
         this.physics.update(effectiveDt, this.keys, this.currentSledData.stats, this.sound, this.particles);
 
+        // A cliff is a fatal gap, not a safe trench with a walkable floor. If the
+        // sled drops below the track surface while between the two cliff edges,
+        // trigger the normal game-over flow. A successful jump stays above this line.
+        const cliffGap = this.cliffPositions.find(cp =>
+            this.physics.position.z <= cp && this.physics.position.z >= cp - 44
+        );
+        if (cliffGap !== undefined) {
+            const trackSurfaceY = -this.physics.position.z * Math.tan(this.physics.SLOPE_ANGLE);
+            if (this.physics.position.y < trackSurfaceY - 8) {
+                this.triggerCrash();
+                return;
+            }
+        }
+
         // Distance & Speed Tracking
         const multi = this.powerups.hasActive('multiplier') ? 2.0 : 1.0;
         this.distance += (this.physics.speed * dt * 0.5) * multi;
@@ -768,8 +804,17 @@ class SnowAnsherMaster {
             const dz = Math.abs(pPos.z - ramp.pos.z);
             // Cliff jumpers are long (up to 45u), so test their whole deck, not half.
             // The old half-length window meant big ramps were easy to miss at speed.
-            const halfLen = ramp.length * (ramp.isCliffJumper || ramp.isMega ? 0.85 : 0.5);
-            if (dx < ramp.width * 0.5 && dz < halfLen && this.physics.isGrounded) {
+            const halfLen = ramp.length * (ramp.isMega ? 0.85 : 0.5);
+            // High-speed frames can skip a narrow launch window; cover the downhill
+            // half of the deck and launch once when the sled is still grounded.
+            const atLaunchLip = !ramp.isCliffJumper || (
+                pPos.z <= ramp.pos.z - ramp.length * 0.02 &&
+                pPos.z >= ramp.pos.z - ramp.length * 0.68
+            );
+            if ((!ramp.isCliffJumper || !ramp.launched) &&
+                dx < ramp.width * 0.5 && dz < halfLen + 2 &&
+                atLaunchLip && this.physics.isGrounded) {
+                if (ramp.isCliffJumper) ramp.launched = true;
                 this.physics.launchRamp(ramp.boostPower, this.sound, this.particles);
             }
         });
@@ -798,30 +843,13 @@ class SnowAnsherMaster {
 
         
 
-        // Cliff death: player dies if they fall into a cliff gap without an active ramp
-        // Check if player is at a cliff position (between two cliffPositions)
-        atCliff = false;
-        for (const cp of this.cliffPositions) {
-            const distBeforeCliff = pPos.z - cp; // positive when before cliff (higher Z)
-            if (distBeforeCliff > 30 && distBeforeCliff < 80) {
-                atCliff = true;
-                break;
-            }
-        }
-        // If at a cliff gap, AND either:
-        // - player is grounded right at the edge (fell off), OR
-        // - player is in the air past the cliff (flying off)
-        if (atCliff && this.physics.isGrounded) {
-            // Grounded at cliff edge - check if no ramp active
-            const hadRamp = this.obstacles.ramps.some(r => 
+        // Cliff death: player dies if they fall into the cliff trench
+        if (cliffZ !== null && this.physics.isGrounded) {
+            const inGap = Math.abs(pPos.z - cliffZ) < 22;
+            const hadRamp = this.obstacles.ramps.some(r =>
                 Math.abs(pPos.z - r.pos.z) < 80 && r.isCliffJumper
             );
-            if (!hadRamp) {
-                this.triggerCrash();
-            }
-        } else if (atCliff && !this.physics.isGrounded) {
-            // In the air past the cliff - die anyway (falling into gap)
-            this.triggerCrash();
+            if (inGap && !hadRamp) this.triggerCrash();
         }
 
 // Collectible Gifts
@@ -949,6 +977,8 @@ class SnowAnsherMaster {
             if (this.sound) this.sound.setMasterVolume(this.config.volume);
         } else if (key === 'graphics') {
             location.reload();
+        } else if (key === 'theme') {
+            document.documentElement.setAttribute('data-theme', val === 'light' ? 'light' : (val === 'midnight' ? 'midnight' : 'dark'));
         }
     }
 
@@ -996,6 +1026,11 @@ class SnowAnsherMaster {
         if (fov) on(fov, 'input', () => g.setOption('fov', fov.value));
         const vol = q('#opt-volume');
         if (vol) on(vol, 'input', () => g.setOption('volume', vol.value));
+        const themeSel = q('#opt-theme');
+        if (themeSel) {
+            themeSel.value = g.config.theme || 'dark';
+            on(themeSel, 'change', () => g.setOption('theme', themeSel.value));
+        }
     }
 
     /**

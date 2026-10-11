@@ -17,67 +17,54 @@
 
 ---
 
-## 🚀 Quick Start (Pick One)
+## How to play
 
-### Option 1 — **Single-file standalone (recommended for microslop winblows/ offline users)**
+**Run the command block below:**
+
 ```bash
 git clone https://github.com/anshlabs716/snowansher.git
 cd snowansher
-# Open index-nuclear.html in your browser (double-click or right-click → Open With)
+python3 -m http.server -d .
 ```
-> `index-nuclear.html` is a **stripped-down single-file build** with everything inlined (Three.js + 30 modules + CSS + SVG icons). Works via `file://` protocol. No Python, no server, no setup. Best for winblows users or offline play.
-
----
-
-### Option 2 — Modular version (requires local server)
-```bash
-git clone https://github.com/anshlabs716/snowansher.git
-cd snowansher
-python3 -m http.server 8080
+Then open the link which python is serving this on, for example, here my link was `http://0.0.0.0:8000/`
 ```
-Then open: **[http://localhost:8080/index.html](http://localhost:8080/index.html)** (be patient though and wait till its done)
-
-> ⚠️ **index.html will NOT work via double-click unless you use brave origin thats the only one i have tested that works with the double clicking index.html** (most browsers don't load it properly then clicking doesn't work or it bugs out badly). You MUST run the Python server above. This is the full version with all the features.
+~/GitHub/snowansher $> python3 -m http.server -d .
+Serving HTTP on 0.0.0.0 port 8000 (http://0.0.0.0:8000/) ...
+```
+**(Do not copy & paste this block, I am just giving an example of how it looked for me)**
 
 ---
 
 ## 📑 Table of Contents
 
-  - [❄️ A Fast-Paced 3D Snowboarding Game in Your Browser](#-a-fast-paced-3d-snowboarding-game-in-your-browser)
-  - [❄️ About](#-about)
-  - [✨ Features](#-features)
-  - [🏂 Gameplay](#-gameplay)
-  - [⚙️ Physics](#-physics)
-  - [🛷 Unlockable Sleds](#-unlockable-sleds)
-  - [🎛️ Performance Settings](#-performance-settings)
+  - [About The Game](#about-the-game)
+  - [Features](#features)
+  - [Gameplay](#gameplay)
+  - [Physics](#physics)
+  - [Unlockable Sleds](#unlockable-sleds)
+  - [Performance Settings](#performance-settings)
   - [Graphics](#graphics)
   - [Controls](#controls)
-  - [🔊 Audio](#-audio)
-  - [🖥️ Cyber HUD](#-cyber-hud)
+  - [Audio](#audio)
+  - [Cyber HUD](#cyber-hud)
   - [HUD includes:](#hud-includes)
-  - [🎮 Controls](#-controls)
-  - [🧱 Built With](#-built-with)
-  - [🌐 HTML5 & CSS3](#-html5-css3)
-  - [⚡ Vanilla JavaScript](#-vanilla-javascript)
-  - [🎮 Three.js](#-threejs)
-  - [💥 Cannon.js](#-cannonjs)
-  - [🚀 Getting Started](#-getting-started)
-  - [1. Clone the repository](#1-clone-the-repository)
-  - [2. Launch the game](#2-launch-the-game)
-  - [🌐 Browser Compatibility](#-browser-compatibility)
-  - [📁 Project Structure](#-project-structure)
-  - [🧩 Architecture](#-architecture)
-  - [🗺️ Roadmap](#-roadmap)
-  - [🤝 Contributing](#-contributing)
-  - [🐛 Bug Reports](#-bug-reports)
-  - [👨‍💻 Credits](#-credits)
-  - [🎬 Director](#-director)
-  - [🤖 Development Assistance](#-development-assistance)
-  - [📜 License](#-license)
-  - [⭐ Support](#-support)
-  - [❄️ SnowAnsher](#-snowansher)
+  - [Controls](#controls)
+  - [Built With](#built-with)
+  - [HTML5 & CSS3](#html5-css3)
+  - [Vanilla JavaScript](#vanilla-javascript)
+  - [Three.js](#threejs)
+  - [Cannon.js](#cannonjs)
+  - [Browser Compatibility](#browser-compatibility)
+  - [Project Structure](#project-structure)
+  - [Architecture](#architecture)
+  - [Roadmap](#roadmap)
+  - [Contributing](#contributing)
+  - [Bug Reports](#bug-reports)
+  - [Credits](#credits)
+  - [License](#license)
+  - [Support](#support)
 
-## ❄️ About
+## About the game
 
 **SnowAnsher** is a browser-based 3D snowboarding game inspired by classic snow-riding games.
 
@@ -89,9 +76,9 @@ Your goal is simple:
 
 ---
 
-## ✨ Features
+## Features
 
-### 🏂 Gameplay
+### Gameplay
 
 - 🌨️ 3D snowboarding gameplay
 - 🌲 Dodge trees and rocks
@@ -102,7 +89,7 @@ Your goal is simple:
 - 🏆 Track your score
 - 📈 Chase local high scores
 
-### ⚙️ Physics
+### Physics
 
 Powered by **Cannon.js**:
 
@@ -112,7 +99,7 @@ Powered by **Cannon.js**:
 - 🤸 High-impact crash effects
 - 📦 Physics-based collision boxes
 
-### 🛷 Unlockable Sleds
+### Unlockable Sleds
 
 Visit the garage and switch between different sled styles:
 
@@ -122,7 +109,7 @@ Visit the garage and switch between different sled styles:
 
 ---
 
-## 🎛️ Performance Settings
+## Performance Settings
 
 The built-in settings menu lets you customize your experience.
 
@@ -145,7 +132,7 @@ Customize:
 
 ---
 
-## 🔊 Audio
+## Audio
 
 SnowAnsher includes adaptive sound effects and winter atmosphere.
 
@@ -159,7 +146,7 @@ Features include:
 
 ---
 
-## 🖥️ Cyber HUD
+## Cyber HUD
 
 The game uses a minimal neon-style HUD to display important gameplay information.
 
@@ -172,7 +159,7 @@ The game uses a minimal neon-style HUD to display important gameplay information
 
 ---
 
-## 🎮 Controls
+## Controls
 
 | Key | Action |
 |---|---|
@@ -186,9 +173,9 @@ The game uses a minimal neon-style HUD to display important gameplay information
 
 ---
 
-## 🧱 Built With
+## Built With
 
-### 🌐 HTML5 & CSS3
+### HTML5 & CSS3
 
 Used for the game's structure and interface.
 
@@ -197,11 +184,11 @@ Custom typography includes:
 - Orbitron
 - Rajdhani
 
-### ⚡ Vanilla JavaScript
+### Vanilla JavaScript
 
 The game logic is written using modern **JavaScript ES6+** without a frontend framework.
 
-### 🎮 Three.js
+### Three.js
 
 Used for:
 
@@ -212,7 +199,7 @@ Used for:
 - 3D objects
 - Game environment
 
-### 💥 Cannon.js
+### Cannon.js
 
 Used for:
 
@@ -224,63 +211,71 @@ Used for:
 
 ---
 
-## 🚀 Getting Started
 
-SnowAnsher runs directly in a modern web browser with WebGL support.
-
-### Quick Start (No Server Needed)
-
-**Option A — Single file, double-click to run (recommended):**
-```bash
-git clone https://github.com/anshlabs716/snowansher.git
-cd snowansher
-# Open index-nuclear.html in your browser (double-click or right-click → Open With)
-```
-
-`index-nuclear.html` contains **everything inlined** (Three.js, all modules, CSS, icons) — zero external requests. Works via `file://` protocol.
-
----
-
-**Option B — Modular version (requires local server):**
-```bash
-git clone https://github.com/anshlabs716/snowansher.git
-cd snowansher
-python3 -m http.server 8080
-# Then open http://localhost:8080/index.html
-```
-
-> **Why a server?** Browsers block relative script/module loads (`file://` protocol security). The modular `index.html` loads 30 local JS files + Three.js locally — this only works over HTTP(S).
-
----
-
-## 🌐 Browser Compatibility
+## Browser Compatibility
 
 SnowAnsher is designed for modern browsers with WebGL support.
 
 Recommended browsers include:
 
-- 🦊 Firefox
-- 🌐 Chromium
-- 🪟 Microslop Edging
-- 🧭 Safari
+- Firefox/Firefox Forks
+- Chromium
+- Microslop Edging
+- Safari
+- Brave
 
 Performance will depend on your hardware, browser, and selected graphics settings.
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ~~~~text
 snowansher/
-├── index.html
-├── index.js
-├── LICENSE
-└── README.md
+|
+├── js/                          
+│   ├── Shaders.js                 # Custom visual shaders
+│   ├── AudioEngine.js             # Sound effects and audio
+│   ├── AudioSynthesizerBank.js    # Procedural sound synthesis
+│   ├── SoundtrackData.js          # Music composition data
+│   ├── RiderModel.js              # 3D rider model and animation
+│   ├── StuntAnimationLibrary.js   # Stunt animation definitions
+│   ├── SledCollection.js          # Sled definitions and models
+│   ├── CosmeticsCatalog.js        # Cosmetic item definitions
+│   ├── WorldEnvironment.js        # Main game environment
+│   ├── ProceduralDecorations.js   # Procedural scenery
+│   ├── SlopeTrackPatterns.js      # Track and obstacle patterns
+│   ├── ObstaclesManager.js        # Obstacles and pickups
+│   ├── PowerupSystem.js           # Power-up effects and timers
+│   ├── TrickSystem.js             # Tricks and trick scoring
+│   ├── ParticleEngine.js          # Particle effects
+│   ├── GamePhysics.js             # Player movement and physics
+│   ├── MultiplayerBotRiders.js    # AI-controlled rival riders
+│   ├── AchievementsCatalog.js     # Achievement definitions
+│   ├── GameUI.js                  # Game interface and menus
+│   ├── GhostRacer.js              # Previous-run ghost system
+│   ├── BiomesManager.js           # Biome and environment changes
+│   ├── WeatherFX.js               # Weather and atmospheric effects
+│   ├── Customizer.js              # Rider and sled customisation
+│   ├── TelemetryAndLeaderboard.js # Run statistics and leaderboard
+│   ├── TerrainBiomesMesher.js     # Special terrain geometry
+│   ├── StuntComboEngine.js        # Stunt combo tracking
+│   ├── DailyChallenges.js         # Daily challenge system
+│   └── VisualPostProcessor.js     # Final rendering effects
+│
+├── .gitignore                   
+├── LICENSE                        # Apache License 2.0
+├── README.md                      # Project documentation
+├── SECURITY.md                    # Security reporting policy 
+├── favicon.svg                    # Browser tab icon
+├── index.html                     # Game interface
+├── index.js                       # Game controller
+└── three.r128.min.js              # Locally bundled Three.js library
 ~~~~
 
 ---
 
-## 🧩 Architecture
+## Architecture
 
 SnowAnsher keeps the project lightweight by using browser-native technologies and JavaScript libraries.
 
@@ -303,7 +298,7 @@ SnowAnsher keeps the project lightweight by using browser-native technologies an
 
 ---
 
-## 🗺️ Roadmap
+## Roadmap
 
 Potential future improvements:
 
@@ -321,7 +316,7 @@ Potential future improvements:
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Contributions, ideas, and improvements are welcome.
 
@@ -337,7 +332,7 @@ To contribute:
 
 ---
 
-## 🐛 Bug Reports
+## Bug Reports
 
 Found a problem?
 
@@ -354,19 +349,26 @@ This makes bugs much easier to reproduce.
 
 ---
 
-## 👨‍💻 Credits
+## Credits
 
-### 🎬 Director
+### Director
 
 **Ansh Bhatia**
 
-### 🤖 Development Assistance
+#### Things done:
 
-- shozanthebozan
+- Created this repo
+- Made all the files and things
 
----
+### Development Assistance
 
-## 📜 License
+**shozanthebozan**
+
+#### Things done:
+- Edit a lot of what Ansh has done
+- Verify things are going correctly
+
+## License
 
 SnowAnsher is licensed under the **Apache License 2.0**.
 
@@ -374,7 +376,7 @@ See [`LICENSE`](LICENSE) for the complete license.
 
 ---
 
-## ⭐ Support
+## Support
 
 If you enjoy SnowAnsher:
 
@@ -388,7 +390,7 @@ If you enjoy SnowAnsher:
 
 <div align="center">
 
-## ❄️ SnowAnsher
+## SnowAnsher
 
 ### 🏂 Ride the slopes. Dodge the chaos. Chase the high score.
 

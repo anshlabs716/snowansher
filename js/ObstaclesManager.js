@@ -347,9 +347,9 @@ class ObstaclesManager {
      */
     createCliffJumpRamp(x, y, z, groundFn = null, scale = 1.0) {
         const group = new THREE.Group();
-        const rampWidth = 16.0 * scale;
-        const rampLength = 30.0 * scale;
-        const rampHeight = 7.0 * scale; // Reduced from 11 to 7 for less air
+        const rampWidth = 22.0 * scale;
+        const rampLength = 48.0 * scale;
+        const rampHeight = 13.0 * scale; // Oversized kicker built to clear the deep chasm
 
         // Support legs so the ramp reads as built structure, not a floating slab.
         const legMat = new THREE.MeshStandardMaterial({ color: 0x5d4037, roughness: 0.9 });
@@ -387,15 +387,21 @@ class ObstaclesManager {
             frame.add(chev);
         }
 
-        // Base pinned to terrain where the ramp meets the ground.
+        // Align the uphill end of the sloped deck with the snow. The rotation
+        // raises the downhill (-Z) lip; account for that rotation when anchoring.
         let baseY = y;
-        if (typeof groundFn === 'function') baseY = groundFn(x, z + rampLength * 0.5);
+        if (typeof groundFn === 'function') {
+            baseY = groundFn(x, z + rampLength * 0.5)
+                + rampLength * 0.5 * Math.sin(0.35)
+                - rampHeight * 0.5 * Math.cos(0.35);
+        }
 
         group.position.set(x, baseY, z);
         this.scene.add(group);
 
-        // Reduced boost power for less height - tuned for ~25m apex at scale 1.0
-        const boost = Math.round(38 * scale);
+        // A controlled launch clears the trench without carrying the sled
+        // hundreds of metres into the next cliff's landing zone.
+        const boost = Math.round(20 * scale);
         this.ramps.push({
             mesh: group,
             width: rampWidth,

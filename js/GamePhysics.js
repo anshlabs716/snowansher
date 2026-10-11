@@ -94,26 +94,29 @@ class GamePhysics {
         // Base downhill slope
         let y = -z * Math.tan(this.SLOPE_ANGLE);
 
-        // Banked halfpipe outer rims (smooth 9m plateau so the world opens into a meadow)
+        // Keep collision height identical to the visible terrain mesh.
         const absX = Math.abs(x);
         if (absX > this.TRACK_WIDTH * 0.44) {
             const rim = absX - this.TRACK_WIDTH * 0.44;
-            y += 9.0 * Math.tanh(Math.pow(rim * 0.22, 1.85) / 9.0);
+            y += 2.5 * Math.tanh(Math.pow(rim * 0.15, 1.2) / 2.5);
         }
 
         // Undulating moguls
         y += Math.sin(x * 0.1) * Math.cos(z * 0.07) * 0.45;
 
-        // Cliff gaps — match WorldEnvironment terrain cliffs
-        const cliff = this.cliffPositions.find(cp => Math.abs(cp - z) < 8);
-        if (cliff) {
-            const dist = Math.abs(cliff - z);
-            const cliffWidth = 8;
-            if (dist < cliffWidth) {
-                const t = 1 - dist / cliffWidth;
-                y -= 18 * t; // smooth drop-off
-            } else if (z < cliff) {
-                y -= 18; // beyond cliff
+        // Match the rendered 24 m-deep, 44 m-long cliff trench exactly.
+        const gapLength = 44;
+        const wallWidth = 6;
+        const cliff = this.cliffPositions.find(cp => z <= cp + wallWidth && z >= cp - gapLength - wallWidth);
+        if (cliff !== undefined) {
+            const cliffDepth = 24;
+            const landingEdgeZ = cliff - gapLength;
+            if (z <= cliff && z >= landingEdgeZ) {
+                y -= cliffDepth;
+            } else if (z > cliff && z < cliff + wallWidth) {
+                y -= cliffDepth * (1 - (z - cliff) / wallWidth);
+            } else if (z < landingEdgeZ && z > landingEdgeZ - wallWidth) {
+                y -= cliffDepth * (1 - (landingEdgeZ - z) / wallWidth);
             }
         }
 

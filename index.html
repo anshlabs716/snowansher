@@ -1,773 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
+    <meta name="color-scheme" content="dark">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>SNOW ANSHER 3D - Ultimate Snow Rider Experience</title>
-    <style>
-        :root {
-            --primary: #00d2ff;
-            --primary-glow: rgba(0, 210, 255, 0.45);
-            --accent: #ffd166;
-            --accent-glow: rgba(255, 209, 102, 0.5);
-            --danger: #ff4757;
-            --glass-bg: rgba(7, 18, 38, 0.82);
-            --glass-border: rgba(120, 200, 255, 0.28);
-            --glass-highlight: rgba(255, 255, 255, 0.12);
-        }
-
-        * {
-            box-sizing: border-box;
-            user-select: none;
-            -webkit-user-select: none;
-            margin: 0;
-            padding: 0;
-        }
-
-        body, html {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #050b14;
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            color: #ffffff;
-        }
-
-        #canvas-container {
-            position: absolute;
-            inset: 0;
-            z-index: 1;
-        }
-
-        canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-        }
-
-        /* Speed Vignette & Speed Lines */
-        #speed-vignette {
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            z-index: 5;
-            box-shadow: inset 0 0 120px rgba(0, 40, 80, 0.7);
-            transition: box-shadow 0.2s;
-        }
-
-        #speed-lines {
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            z-index: 6;
-            opacity: 0;
-            background: radial-gradient(circle at center, transparent 55%, rgba(200, 245, 255, 0.2) 95%);
-            transition: opacity 0.2s ease-out;
-        }
-
-        #screen-flash {
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            z-index: 7;
-            background: white;
-            opacity: 0;
-            transition: opacity 0.15s ease-out;
-        }
-
-        /* Achievement Toast Notification */
-        .achievement-toast {
-            position: fixed;
-            top: 24px;
-            right: 24px;
-            z-index: 1000;
-            background: var(--glass-bg);
-            border: 1px solid var(--accent);
-            border-radius: 16px;
-            padding: 14px 22px;
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), 0 0 25px var(--accent-glow);
-            backdrop-filter: none;
-            transform: translateX(120%);
-            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            pointer-events: none;
-        }
-
-        .achievement-toast.show {
-            transform: translateX(0);
-        }
-
-        /* HUD Overlay */
-        #hud {
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            z-index: 10;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 24px 32px;
-            visibility: hidden;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        #hud.active {
-            visibility: visible;
-            opacity: 1;
-        }
-
-        .hud-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-        }
-
-        .hud-card {
-            background: var(--glass-bg);
-            backdrop-filter: none;
-            -webkit-backdrop-filter: none;
-            border: 1px solid var(--glass-border);
-            border-radius: 14px;
-            padding: 12px 20px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }
-
-        .hud-icon-box {
-            width: 44px;
-            height: 44px;
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.08);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            color: var(--primary);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .hud-icon-box.gold {
-            color: var(--accent);
-            background: rgba(255, 209, 102, 0.12);
-        }
-
-        .hud-label {
-            font-size: 11px;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            color: rgba(255, 255, 255, 0.6);
-            font-weight: 700;
-        }
-
-        .hud-val {
-            font-family: 'Orbitron', system-ui, sans-serif;
-            font-size: 26px;
-            font-weight: 700;
-            color: #ffffff;
-            text-shadow: 0 0 12px var(--primary-glow);
-        }
-
-        .hud-center {
-            position: absolute;
-            left: 50%;
-            top: 24px;
-            transform: translateX(-50%);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .distance-display {
-            background: var(--glass-bg);
-            backdrop-filter: none;
-            border: 1px solid var(--glass-border);
-            border-radius: 16px;
-            padding: 10px 30px;
-            text-align: center;
-        }
-
-        .distance-display .hud-val {
-            font-size: 38px;
-            font-weight: 900;
-            color: #ffffff;
-            letter-spacing: 2px;
-        }
-
-        .distance-display .unit {
-            font-size: 14px;
-            color: var(--primary);
-            margin-left: 4px;
-        }
-
-        /* Active Powerups Tray */
-        #powerup-tray {
-            display: flex;
-            gap: 10px;
-            margin-top: 6px;
-        }
-
-        .powerup-pill {
-            background: rgba(0, 0, 0, 0.6);
-            border: 1px solid var(--primary);
-            border-radius: 20px;
-            padding: 4px 14px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 12px;
-            font-family: 'Orbitron', system-ui, sans-serif;
-            font-weight: bold;
-            color: white;
-            display: none;
-        }
-
-        .powerup-pill.active {
-            display: flex;
-        }
-
-        /* Combo & Near-miss toast */
-        #combo-popup {
-            font-family: 'Orbitron', system-ui, sans-serif;
-            font-size: 24px;
-            font-weight: 900;
-            color: var(--accent);
-            text-shadow: 0 0 25px var(--accent-glow);
-            letter-spacing: 2px;
-            opacity: 0;
-            transform: scale(0.7) translateY(10px);
-            transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            pointer-events: none;
-            white-space: nowrap;
-        }
-
-        #combo-popup.show {
-            opacity: 1;
-            transform: scale(1.15) translateY(0);
-        }
-
-        /* HUD Bottom */
-        .hud-bottom {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-        }
-
-        .speedometer {
-            background: var(--glass-bg);
-            backdrop-filter: none;
-            border: 1px solid var(--glass-border);
-            border-radius: 14px;
-            padding: 14px 24px;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-        }
-
-        .speed-val-wrap {
-            display: flex;
-            align-items: baseline;
-            gap: 6px;
-        }
-
-        .speed-val-wrap .hud-val {
-            font-size: 36px;
-            font-weight: 900;
-            color: #00d2ff;
-        }
-
-        .speed-val-wrap .unit {
-            font-size: 13px;
-            color: rgba(255, 255, 255, 0.5);
-            font-weight: 700;
-        }
-
-        .speed-bar-container {
-            width: 150px;
-            height: 7px;
-            background: rgba(255, 255, 255, 0.12);
-            border-radius: 4px;
-            margin-top: 6px;
-            overflow: hidden;
-        }
-
-        .speed-bar-fill {
-            height: 100%;
-            width: 30%;
-            background: linear-gradient(90deg, #00d2ff, #ffd166, #ff4757);
-            border-radius: 4px;
-            transition: width 0.1s linear;
-        }
-
-        .hud-controls-hint {
-            color: rgba(255, 255, 255, 0.65);
-            font-size: 14px;
-            font-weight: 600;
-            letter-spacing: 1px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .kbd-badge {
-            background: rgba(255, 255, 255, 0.15);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 6px;
-            padding: 3px 8px;
-            font-size: 12px;
-            font-family: 'Orbitron', system-ui, sans-serif;
-            color: #ffffff;
-        }
-
-        /* Mobile Touch Controls */
-        #touch-controls {
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            z-index: 15;
-            display: none;
-        }
-
-        .touch-zone-left, .touch-zone-right, .touch-zone-jump {
-            position: absolute;
-            pointer-events: auto;
-        }
-
-        .touch-zone-left { left: 0; bottom: 0; width: 35%; height: 60%; }
-        .touch-zone-right { right: 0; bottom: 0; width: 35%; height: 60%; }
-        .touch-zone-jump { left: 35%; width: 30%; bottom: 0; height: 60%; }
-
-        /* Overlays & Menus */
-        .overlay {
-            position: fixed;
-            inset: 0;
-            z-index: 20;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: radial-gradient(circle at center, rgba(3, 14, 33, 0.78) 0%, rgba(1, 6, 15, 0.96) 100%);
-            opacity: 1;
-            transition: opacity 0.35s ease, visibility 0.35s ease;
-        }
-
-        .overlay.hidden {
-            opacity: 0;
-            visibility: hidden;
-            pointer-events: none;
-        }
-
-        .menu-modal {
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: 24px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.75), 0 0 45px rgba(0, 210, 255, 0.2);
-            width: 90%;
-            max-width: 860px;
-            padding: 36px 44px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .menu-modal::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -50%;
-            width: 200%;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, var(--primary), var(--accent), transparent);
-        }
-
-        .title-block {
-            text-align: center;
-            margin-bottom: 24px;
-        }
-
-        .title-block h1 {
-            font-family: 'Orbitron', system-ui, sans-serif;
-            font-size: 54px;
-            font-weight: 900;
-            letter-spacing: 5px;
-            background: linear-gradient(180deg, #ffffff 30%, #76d0ff 85%, #0099ff 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 35px var(--primary-glow);
-            line-height: 1.1;
-        }
-
-        .title-block .subtitle {
-            font-size: 15px;
-            letter-spacing: 6px;
-            color: var(--primary);
-            text-transform: uppercase;
-            font-weight: 700;
-            margin-top: 6px;
-        }
-
-        /* Nav Tabs */
-        .tabs {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            margin-bottom: 24px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            padding-bottom: 16px;
-        }
-
-        .tab-btn {
-            background: transparent;
-            border: 1px solid transparent;
-            color: rgba(255, 255, 255, 0.65);
-            font-family: 'Orbitron', system-ui, sans-serif;
-            font-size: 14px;
-            font-weight: 700;
-            letter-spacing: 2px;
-            padding: 10px 20px;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.25s ease;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .tab-btn:hover {
-            color: #ffffff;
-            background: rgba(255, 255, 255, 0.08);
-        }
-
-        .tab-btn.active {
-            color: #000000;
-            background: var(--primary);
-            box-shadow: 0 0 20px var(--primary-glow);
-        }
-
-        .tab-panel {
-            display: none;
-            animation: fadeIn 0.3s ease forwards;
-        }
-
-        .tab-panel.active {
-            display: block;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Mode Selection Cards */
-        .modes-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 18px;
-            margin-bottom: 26px;
-        }
-
-        .mode-card {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
-            padding: 24px 18px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.25s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .mode-card:hover {
-            background: rgba(0, 210, 255, 0.12);
-            border-color: var(--primary);
-            transform: translateY(-5px);
-            box-shadow: 0 12px 28px rgba(0, 210, 255, 0.25);
-        }
-
-        .mode-card.featured {
-            border-color: rgba(255, 209, 102, 0.4);
-        }
-
-        .mode-card.featured:hover {
-            background: rgba(255, 209, 102, 0.15);
-            border-color: var(--accent);
-            box-shadow: 0 12px 28px rgba(255, 209, 102, 0.3);
-        }
-
-        .mode-card i {
-            font-size: 38px;
-            margin-bottom: 14px;
-            color: var(--primary);
-            transition: transform 0.25s;
-        }
-
-        .mode-card.featured i {
-            color: var(--accent);
-        }
-
-        .mode-card:hover i {
-            transform: scale(1.15);
-        }
-
-        .mode-card h3 {
-            font-family: 'Orbitron', system-ui, sans-serif;
-            font-size: 18px;
-            letter-spacing: 2px;
-            margin-bottom: 6px;
-        }
-
-        .mode-card p {
-            font-size: 13px;
-            color: rgba(255, 255, 255, 0.6);
-            line-height: 1.4;
-        }
-
-        /* Garage Grid */
-        .garage-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 18px;
-        }
-
-        .garage-currency {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-family: 'Orbitron', system-ui, sans-serif;
-            font-size: 22px;
-            color: var(--accent);
-            background: rgba(255, 209, 102, 0.12);
-            padding: 8px 18px;
-            border-radius: 12px;
-            border: 1px solid rgba(255, 209, 102, 0.3);
-        }
-
-        .sled-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-            gap: 16px;
-            max-height: 340px;
-            overflow-y: auto;
-            padding-right: 8px;
-        }
-
-        .sled-card {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 14px;
-            padding: 18px;
-            cursor: pointer;
-            transition: all 0.25s ease;
-            position: relative;
-        }
-
-        .sled-card:hover {
-            border-color: var(--primary);
-            background: rgba(255, 255, 255, 0.08);
-            transform: translateY(-3px);
-        }
-
-        .sled-card.selected {
-            border-color: var(--primary);
-            background: rgba(0, 210, 255, 0.16);
-            box-shadow: 0 0 25px var(--primary-glow);
-        }
-
-        .sled-card.locked {
-            opacity: 0.6;
-        }
-
-        .sled-badge {
-            display: inline-block;
-            font-size: 11px;
-            font-weight: bold;
-            padding: 3px 8px;
-            border-radius: 6px;
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        .sled-badge.owned {
-            background: rgba(46, 213, 115, 0.2);
-            color: #2ed573;
-        }
-
-        .sled-title {
-            font-family: 'Orbitron', system-ui, sans-serif;
-            font-size: 17px;
-            font-weight: 700;
-            margin-bottom: 6px;
-        }
-
-        .sled-stats-mini {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.7);
-        }
-
-        .stat-row {
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .stat-mini-bar {
-            width: 85px;
-            height: 4px;
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 2px;
-            overflow: hidden;
-            align-self: center;
-        }
-
-        .stat-mini-fill {
-            height: 100%;
-            background: var(--primary);
-            border-radius: 2px;
-        }
-
-        /* Settings Grid */
-        .settings-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
-        }
-
-        .setting-row {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .setting-row label {
-            font-family: 'Orbitron', system-ui, sans-serif;
-            font-size: 13px;
-            letter-spacing: 1px;
-            color: rgba(255, 255, 255, 0.85);
-        }
-
-        .setting-row select, .setting-row input[type="range"] {
-            background: rgba(0, 0, 0, 0.4);
-            border: 1px solid var(--glass-border);
-            color: white;
-            padding: 10px 14px;
-            border-radius: 10px;
-            font-family: inherit;
-            font-size: 14px;
-            outline: none;
-        }
-
-        /* Range sliders must have ZERO horizontal padding, otherwise the thumb
-           track is inset and the slider can never reach 0% or 100% */
-        .setting-row input[type="range"] {
-            padding: 8px 0;
-            cursor: pointer;
-        }
-
-        /* Buttons */
-        .btn-action {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            background: linear-gradient(135deg, #00d2ff, #0088ff);
-            color: #000000;
-            font-family: 'Orbitron', system-ui, sans-serif;
-            font-weight: 900;
-            font-size: 20px;
-            letter-spacing: 2px;
-            padding: 16px 48px;
-            border-radius: 14px;
-            border: none;
-            cursor: pointer;
-            box-shadow: 0 10px 30px rgba(0, 210, 255, 0.4);
-            transition: all 0.25s ease;
-            text-transform: uppercase;
-        }
-
-        .btn-action:hover {
-            transform: translateY(-3px) scale(1.02);
-            box-shadow: 0 15px 45px rgba(0, 210, 255, 0.6);
-            background: linear-gradient(135deg, #33dcff, #1995ff);
-        }
-
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: #ffffff;
-            font-family: 'Orbitron', system-ui, sans-serif;
-            font-size: 15px;
-            padding: 12px 28px;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.16);
-            border-color: rgba(255, 255, 255, 0.4);
-        }
-
-        /* Game Over Screen */
-        .gameover-modal {
-            text-align: center;
-            max-width: 580px;
-        }
-
-        .gameover-stats {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 16px;
-            margin: 28px 0;
-        }
-
-        .stat-result-box {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 14px;
-            padding: 16px;
-        }
-
-        .stat-result-box .num {
-            font-family: 'Orbitron', system-ui, sans-serif;
-            font-size: 32px;
-            font-weight: 900;
-            color: var(--primary);
-            margin-top: 4px;
-        }
-
-        .stat-result-box .num.gold {
-            color: var(--accent);
-        }
-
-        .highscore-badge {
-            display: inline-block;
-            background: linear-gradient(90deg, #f1c40f, #e67e22);
-            color: black;
-            font-family: 'Orbitron', system-ui, sans-serif;
-            font-weight: 900;
-            font-size: 12px;
-            padding: 4px 14px;
-            border-radius: 20px;
-            letter-spacing: 2px;
-            margin-bottom: 12px;
-            display: none;
-        }
-
-        @media (max-width: 768px) {
-            .menu-modal { padding: 24px 20px; width: 95%; }
-            .title-block h1 { font-size: 36px; }
-            .modes-grid { grid-template-columns: 1fr; gap: 12px; }
-            .settings-grid { grid-template-columns: 1fr; }
-            .hud-controls-hint { display: none; }
-            #touch-controls { display: block; }
-        }
-    </style>
+    <title>snowansher</title>
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+    <link rel="apple-touch-icon" href="./favicon.svg">
+    <link rel="stylesheet" href="./style.css">
 </head>
 <body>
     <!-- 3D Canvas WebGL Render Layer -->
@@ -917,6 +157,14 @@
                         </select>
                     </div>
                     <div class="setting-row">
+                        <label>THEME</label>
+                        <select id="opt-theme" onchange="game.setOption('theme', this.value)">
+                            <option value="dark" selected>DARK (Default)</option>
+                            <option value="midnight">MIDNIGHT BLUE</option>
+                            <option value="light">LIGHT</option>
+                        </select>
+                    </div>
+                    <div class="setting-row">
                         <label>CAMERA SENSITIVITY</label>
                         <input type="range" id="opt-sens" min="0.6" max="2.2" step="0.1" value="1.2" oninput="game.setOption('sens', this.value)">
                     </div>
@@ -1040,6 +288,101 @@
     <script src="js/StuntComboEngine.js"></script>
     <script src="js/DailyChallenges.js"></script>
     <script src="js/VisualPostProcessor.js"></script>
-    <script src="index.js"></script>
+    <script src="script.js"></script>
+
+    <style>
+        svg.snow-fa-icon {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            vertical-align: -0.125em;
+            flex: 0 0 auto;
+            overflow: visible;
+        }
+    </style>
+    <script>
+    (() => {
+        const paths = {
+            "fa-gift":"M20 12v9H4v-9h16ZM2 7h20v3H2V7Zm10 0c-2.8-5.3-7.4-4.1-6.2-1.6C6.5 7 9.6 7 12 7Zm0 0c2.8-5.3 7.4-4.1 6.2-1.6C17.5 7 14.4 7 12 7ZM10 12h4v9h-4z",
+            "fa-trophy":"M7 3h10v3h4v4c0 3-2 5-5 5a6 6 0 0 1-3 2v3h5v2H6v-2h5v-3a6 6 0 0 1-3-2c-3 0-5-2-5-5V6h4V3Zm0 5H5v2c0 1.4.7 2.3 2 2.8V8Zm10 0v4.8c1.3-.5 2-1.4 2-2.8V8h-2Z",
+            "fa-shield-alt":"M12 2 21 6v5c0 5.5-3.8 9.5-9 11-5.2-1.5-9-5.5-9-11V6l9-4Zm0 3.2L6 7.8V11c0 3.9 2.4 6.8 6 8.1 3.6-1.3 6-4.2 6-8.1V7.8l-6-2.6Z",
+            "fa-shield":"M12 2 21 6v5c0 5.5-3.8 9.5-9 11-5.2-1.5-9-5.5-9-11V6l9-4Z",
+            "fa-magnet":"M4 3h5v10a3 3 0 0 0 6 0V3h5v10a8 8 0 0 1-16 0V3ZM4 3h5v4H4V3Zm11 0h5v4h-5V3Z",
+            "fa-rocket":"M14 2c4 1 7 5 8 9l-5 5-5-1-1-5 3-8ZM8 12l4 4-5 5-2-4-4-2 7-3Zm-1-5 3 3-4 4-3-3 4-4Z",
+            "fa-star":"m12 2 3 6.2 7 1-5 4.9 1.2 6.9L12 17.8l-6.2 3.2L7 14.1 2 9.2l7-1L12 2Z",
+            "fa-play":"M7 4v16l13-8L7 4Z",
+            "fa-pause":"M6 4h4v16H6zM14 4h4v16h-4z",
+            "fa-home":"m3 11 9-8 9 8v10h-6v-6H9v6H3V11Z",
+            "fa-cog":"M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm0-6 2 2.1 2.8-.2 1 2.6 2.5 1.3-.6 2.7 1.3 2.5-1.9 2.1.2 2.8-2.6 1-1.3 2.5-2.7-.6-2.5 1.3-2.1-1.9-2.8.2-1-2.6L2 16.5l.6-2.7-1.3-2.5 1.9-2.1L3 6.4l2.6-1 1.3-2.5 2.7.6L12 2Z",
+            "fa-wrench":"m21 6-5 5-3-3 5-5a6 6 0 0 0-7 7L3 18a2 2 0 0 0 3 3l8-8a6 6 0 0 0 7-7Z",
+            "fa-volume-up":"M3 9v6h4l5 4V5L7 9H3Zm12-2v2a4 4 0 0 1 0 6v2a6 6 0 0 0 0-10Zm0-4v2a10 10 0 0 1 0 14v2a12 12 0 0 0 0-18Z",
+            "fa-volume-down":"M3 9v6h4l5 4V5L7 9H3Zm12 1v4a3 3 0 0 0 0-4Z",
+            "fa-volume-mute":"M3 9v6h4l5 4V5L7 9H3Zm12 0 5 6m0-6-5 6",
+            "fa-music":"M9 18V5l12-2v13M9 18a3 3 0 1 1-3-3 3 3 0 0 1 3 3Zm12-2a3 3 0 1 1-3-3 3 3 0 0 1 3 3Z",
+            "fa-heart":"M12 21 3 12C-1 7 6 1 12 7c6-6 13 0 9 5l-9 9Z",
+            "fa-snowflake":"M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7M8 4l4 3 4-3M8 20l4-3 4 3M3 11l4-1-1-4M21 13l-4 1 1 4",
+            "fa-bolt":"M13 2 4 13h6l-1 9 11-13h-6l-1-7Z",
+            "fa-tree":"M12 2 4 12h4l-5 6h7v4h4v-4h7l-5-6h4L12 2Z",
+            "fa-flag":"M5 22V3m0 1h13l-3 4 3 4H5",
+            "fa-check":"m5 12 4 4L19 6",
+            "fa-times":"m5 5 14 14M19 5 5 19",
+            "fa-close":"m5 5 14 14M19 5 5 19",
+            "fa-info-circle":"M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm-1 9h2v6h-2zm0-4h2v2h-2z",
+            "fa-question-circle":"M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm-1 14h2v2h-2Zm1-10a4 4 0 0 0-4 4h2a2 2 0 1 1 2 2c-1 1-1 2-1 3h2c0-1 .3-1.3 1-2a4 4 0 0 0-2-7Z",
+            "fa-chart-line":"M3 3v18h18v-2H5V3H3Zm3 12 4-5 4 3 6-7 2 2-7 9-4-3-3 4-2-3Z",
+            "fa-medal":"M12 12a5 5 0 1 0 0 10 5 5 0 0 0 0-10ZM6 2h5l1 6-4 3-4-6 2-3Zm7 0h5l2 3-4 6-4-3 1-6Z",
+            "fa-coins":"M12 3c5 0 9 1.5 9 4s-4 4-9 4-9-1.5-9-4 4-4 9-4Zm-9 8c2 2 6 3 9 3s7-1 9-3v4c0 2.5-4 4-9 4s-9-1.5-9-4v-4Z",
+            "fa-shopping-cart":"M2 3h3l2 12h12l3-9H6M9 20a1 1 0 1 0 0 .1M17 20a1 1 0 1 0 0 .1",
+            "fa-lock":"M5 10h14v11H5V10Zm3 0V7a4 4 0 0 1 8 0v3",
+            "fa-unlock":"M5 10h14v11H5V10Zm3 0V7a4 4 0 0 1 8 0",
+            "fa-eye":"M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Zm10-3a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z",
+            "fa-keyboard":"M2 5h20v14H2V5Zm3 3h2v2H5V8Zm4 0h2v2H9V8Zm4 0h2v2h-2V8Zm4 0h2v2h-2V8ZM5 12h14v2H5v-2Z",
+            "fa-gamepad":"M7 8h10a5 5 0 0 1 5 6l-1 4-4-3H7l-4 3-1-4a5 5 0 0 1 5-6Zm1 2v4m-2-2h4m5-1h.1m2 2h.1",
+            "fa-rotate":"M20 7V2l-3 3a8 8 0 0 0-13 5h3a5 5 0 0 1 9-3l-2 2h6ZM4 17v5l3-3a8 8 0 0 0 13-5h-3a5 5 0 0 1-9 3l2-2H4Z",
+            "fa-sliders-h":"M3 6h18M3 12h18M3 18h18M7 3v6m7 0v6m4 0v6",
+            "fa-trophy":"M7 3h10v3h4v4c0 3-2 5-5 5a6 6 0 0 1-3 2v3h5v2H6v-2h5v-3a6 6 0 0 1-3-2c-3 0-5-2-5-5V6h4V3Z",
+            "fa-gift":"M20 12v9H4v-9h16ZM2 7h20v3H2V7Zm8-5h4v19h-4z",
+            "fa-arrow-left":"M20 11H7l5-5-2-2-9 8 9 8 2-2-5-5h13v-2Z",
+            "fa-arrow-right":"M4 11h13l-5-5 2-2 9 8-9 8-2-2 5-5H4v-2Z",
+            "fa-arrow-up":"M11 20V7l-5 5-2-2 8-9 8 9-2 2-5-5v13h-2Z",
+            "fa-arrow-down":"M11 4v13l-5-5-2 2 8 9 8-9-2-2-5 5V4h-2Z",
+            "fa-plus":"M11 3h2v8h8v2h-8v8h-2v-8H3v-2h8V3Z",
+            "fa-minus":"M3 11h18v2H3z"
+        };
+        const fallback = "M12 2 14.5 9.5 22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5L12 2Z";
+        function replaceIcons(root) {
+            if (root.nodeType === 1 && root.matches && root.matches('i[class*="fa-"]')) convert(root);
+            if (!root.querySelectorAll) return;
+            root.querySelectorAll('i[class*="fa-"]').forEach(convert);
+        }
+        function convert(el) {
+            const classes = [...el.classList];
+            const key = classes.find(c => paths[c]) || classes.find(c => c.startsWith("fa-") && c !== "fa-icon");
+            const svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
+            svg.setAttribute("viewBox","0 0 24 24");
+            svg.setAttribute("class","snow-fa-icon");
+            svg.setAttribute("data-icon", key || "fa-star");
+            svg.setAttribute("aria-hidden","true");
+            const path = document.createElementNS("http://www.w3.org/2000/svg","path");
+            path.setAttribute("d", paths[key] || fallback);
+            path.setAttribute("fill","currentColor");
+            if ((key || "").includes("volume") || key === "fa-snowflake" || key === "fa-check" || key === "fa-times" || key === "fa-close" || key === "fa-gamepad" || key === "fa-music") {
+                path.setAttribute("fill","none");
+                path.setAttribute("stroke","currentColor");
+                path.setAttribute("stroke-width","2");
+                path.setAttribute("stroke-linecap","round");
+                path.setAttribute("stroke-linejoin","round");
+            }
+            svg.appendChild(path);
+            el.replaceWith(svg);
+        }
+        replaceIcons(document);
+        const observer = new MutationObserver(records => records.forEach(record =>
+            record.addedNodes.forEach(node => { if (node.nodeType === 1) replaceIcons(node); })
+        ));
+        observer.observe(document.documentElement,{childList:true,subtree:true});
+    })();
+    </script>
+
 </body>
 </html>
