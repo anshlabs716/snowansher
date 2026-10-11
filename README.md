@@ -31,6 +31,7 @@ Then open the link which python is serving this on, for example, here my link wa
 ~/GitHub/snowansher $> python3 -m http.server -d .
 Serving HTTP on 0.0.0.0 port 8000 (http://0.0.0.0:8000/) ...
 ```
+**(Do not copy & paste this block, I am just giving an example of how it looked for me)**
 
 ---
 
