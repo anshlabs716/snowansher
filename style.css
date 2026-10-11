@@ -814,3 +814,5 @@ i.fa-gamepad, svg.snow-fa-icon[data-icon="fa-gamepad"] { color:#f472b6 !importan
 .btn-action i, .btn-action svg { color:#10233f !important; filter:drop-shadow(0 1px 1px rgba(255,255,255,.3)); }
 button i, button svg { transition:color .18s ease, filter .18s ease, transform .18s ease; }
 button:hover i, button:hover svg { filter:drop-shadow(0 0 7px currentColor); }
+
+
