@@ -768,7 +768,7 @@ class SnowAnsherMaster {
             const dz = Math.abs(pPos.z - ramp.pos.z);
             // Cliff jumpers are long (up to 45u), so test their whole deck, not half.
             // The old half-length window meant big ramps were easy to miss at speed.
-            const halfLen = ramp.length * (ramp.isCliffJumper ? 0.5 : 0.5);
+            const halfLen = ramp.length * (ramp.isCliffJumper ? 0.85 : 0.5);
             if (dx < ramp.width * 0.5 && dz < halfLen && this.physics.isGrounded) {
                 this.physics.launchRamp(ramp.boostPower, this.sound, this.particles);
             }
@@ -798,19 +798,30 @@ class SnowAnsherMaster {
 
         
 
-        // Cliff death: if player passes a cliff position without a ramp, they fall into the gap
-        const cliffDeathZ = this.cliffPositions.reduce((prev, cp) => {
-            if (pPos.z < cp && pPos.z > prev) return pPos.z;
-            return prev;
-        }, -Infinity);
-        if (pPos.z < -30 && pPos.z > cliffDeathZ && this.physics.isGrounded) {
-            // Check if they had an active cliff jumper ramp
+        // Cliff death: player dies if they fall into a cliff gap without an active ramp
+        // Check if player is at a cliff position (between two cliffPositions)
+        atCliff = false;
+        for (const cp of this.cliffPositions) {
+            const distBeforeCliff = pPos.z - cp; // positive when before cliff (higher Z)
+            if (distBeforeCliff > 30 && distBeforeCliff < 80) {
+                atCliff = true;
+                break;
+            }
+        }
+        // If at a cliff gap, AND either:
+        // - player is grounded right at the edge (fell off), OR
+        // - player is in the air past the cliff (flying off)
+        if (atCliff && this.physics.isGrounded) {
+            // Grounded at cliff edge - check if no ramp active
             const hadRamp = this.obstacles.ramps.some(r => 
                 Math.abs(pPos.z - r.pos.z) < 80 && r.isCliffJumper
             );
             if (!hadRamp) {
                 this.triggerCrash();
             }
+        } else if (atCliff && !this.physics.isGrounded) {
+            // In the air past the cliff - die anyway (falling into gap)
+            this.triggerCrash();
         }
 
 // Collectible Gifts

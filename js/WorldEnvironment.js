@@ -253,10 +253,10 @@ class WorldEnvironment {
                 if (distToCliff < cliffWidth) {
                     // Create a smooth but steep drop-off at the cliff
                     const t = 1 - distToCliff / cliffWidth;
-                    yDisplacement -= 18 * t; // 18m drop
+                    yDisplacement -= 12 * t; // 12m drop (reduced from 18m for 2.5m rim)
                 } else if (worldZ < cliffZ) {
                     // Beyond the cliff: terrain continues much lower
-                    yDisplacement -= 18;
+                    yDisplacement -= 12;
                 }
             }
 
