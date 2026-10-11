@@ -364,7 +364,7 @@ This makes bugs much easier to reproduce.
 
 ### Development Assistance
 
-- shozanthebozan
+**shozanthebozan**
 
 #### Things done:
 - Edit a lot of what Ansh has done
