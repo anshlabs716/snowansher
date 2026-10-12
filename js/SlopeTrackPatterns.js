@@ -32,7 +32,7 @@ const SlopeTrackPatterns = {
             spawn: (manager, startZ) => {
                 const z1 = startZ - 25;
                 const y1 = -z1 * Math.tan(manager.SLOPE_ANGLE);
-                manager.createMegaRamp(0, y1, z1, true, (gx, gz) => manager.getGroundHeightAt(gx, gz));
+                manager.createMegaRamp(0, y1, z1, false, (gx, gz) => manager.getGroundHeightAt(gx, gz));
 
                 // High floating gifts to catch during high airtime
                 manager.createGiftBox(0, y1 + 18, z1 - 35);
@@ -208,7 +208,7 @@ const SlopeTrackPatterns = {
                 manager.createPineTree(-14, y1, z1);
                 manager.createPineTree(14, y1, z1);
                 manager.createSnowman(0, y1, z1 - 25);
-                manager.createMegaRamp(0, y1, z1 - 60, true, (gx, gz) => manager.getGroundHeightAt(gx, gz));
+                manager.createMegaRamp(0, y1, z1 - 60, false, (gx, gz) => manager.getGroundHeightAt(gx, gz));
             }
         },
 

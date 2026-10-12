@@ -87,6 +87,7 @@ class SnowAnsherMaster {
         this.running = false;
         this.paused = false;
         this.crashed = false;
+        this._wasGrounded = true; // trick-state reset bookkeeping (see update loop)
         this.difficulty = 'medium';
         this.distance = 0;
         this.giftsRun = 0;
@@ -476,6 +477,31 @@ class SnowAnsherMaster {
         // but do not skip the trees above: that made the whole world look empty.
         if (inCliffCorridor) return;
 
+        // ON-RUN SCATTER: obstacles INSIDE the playable track (not the banks), so
+        // the middle of the slope is busy too -- trees, rocks, snowmen, snowballs.
+        const scatterCount = (this.config.graphics === 'performance') ? 1 : 2;
+        for (let s = 0; s < scatterCount; s++) {
+            if (Math.random() < 0.65) {
+                const sx = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 10);
+                const sz = z + (Math.random() - 0.5) * 20;
+                const sy = this.physics.getGroundHeightAt(sx, sz);
+                const pick = Math.random();
+                if (pick < 0.45) {
+                    if (Math.random() < 0.65) {
+                        this.obstacles.createPineTree(sx, sy, sz);
+                    } else {
+                        this.obstacles.createBareTree(sx, sy, sz);
+                    }
+                } else if (pick < 0.68) {
+                    this.obstacles.createRock(sx, sy, sz);
+                } else if (pick < 0.88) {
+                    this.obstacles.createSnowman(sx, sy, sz);
+                } else {
+                    this.obstacles.createRollingBoulder(sx, sy, sz);
+                }
+            }
+        }
+
         if (rand < 0.07) {
             // Holiday Gift Box
             const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 8);
@@ -723,6 +749,16 @@ class SnowAnsherMaster {
         }
 
         // 2. Aerial Stunt & Trick Detection
+        // Trick state MUST reset on takeoff and resolve on landing. Without this,
+        // currentStunt stayed set forever after the first trick, so every later
+        // space-jump replayed the old trick animation (e.g. a backflip) even
+        // though the player was only pressing jump.
+        if (this._wasGrounded && !this.physics.isGrounded) {
+            this.tricks.startJump();
+        } else if (!this._wasGrounded && this.physics.isGrounded) {
+            this.tricks.resolveLanding();
+        }
+        this._wasGrounded = this.physics.isGrounded;
         this.tricks.update(dt, this.keys, this.physics.isGrounded, this.rider, this.sound);
         if (this.physics.airTime > 1.2) this.ui.unlockAchievement('mile_high');
 
