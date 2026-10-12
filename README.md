@@ -13,7 +13,6 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge&logo=apache&logoColor=white)](https://www.apache.org/licenses/LICENSE-2.0)
 [![Platform](https://img.shields.io/badge/Platform-Web-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://github.com/anshlabs716/snowansher)
 
-**🎮 Play now → [http://0.0.0.0:8000/](http://0.0.0.0:8000/)**
 
 </div>
 
