@@ -5,9 +5,6 @@
  * Obstacles, Powerups, Aerial Stunts, and Particle Systems.
  * ============================================================================
  */
-(function(){
-  const root = window;
-  const existingGame = root.game || {};
 
 /**
  * Replace the global `localStorage` with a never-throwing shim before any module
