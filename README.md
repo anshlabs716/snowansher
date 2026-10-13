@@ -13,7 +13,6 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge&logo=apache&logoColor=white)](https://www.apache.org/licenses/LICENSE-2.0)
 [![Platform](https://img.shields.io/badge/Platform-Web-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://github.com/anshlabs716/snowansher)
 
-**🎮 Play now → [http://127.0.0.1:8000/](http://127.0.0.1:8000/)**
 
 </div>
 
@@ -45,12 +44,7 @@ git clone https://github.com/anshlabs716/snowansher.git
 cd snowansher
 python3 -m http.server -d .
 ```
-Then open the link which python is serving this on, for example, here my link was **[http://127.0.0.1:8000/](http://127.0.0.1:8000/)**
-```
-~/GitHub/snowansher $> python3 -m http.server -d .
-Serving HTTP on 0.0.0.0 port 8000 (http://0.0.0.0:8000/) ...
-```
-**(Do not copy & paste this block, I am just giving an example of how it looked for me)**
+Then open the link which python is serving on 👉️ [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
 
 > 💡 **Port already in use?** An older server is still running. Kill it with
 > `fuser -k 8000/tcp` (or `lsof -ti:8000 | xargs kill`) and try again.

@@ -1,0 +1,3 @@
+# Graphics Settings
+
+Graphics options.
