@@ -28,10 +28,8 @@ Double-click **`index-nuclear.html`** (or run `xdg-open index-nuclear.html`).
 It is a single self-contained file — CSS, JavaScript and Three.js are inlined,
 so it works straight from `file://` with **no server and no internet access**.
 
-```bash
-xdg-open index-nuclear.html      # Linux
-open index-nuclear.html          # macOS
-start index-nuclear.html         # Windows
+```
+git clone https://github.com/anshlabs716/snowansher.git
 ```
 
 ### Option B — Local web server
