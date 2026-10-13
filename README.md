@@ -9,7 +9,7 @@
 [![JavaScript](https://img.shields.io/badge/JavaScript-ES6%2B-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
 [![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/HTML)
 [![Three.js](https://img.shields.io/badge/Three.js-WebGL-black?style=for-the-badge&logo=three.js&logoColor=white)](https://threejs.org/)
-[![Cannon.js](https://img.shields.io/badge/Cannon.js-Physics-00A86B?style=for-the-badge)](https://schteppe.github.io/cannon.js/)
+[![Physics](https://img.shields.io/badge/Physics-Custom%20Engine-00A86B?style=for-the-badge)](https://github.com/anshlabs716/snowansher)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge&logo=apache&logoColor=white)](https://www.apache.org/licenses/LICENSE-2.0)
 [![Platform](https://img.shields.io/badge/Platform-Web-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://github.com/anshlabs716/snowansher)
 
@@ -21,7 +21,24 @@
 
 ## How to play
 
-**Run the command block below:**
+There are two ways to run SnowAnsher. Pick whichever you prefer.
+
+### Option A — No server needed (easiest)
+
+Double-click **`index-nuclear.html`** (or run `xdg-open index-nuclear.html`).
+It is a single self-contained file — CSS, JavaScript and Three.js are inlined,
+so it works straight from `file://` with **no server and no internet access**.
+
+```bash
+xdg-open index-nuclear.html      # Linux
+open index-nuclear.html          # macOS
+start index-nuclear.html         # Windows
+```
+
+### Option B — Local web server
+
+If you prefer the modular version (`index.html` + separate `js/` files), serve
+the folder with any static file server:
 
 ```bash
 git clone https://github.com/anshlabs716/snowansher.git
@@ -35,10 +52,40 @@ Serving HTTP on 0.0.0.0 port 8000 (http://0.0.0.0:8000/) ...
 ```
 **(Do not copy & paste this block, I am just giving an example of how it looked for me)**
 
+> 💡 **Port already in use?** An older server is still running. Kill it with
+> `fuser -k 8000/tcp` (or `lsof -ti:8000 | xargs kill`) and try again.
+>
 ---
+
+## Uninstall
+
+SnowAnsher is a plain folder of static files — no installer, nothing is added to
+your system. To remove it:
+
+1. **Close the browser tab** running the game.
+2. **Stop the local server** (only if you started one) — press `Ctrl+C` in the
+   terminal running `python3 -m http.server`, or kill it with:
+   ```bash
+   fuser -k 8000/tcp
+   ```
+3. **Delete the game folder:**
+   ```bash
+   rm -rf snowansher
+   ```
+4. **Clear saved game data** (high scores, unlocked sleds, achievements and
+   theme choice are stored in your browser's localStorage — they are the only
+   trace the game leaves):
+   - Open the game's site in your browser
+   - Open DevTools (`F12` or `Ctrl+Shift+I`) → **Application** (Chrome/Edge) or
+     **Storage** (Firefox) → **Local Storage** → select the site
+   - Delete all `sr3d_*` entries, or right-click → **Clear**
+
+That's it — SnowAnsher is completely gone.
 
 ## 📑 Table of Contents
 
+  - [How to play](#how-to-play)
+  - [Uninstall](#uninstall)
   - [About The Game](#about-the-game)
   - [Features](#features)
   - [Gameplay](#gameplay)
@@ -55,7 +102,7 @@ Serving HTTP on 0.0.0.0 port 8000 (http://0.0.0.0:8000/) ...
   - [HTML5 & CSS3](#html5-css3)
   - [Vanilla JavaScript](#vanilla-javascript)
   - [Three.js](#threejs)
-  - [Cannon.js](#cannonjs)
+  - [Custom Physics Engine](#custom-physics-engine)
   - [Browser Compatibility](#browser-compatibility)
   - [Project Structure](#project-structure)
   - [Architecture](#architecture)
@@ -70,7 +117,7 @@ Serving HTTP on 0.0.0.0 port 8000 (http://0.0.0.0:8000/) ...
 
 **SnowAnsher** is a browser-based 3D snowboarding game inspired by classic snow-riding games.
 
-Built with **Three.js** for 3D rendering and **Cannon.js** for physics, the game puts you on procedurally generated snowy slopes filled with obstacles, ramps, boosts, gifts, and hazards.
+Built with **Three.js** for 3D rendering and a custom in-house physics engine, the game puts you on procedurally generated snowy slopes filled with obstacles, ramps, boosts, gifts, and hazards.
 
 Your goal is simple:
 
@@ -84,16 +131,20 @@ Your goal is simple:
 
 - 🌨️ 3D snowboarding gameplay
 - 🌲 Dodge trees and rocks
-- 🛷 Launch from ramps
-- ⚡ Hit neon speed-boost pads
+- ⛄ Dodge snowmen
 - ❄️ Avoid giant rolling snowballs
+- 🛷 Launch from ramps and cliff-jump ramps over deep chasms
+- ⚡ Hit neon speed-boost pads
 - 🎁 Collect gifts
+- 🤸 Aerial stunt system — Superman, Backflip, Method and more
 - 🏆 Track your score
 - 📈 Chase local high scores
+- 👻 Ghost replays of your best run and AI rival riders
+- 🏅 Achievements, daily challenges and unlockable sleds
 
 ### Physics
 
-Powered by **Cannon.js**:
+Powered by the in-house **arcade physics engine** (`js/GamePhysics.js`):
 
 - 🌍 Gravity simulation
 - 💥 Collision detection
@@ -113,16 +164,25 @@ Visit the garage and switch between different sled styles:
 
 ## Performance Settings
 
-The built-in settings menu lets you customize your experience.
+The built-in settings menu (**OPTIONS** tab) lets you customize your experience.
 
 ### Graphics
 
 Choose between:
 
-- 🟢 Low
-- 🟡 Medium
-- 🟠 High
-- 🔴 Ultra
+- ⚪ BALANCED — smooth 60 FPS (default)
+- 🟣 ULTRA — GLSL shaders and high visual effects
+- 🟢 PERFORMANCE — fast rendering for low-spec machines
+
+### Theme
+
+The **dark theme is on by default**. Also available:
+
+- 🌙 DARK (default)
+- 🌌 MIDNIGHT BLUE
+- ☀️ LIGHT
+
+Your choice is saved in the browser.
 
 ### Controls
 
@@ -163,15 +223,23 @@ The game uses a minimal neon-style HUD to display important gameplay information
 
 ## Controls
 
+### Keyboard
+
 | Key | Action |
 |---|---|
-| `A` | Steer left |
-| `← Left Arrow` | Steer left |
-| `D` | Steer right |
-| `→ Right Arrow` | Steer right |
-| `Space` | Jump |
-| `W` | Jump |
-| `↑ Up Arrow` | Jump |
+| `A` / `D` or `←` / `→` | Steer left / right |
+| `Space` / `W` / `↑` | High jump — hold for extra floaty height |
+| `W` (in air) | Superman stunt |
+| `S` / `↓` (in air) | Backflip (Rodeo 720 at long airtime) |
+| `E` or `Q` (in air) | Method stunt (Iron Lotus at long airtime) |
+| `Esc` / `P` | Pause |
+
+Tricks are only triggered by their own stunt keys mid-air — jump alone never triggers a stunt.
+
+### Touch devices
+
+On-screen touch controls appear automatically on touch-capable devices:
+left/right steer zones and a jump button.
 
 ---
 
@@ -179,12 +247,9 @@ The game uses a minimal neon-style HUD to display important gameplay information
 
 ### HTML5 & CSS3
 
-Used for the game's structure and interface.
-
-Custom typography includes:
-
-- Orbitron
-- Rajdhani
+Used for the game's structure and interface. No external font or icon CDNs —
+typography uses system fonts and all icons are inline SVG, so the game has
+**zero external network dependencies**.
 
 ### Vanilla JavaScript
 
@@ -201,15 +266,17 @@ Used for:
 - 3D objects
 - Game environment
 
-### Cannon.js
+It is bundled locally as `three.r128.min.js`, so no CDN is required.
 
-Used for:
+### Custom Physics Engine
 
-- Physics
-- Gravity
-- Collisions
-- Jumping
-- Object interactions
+Physics is handled by the in-house `js/GamePhysics.js` arcade physics engine:
+
+- Gravity and terminal velocity
+- Slope, halfpipe banking and bank rebounds
+- High-jump airtime engine with variable jump height
+- Ramp launches, cliff-jump ramps and rail grinding
+- Collision detection against obstacles, gifts and power-ups
 
 ---
 
@@ -235,43 +302,48 @@ Performance will depend on your hardware, browser, and selected graphics setting
 ~~~~text
 snowansher/
 |
-├── js/                          
-│   ├── Shaders.js                 # Custom visual shaders
+├── js/
+│   ├── AchievementsCatalog.js     # Achievement definitions
 │   ├── AudioEngine.js             # Sound effects and audio
 │   ├── AudioSynthesizerBank.js    # Procedural sound synthesis
-│   ├── SoundtrackData.js          # Music composition data
-│   ├── RiderModel.js              # 3D rider model and animation
-│   ├── StuntAnimationLibrary.js   # Stunt animation definitions
-│   ├── SledCollection.js          # Sled definitions and models
+│   ├── BiomesManager.js           # Biome and environment changes
 │   ├── CosmeticsCatalog.js        # Cosmetic item definitions
-│   ├── WorldEnvironment.js        # Main game environment
-│   ├── ProceduralDecorations.js   # Procedural scenery
-│   ├── SlopeTrackPatterns.js      # Track and obstacle patterns
-│   ├── ObstaclesManager.js        # Obstacles and pickups
-│   ├── PowerupSystem.js           # Power-up effects and timers
-│   ├── TrickSystem.js             # Tricks and trick scoring
-│   ├── ParticleEngine.js          # Particle effects
-│   ├── GamePhysics.js             # Player movement and physics
-│   ├── MultiplayerBotRiders.js    # AI-controlled rival riders
-│   ├── AchievementsCatalog.js     # Achievement definitions
+│   ├── Customizer.js              # Rider and sled customisation
+│   ├── DailyChallenges.js         # Daily challenge system
+│   ├── GamePhysics.js             # Custom arcade physics engine
 │   ├── GameUI.js                  # Game interface and menus
 │   ├── GhostRacer.js              # Previous-run ghost system
-│   ├── BiomesManager.js           # Biome and environment changes
-│   ├── WeatherFX.js               # Weather and atmospheric effects
-│   ├── Customizer.js              # Rider and sled customisation
+│   ├── InteractiveShowroom.js     # Showroom viewer
+│   ├── MultiplayerBotRiders.js    # AI-controlled rival riders
+│   ├── ObstaclesManager.js        # Obstacles and pickups
+│   ├── ParticleEngine.js          # Particle effects
+│   ├── PhysicsRaycasterEngine.js  # Terrain raycasting helpers
+│   ├── PowerupSystem.js           # Power-up effects and timers
+│   ├── ProceduralDecorations.js   # Procedural scenery
+│   ├── ReplayTheater.js           # Run replay playback
+│   ├── RiderModel.js              # 3D rider model and animation
+│   ├── Shaders.js                 # Custom visual shaders
+│   ├── SledCollection.js          # Sled definitions and models
+│   ├── SlopeTrackPatterns.js      # Track and obstacle patterns
+│   ├── SoundtrackData.js          # Music composition data
+│   ├── StuntAnimationLibrary.js   # Stunt animation definitions
+│   ├── StuntComboEngine.js        # Stunt combo tracking
 │   ├── TelemetryAndLeaderboard.js # Run statistics and leaderboard
 │   ├── TerrainBiomesMesher.js     # Special terrain geometry
-│   ├── StuntComboEngine.js        # Stunt combo tracking
-│   ├── DailyChallenges.js         # Daily challenge system
-│   └── VisualPostProcessor.js     # Final rendering effects
+│   ├── TrickSystem.js             # Tricks and trick scoring
+│   ├── VisualPostProcessor.js     # Final rendering effects
+│   └── WeatherFX.js               # Weather and atmospheric effects
 │
-├── .gitignore                   
+├── build-nuclear.py               # Builds the single-file version
+├── .gitignore
 ├── LICENSE                        # Apache License 2.0
 ├── README.md                      # Project documentation
-├── SECURITY.md                    # Security reporting policy 
+├── SECURITY.md                    # Security reporting policy
 ├── favicon.svg                    # Browser tab icon
-├── index.html                     # Game interface
-├── index.js                       # Game controller
+├── index.html                     # Game entry point (modular version)
+├── index-nuclear.html             # Single-file build (no server needed)
+├── script.js                      # Game controller / orchestrator
+├── style.css                      # All game styling (incl. dark theme)
 └── three.r128.min.js              # Locally bundled Three.js library
 ~~~~
 
@@ -288,11 +360,11 @@ SnowAnsher keeps the project lightweight by using browser-native technologies an
 │        index.html           │
 │      Game Interface         │
 ├─────────────────────────────┤
-│         index.js            │
+│         script.js           │
 │       Game Logic            │
 ├──────────────┬──────────────┤
-│   Three.js   │   Cannon.js  │
-│   Rendering  │   Physics    │
+│   Three.js   │  GamePhysics │
+│   Rendering  │  Physics     │
 ├──────────────┴──────────────┤
 │           WebGL             │
 └─────────────────────────────┘
@@ -396,6 +468,6 @@ If you enjoy SnowAnsher:
 
 ### 🏂 Ride the slopes. Dodge the chaos. Chase the high score.
 
-**Built with JavaScript • Three.js • Cannon.js**
+**Built with JavaScript • Three.js • Custom Physics**
 
 </div>
