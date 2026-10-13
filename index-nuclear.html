@@ -8517,13 +8517,16 @@ class SnowAnsherMaster {
 
         
 
-        // Cliff death: player dies if they fall into the cliff trench
-        if (cliffZ !== null && this.physics.isGrounded) {
-            const inGap = Math.abs(pPos.z - cliffZ) < 22;
+        // Cliff death: player dies if they fall into the cliff trench gap without a ramp.
+        // Compute the nearest cliff from the shared schedule -- never reference a
+        // local 'cliffZ' (that undefined variable crashed the render loop).
+        const nearestCliff = this.cliffPositions.reduce((prev, cp) =>
+            Math.abs(pPos.z - cp) < Math.abs(pPos.z - prev) ? cp : prev, Infinity);
+        if (this.physics.isGrounded && Math.abs(pPos.z - nearestCliff) < 22) {
             const hadRamp = this.obstacles.ramps.some(r =>
                 Math.abs(pPos.z - r.pos.z) < 80 && r.isCliffJumper
             );
-            if (inGap && !hadRamp) this.triggerCrash();
+            if (!hadRamp) this.triggerCrash();
         }
 
 // Collectible Gifts
