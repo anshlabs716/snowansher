@@ -2,8 +2,6 @@
 
 How to configure SnowAnsher.
 
-# Configuration
-
 Reference for configuring SnowAnsher.
 
 ## Where configuration lives

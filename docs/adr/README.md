@@ -2,8 +2,6 @@
 
 Architecture decision records for SnowAnsher.
 
-# Architecture Decision Records
-
 This directory records significant architecture decisions for SnowAnsher.
 
 ## What is an ADR?

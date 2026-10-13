@@ -2,8 +2,6 @@
 
 High-level structure of SnowAnsher.
 
-# Architecture
-
 This page describes the high-level structure of SnowAnsher. It is a starting
 point and is updated as the implementation evolves.
 
@@ -13,8 +11,8 @@ SnowAnsher
 
 ## Main components
 
-- `**Three.js**`
-- `**Cannon.js**`
+- **Three.js**
+- **Cannon.js**
 
 ## Data flow
 
