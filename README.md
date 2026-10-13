@@ -27,7 +27,7 @@ git clone https://github.com/anshlabs716/snowansher.git
 cd snowansher
 python3 -m http.server -d .
 ```
-Then open the link which python is serving on 👉️[http://127.0.0.1:8000/](http://127.0.0.1:8000/)
+Then open the link which python is serving on 👉️ [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
 
 **(Do not copy & paste this block, I am just giving an example of how it looked for me)**
 
