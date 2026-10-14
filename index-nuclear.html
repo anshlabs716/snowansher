@@ -8478,7 +8478,8 @@ class SnowAnsherMaster {
             const dz = Math.abs(pPos.z - ramp.pos.z);
             // Cliff jumpers are long (up to 45u), so test their whole deck, not half.
             // The old half-length window meant big ramps were easy to miss at speed.
-            const halfLen = ramp.length * (ramp.isMega ? 0.85 : 0.5);
+            // NOTE: mega ramps were removed -- cliff jumpers ARE the big ramps now.
+            const halfLen = ramp.length * (ramp.isCliffJumper ? 0.85 : 0.5);
             // High-speed frames can skip a narrow launch window; cover the downhill
             // half of the deck and launch once when the sled is still grounded.
             const atLaunchLip = !ramp.isCliffJumper || (
