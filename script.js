@@ -843,24 +843,48 @@ class SnowAnsherMaster {
     checkCollisions() {
         const pPos = this.physics.position;
 
-        // Mega Ramps Collision
+        // Big (cliff-jumper) ramps get REAL ramp collision:
+        //   * a wide x-window (half-width + 10) so a slightly off-centre line
+        //     still catches the deck instead of eating the cliff,
+        //   * a solid deck you visibly ride up (sled pinned to the sloped
+        //     surface, which emerges flush with the snow at the entry),
+        //   * a launch fired exactly at the downhill lip, from deck height.
+        // Small kickers keep the simple touch-trigger.
         this.obstacles.ramps.forEach(ramp => {
             const dx = Math.abs(pPos.x - ramp.pos.x);
-            const dz = Math.abs(pPos.z - ramp.pos.z);
-            // Cliff jumpers are long (up to 45u), so test their whole deck, not half.
-            // The old half-length window meant big ramps were easy to miss at speed.
-            // NOTE: mega ramps were removed -- cliff jumpers ARE the big ramps now.
-            const halfLen = ramp.length * (ramp.isCliffJumper ? 0.85 : 0.5);
-            // High-speed frames can skip a narrow launch window; cover the downhill
-            // half of the deck and launch once when the sled is still grounded.
-            const atLaunchLip = !ramp.isCliffJumper || (
-                pPos.z <= ramp.pos.z - ramp.length * 0.02 &&
-                pPos.z >= ramp.pos.z - ramp.length * 0.68
-            );
-            if ((!ramp.isCliffJumper || !ramp.launched) &&
-                dx < ramp.width * 0.5 && dz < halfLen + 2 &&
+            const dzRel = pPos.z - ramp.pos.z;
+            const dz = Math.abs(dzRel);
+            const isBig = !!ramp.isCliffJumper;
+            const dxHalf = isBig ? ramp.width * 0.5 + 10 : ramp.width * 0.5;
+            const halfLen = ramp.length * (isBig ? 0.85 : 0.5);
+
+            let atLaunchLip = true;
+            if (isBig) {
+                // Launch zone: a 6u strip ending right at the lip. Entering it
+                // while grounded fires before the deck runs out (the 0.85
+                // half-length test above still covers it at any speed).
+                atLaunchLip = ramp.lipZ !== undefined
+                    ? (dzRel <= ramp.lipZ + 4 && dzRel >= ramp.lipZ - 2)
+                    : (dzRel <= -ramp.length * 0.02 && dzRel >= -ramp.length * 0.68);
+
+                // Ride the deck: pin the sled to the sloped surface. Physics
+                // snaps to terrain first each frame; this runs after it, so the
+                // rendered y follows the deck with no jitter.
+                if (ramp.deckZMin !== undefined && this.physics.isGrounded &&
+                    dzRel > ramp.deckZMin && dzRel < ramp.deckZMax && dx < dxHalf) {
+                    const a = ramp.deckAngle;
+                    const zLocal = (dzRel - ramp.rampHeight * 0.5 * Math.sin(a)) / Math.cos(a);
+                    const deckY = ramp.pos.y
+                        + ramp.rampHeight * 0.5 * Math.cos(a)
+                        - zLocal * Math.sin(a) + 0.5;
+                    if (deckY > pPos.y) this.physics.position.y = deckY;
+                }
+            }
+
+            if ((!isBig || !ramp.launched) &&
+                dx < dxHalf && dz < halfLen + 2 &&
                 atLaunchLip && this.physics.isGrounded) {
-                if (ramp.isCliffJumper) ramp.launched = true;
+                if (isBig) ramp.launched = true;
                 this.physics.launchRamp(ramp.boostPower, this.sound, this.particles);
             }
         });

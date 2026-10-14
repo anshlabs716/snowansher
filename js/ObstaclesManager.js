@@ -399,15 +399,29 @@ class ObstaclesManager {
         group.position.set(x, baseY, z);
         this.scene.add(group);
 
-        // A controlled launch clears the trench without carrying the sled
-        // hundreds of metres into the next cliff's landing zone.
-        const boost = Math.round(20 * scale);
+        // Big ramp, big launch: enough range to clear the 44 m trench even
+        // from the deck lip (the old 20*scale undershot at medium speeds).
+        const boost = Math.round(26 * scale);
+
+        // World-space Z extent of the sloped deck. The deck box is rotated by
+        // deckAngle about X, so its ends land at +/-half*cos around an offset
+        // of (h/2)*sin -- these let physics pin the sled onto the deck surface
+        // and fire the launch exactly at the downhill lip.
+        const deckAngle = 0.35;
+        const deckHalf = rampLength * 0.5 * Math.cos(deckAngle);
+        const deckOffset = rampHeight * 0.5 * Math.sin(deckAngle);
+
         this.ramps.push({
             mesh: group,
             width: rampWidth,
             length: rampLength,
             boostPower: boost,
             isCliffJumper: true,
+            rampHeight: rampHeight,
+            deckAngle: deckAngle,
+            deckZMin: deckOffset - deckHalf, // downhill lip (launch side)
+            deckZMax: deckOffset + deckHalf, // uphill entry (flush with snow)
+            lipZ: deckOffset - deckHalf,
             pos: group.position
         });
         this.cliffRamps = this.cliffRamps || [];

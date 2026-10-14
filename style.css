@@ -853,4 +853,41 @@ i.fa-gamepad, svg.snow-fa-icon[data-icon="fa-gamepad"] { color:#f472b6 !importan
 button i, button svg { transition:color .18s ease, filter .18s ease, transform .18s ease; }
 button:hover i, button:hover svg { filter:drop-shadow(0 0 7px currentColor); }
 
+/* ============================================================================
+ * IN-GAME ICON COLORS — every icon inside the run gets its own vivid colour
+ * (menu icons were colored earlier; these are the HUD / pill / overlay ones).
+ * ==========================================================================*/
+
+/* HUD card icons: glow in their box color (cyan default, gold for gifts) */
+.hud-icon-box svg { color: var(--primary); filter: drop-shadow(0 0 6px currentColor); }
+.hud-icon-box.gold svg { color: var(--accent); }
+
+/* Combo & close-call popup stars */
+#combo-popup svg { color: #ffd166; filter: drop-shadow(0 0 6px rgba(255, 209, 102, .9)); }
+
+/* Active powerup pills: one color per powerup (icon + border + text + glow) */
+.powerup-pill svg { transition: filter .15s ease; }
+#pill-shield      { color: #bae6fd; border-color: #38bdf8; background: rgba(56, 189, 248, .16); }
+#pill-shield svg  { color: #38bdf8; filter: drop-shadow(0 0 5px #38bdf8); }
+#pill-magnet      { color: #fecdd3; border-color: #ff4d6d; background: rgba(255, 77, 109, .16); }
+#pill-magnet svg  { color: #ff4d6d; filter: drop-shadow(0 0 5px #ff4d6d); }
+#pill-rocket      { color: #fed7aa; border-color: #ff9f43; background: rgba(255, 159, 67, .16); }
+#pill-rocket svg  { color: #ff9f43; filter: drop-shadow(0 0 5px #ff9f43); }
+#pill-multiplier      { color: #fde68a; border-color: #ffd166; background: rgba(255, 209, 102, .16); }
+#pill-multiplier svg  { color: #ffd166; filter: drop-shadow(0 0 5px #ffd166); }
+
+/* Secondary overlay buttons (HUB / RESTART / MAIN MENU): cyan icons */
+.btn-secondary i, .btn-secondary svg { color: var(--primary); filter: drop-shadow(0 0 4px currentColor); }
+.btn-secondary:hover i, .btn-secondary:hover svg { filter: drop-shadow(0 0 9px currentColor); }
+
+/* In-game control-hint key badges: colour per action group */
+.hud-controls-hint .kbd-badge { transition: background .15s ease, box-shadow .15s ease; }
+.hud-controls-hint .kbd-steer { background: rgba(126, 240, 192, .22); border-color: #7ef0c0; color: #7ef0c0; box-shadow: 0 0 8px rgba(126, 240, 192, .35); }
+.hud-controls-hint .kbd-jump  { background: rgba(56, 189, 248, .22); border-color: #38bdf8; color: #38bdf8; box-shadow: 0 0 8px rgba(56, 189, 248, .35); }
+.hud-controls-hint .kbd-stunt { background: rgba(255, 209, 102, .22); border-color: #ffd166; color: #ffd166; box-shadow: 0 0 8px rgba(255, 209, 102, .35); }
+.hud-controls-hint .kbd-pause { background: rgba(255, 71, 87, .22); border-color: #ff4757; color: #ff4757; box-shadow: 0 0 8px rgba(255, 71, 87, .35); }
+
+/* NEW RECORD badge stars */
+.highscore-badge svg { color: #ffd166; filter: drop-shadow(0 0 5px rgba(255, 209, 102, .9)); }
+
 

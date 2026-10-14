@@ -863,6 +863,43 @@ i.fa-gamepad, svg.snow-fa-icon[data-icon="fa-gamepad"] { color:#f472b6 !importan
 button i, button svg { transition:color .18s ease, filter .18s ease, transform .18s ease; }
 button:hover i, button:hover svg { filter:drop-shadow(0 0 7px currentColor); }
 
+/* ============================================================================
+ * IN-GAME ICON COLORS — every icon inside the run gets its own vivid colour
+ * (menu icons were colored earlier; these are the HUD / pill / overlay ones).
+ * ==========================================================================*/
+
+/* HUD card icons: glow in their box color (cyan default, gold for gifts) */
+.hud-icon-box svg { color: var(--primary); filter: drop-shadow(0 0 6px currentColor); }
+.hud-icon-box.gold svg { color: var(--accent); }
+
+/* Combo & close-call popup stars */
+#combo-popup svg { color: #ffd166; filter: drop-shadow(0 0 6px rgba(255, 209, 102, .9)); }
+
+/* Active powerup pills: one color per powerup (icon + border + text + glow) */
+.powerup-pill svg { transition: filter .15s ease; }
+#pill-shield      { color: #bae6fd; border-color: #38bdf8; background: rgba(56, 189, 248, .16); }
+#pill-shield svg  { color: #38bdf8; filter: drop-shadow(0 0 5px #38bdf8); }
+#pill-magnet      { color: #fecdd3; border-color: #ff4d6d; background: rgba(255, 77, 109, .16); }
+#pill-magnet svg  { color: #ff4d6d; filter: drop-shadow(0 0 5px #ff4d6d); }
+#pill-rocket      { color: #fed7aa; border-color: #ff9f43; background: rgba(255, 159, 67, .16); }
+#pill-rocket svg  { color: #ff9f43; filter: drop-shadow(0 0 5px #ff9f43); }
+#pill-multiplier      { color: #fde68a; border-color: #ffd166; background: rgba(255, 209, 102, .16); }
+#pill-multiplier svg  { color: #ffd166; filter: drop-shadow(0 0 5px #ffd166); }
+
+/* Secondary overlay buttons (HUB / RESTART / MAIN MENU): cyan icons */
+.btn-secondary i, .btn-secondary svg { color: var(--primary); filter: drop-shadow(0 0 4px currentColor); }
+.btn-secondary:hover i, .btn-secondary:hover svg { filter: drop-shadow(0 0 9px currentColor); }
+
+/* In-game control-hint key badges: colour per action group */
+.hud-controls-hint .kbd-badge { transition: background .15s ease, box-shadow .15s ease; }
+.hud-controls-hint .kbd-steer { background: rgba(126, 240, 192, .22); border-color: #7ef0c0; color: #7ef0c0; box-shadow: 0 0 8px rgba(126, 240, 192, .35); }
+.hud-controls-hint .kbd-jump  { background: rgba(56, 189, 248, .22); border-color: #38bdf8; color: #38bdf8; box-shadow: 0 0 8px rgba(56, 189, 248, .35); }
+.hud-controls-hint .kbd-stunt { background: rgba(255, 209, 102, .22); border-color: #ffd166; color: #ffd166; box-shadow: 0 0 8px rgba(255, 209, 102, .35); }
+.hud-controls-hint .kbd-pause { background: rgba(255, 71, 87, .22); border-color: #ff4757; color: #ff4757; box-shadow: 0 0 8px rgba(255, 71, 87, .35); }
+
+/* NEW RECORD badge stars */
+.highscore-badge svg { color: #ffd166; filter: drop-shadow(0 0 5px rgba(255, 209, 102, .9)); }
+
 
 
 </style>
@@ -918,13 +955,13 @@ button:hover i, button:hover svg { filter:drop-shadow(0 0 7px currentColor); }
 
         <div class="hud-bottom">
             <div class="hud-controls-hint">
-                <span class="kbd-badge">A</span> <span class="kbd-badge">D</span> STEER
+                <span class="kbd-badge kbd-steer">A</span> <span class="kbd-badge kbd-steer">D</span> STEER
                 <span style="opacity: 0.3; margin: 0 4px;">|</span>
-                <span class="kbd-badge">SPACE</span> HIGH JUMP
+                <span class="kbd-badge kbd-jump">SPACE</span> HIGH JUMP
                 <span style="opacity: 0.3; margin: 0 4px;">|</span>
-                <span class="kbd-badge">W</span> <span class="kbd-badge">S</span> <span class="kbd-badge">E</span> AERIAL STUNTS
+                <span class="kbd-badge kbd-stunt">W</span> <span class="kbd-badge kbd-stunt">S</span> <span class="kbd-badge kbd-stunt">E</span> AERIAL STUNTS
                 <span style="opacity: 0.3; margin: 0 4px;">|</span>
-                <span class="kbd-badge">ESC</span> PAUSE
+                <span class="kbd-badge kbd-pause">ESC</span> PAUSE
             </div>
 
             <div class="speedometer">
@@ -4884,15 +4921,29 @@ class ObstaclesManager {
         group.position.set(x, baseY, z);
         this.scene.add(group);
 
-        // A controlled launch clears the trench without carrying the sled
-        // hundreds of metres into the next cliff's landing zone.
-        const boost = Math.round(20 * scale);
+        // Big ramp, big launch: enough range to clear the 44 m trench even
+        // from the deck lip (the old 20*scale undershot at medium speeds).
+        const boost = Math.round(26 * scale);
+
+        // World-space Z extent of the sloped deck. The deck box is rotated by
+        // deckAngle about X, so its ends land at +/-half*cos around an offset
+        // of (h/2)*sin -- these let physics pin the sled onto the deck surface
+        // and fire the launch exactly at the downhill lip.
+        const deckAngle = 0.35;
+        const deckHalf = rampLength * 0.5 * Math.cos(deckAngle);
+        const deckOffset = rampHeight * 0.5 * Math.sin(deckAngle);
+
         this.ramps.push({
             mesh: group,
             width: rampWidth,
             length: rampLength,
             boostPower: boost,
             isCliffJumper: true,
+            rampHeight: rampHeight,
+            deckAngle: deckAngle,
+            deckZMin: deckOffset - deckHalf, // downhill lip (launch side)
+            deckZMax: deckOffset + deckHalf, // uphill entry (flush with snow)
+            lipZ: deckOffset - deckHalf,
             pos: group.position
         });
         this.cliffRamps = this.cliffRamps || [];
@@ -8472,24 +8523,48 @@ class SnowAnsherMaster {
     checkCollisions() {
         const pPos = this.physics.position;
 
-        // Mega Ramps Collision
+        // Big (cliff-jumper) ramps get REAL ramp collision:
+        //   * a wide x-window (half-width + 10) so a slightly off-centre line
+        //     still catches the deck instead of eating the cliff,
+        //   * a solid deck you visibly ride up (sled pinned to the sloped
+        //     surface, which emerges flush with the snow at the entry),
+        //   * a launch fired exactly at the downhill lip, from deck height.
+        // Small kickers keep the simple touch-trigger.
         this.obstacles.ramps.forEach(ramp => {
             const dx = Math.abs(pPos.x - ramp.pos.x);
-            const dz = Math.abs(pPos.z - ramp.pos.z);
-            // Cliff jumpers are long (up to 45u), so test their whole deck, not half.
-            // The old half-length window meant big ramps were easy to miss at speed.
-            // NOTE: mega ramps were removed -- cliff jumpers ARE the big ramps now.
-            const halfLen = ramp.length * (ramp.isCliffJumper ? 0.85 : 0.5);
-            // High-speed frames can skip a narrow launch window; cover the downhill
-            // half of the deck and launch once when the sled is still grounded.
-            const atLaunchLip = !ramp.isCliffJumper || (
-                pPos.z <= ramp.pos.z - ramp.length * 0.02 &&
-                pPos.z >= ramp.pos.z - ramp.length * 0.68
-            );
-            if ((!ramp.isCliffJumper || !ramp.launched) &&
-                dx < ramp.width * 0.5 && dz < halfLen + 2 &&
+            const dzRel = pPos.z - ramp.pos.z;
+            const dz = Math.abs(dzRel);
+            const isBig = !!ramp.isCliffJumper;
+            const dxHalf = isBig ? ramp.width * 0.5 + 10 : ramp.width * 0.5;
+            const halfLen = ramp.length * (isBig ? 0.85 : 0.5);
+
+            let atLaunchLip = true;
+            if (isBig) {
+                // Launch zone: a 6u strip ending right at the lip. Entering it
+                // while grounded fires before the deck runs out (the 0.85
+                // half-length test above still covers it at any speed).
+                atLaunchLip = ramp.lipZ !== undefined
+                    ? (dzRel <= ramp.lipZ + 4 && dzRel >= ramp.lipZ - 2)
+                    : (dzRel <= -ramp.length * 0.02 && dzRel >= -ramp.length * 0.68);
+
+                // Ride the deck: pin the sled to the sloped surface. Physics
+                // snaps to terrain first each frame; this runs after it, so the
+                // rendered y follows the deck with no jitter.
+                if (ramp.deckZMin !== undefined && this.physics.isGrounded &&
+                    dzRel > ramp.deckZMin && dzRel < ramp.deckZMax && dx < dxHalf) {
+                    const a = ramp.deckAngle;
+                    const zLocal = (dzRel - ramp.rampHeight * 0.5 * Math.sin(a)) / Math.cos(a);
+                    const deckY = ramp.pos.y
+                        + ramp.rampHeight * 0.5 * Math.cos(a)
+                        - zLocal * Math.sin(a) + 0.5;
+                    if (deckY > pPos.y) this.physics.position.y = deckY;
+                }
+            }
+
+            if ((!isBig || !ramp.launched) &&
+                dx < dxHalf && dz < halfLen + 2 &&
                 atLaunchLip && this.physics.isGrounded) {
-                if (ramp.isCliffJumper) ramp.launched = true;
+                if (isBig) ramp.launched = true;
                 this.physics.launchRamp(ramp.boostPower, this.sound, this.particles);
             }
         });
