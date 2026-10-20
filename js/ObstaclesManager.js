@@ -35,13 +35,46 @@ class ObstaclesManager {
         // Dark grey rock palette (real rock tones — darker than snow, reads as lethal)
         this.matRockDark = new THREE.MeshStandardMaterial({ color: 0x4a4f55, roughness: 0.95, metalness: 0.0, flatShading: true });
         this.matRock = new THREE.MeshStandardMaterial({ color: 0x61666c, roughness: 0.95, metalness: 0.0, flatShading: true });
+
+        // Shared ramp materials. Stripes/trim are "decals" laid a hair above the deck,
+        // so they get a polygon offset to avoid z-fighting with the snow surface.
+        const decal = { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, side: THREE.DoubleSide };
+        this.matRampWood = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.9, metalness: 0.0, side: THREE.DoubleSide });
+        this.matRampSnow = new THREE.MeshStandardMaterial({ color: 0xf4f9ff, roughness: 0.55, metalness: 0.0, side: THREE.DoubleSide });
+        this.matRampTrim = new THREE.MeshStandardMaterial(Object.assign({ color: 0x5a3b30, roughness: 0.9, metalness: 0.0 }, decal));
+        this.matStripeYellow = new THREE.MeshBasicMaterial(Object.assign({ color: 0xf1c40f }, decal));
+        this.matStripeOrange = new THREE.MeshBasicMaterial(Object.assign({ color: 0xe67e22 }, decal));
+        this.matStripeRed = new THREE.MeshBasicMaterial(Object.assign({ color: 0xff4757 }, decal));
+
+        // Materials that must survive object disposal (shared between many meshes)
+        this._sharedMaterials = new Set([
+            this.matPineFoliage, this.matPineSnow, this.matPineTrunk, this.matBark,
+            this.matRockDark, this.matRock, this.matRampWood, this.matRampSnow,
+            this.matRampTrim, this.matStripeYellow, this.matStripeOrange, this.matStripeRed
+        ]);
+    }
+
+    /**
+     * Free the GPU geometry of a removed object. Without this every tree, ramp and
+     * snowman that scrolled out of range leaked its vertex buffers for the whole
+     * session, and long runs slowly lost frame rate.
+     */
+    _disposeObject(obj) {
+        if (!obj || !obj.traverse) return;
+        obj.traverse((child) => {
+            if (child.geometry && child.geometry.dispose) child.geometry.dispose();
+        });
+    }
+
+    _removeItem(item) {
+        if (!item || !item.mesh) return;
+        this.scene.remove(item.mesh);
+        this._disposeObject(item.mesh);
     }
 
     clearAll() {
         const removeGroup = (list) => {
-            list.forEach(item => {
-                if (item.mesh) this.scene.remove(item.mesh);
-            });
+            list.forEach(item => this._removeItem(item));
             list.length = 0;
         };
 
@@ -51,6 +84,7 @@ class ObstaclesManager {
         removeGroup(this.boostPads);
         removeGroup(this.gifts);
         removeGroup(this.powerups);
+        this.cliffRamps = [];
     }
 
     // ─── PROCEDURAL HAZARD BUILDERS ───
@@ -185,7 +219,9 @@ class ObstaclesManager {
     }
 
     /**
-     * 3-Tier Snowman with Top Hat, Carrot, and Flapping Scarf
+     * 3-Tier Snowman with Top Hat, Carrot, and Flapping Scarf.
+     * The face points UP the slope (+Z) so the rider sees it head-on. It used to
+     * face away, so you only ever saw the back of every snowman's head.
      */
     createSnowman(x, y, z) {
         const group = new THREE.Group();
@@ -203,17 +239,27 @@ class ObstaclesManager {
         const b3 = new THREE.Mesh(new THREE.SphereGeometry(0.6, 12, 12), snowMat);
         b3.position.y = 3.65;
 
-        // Coal eyes & smile
+        // Coal eyes (on the +Z, rider-facing side of the head)
         for (let side of [-1, 1]) {
-            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 6), coalMat);
-            eye.position.set(side * 0.18, 3.75, -0.55);
+            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 6), coalMat);
+            eye.position.set(side * 0.2, 3.78, 0.53);
             group.add(eye);
         }
 
-        // Carrot nose
+        // Coal smile
+        for (let i = -2; i <= 2; i++) {
+            const dot = new THREE.Mesh(new THREE.SphereGeometry(0.045, 5, 5), coalMat);
+            const sx = i * 0.11;
+            const sy = 3.47 + Math.abs(i) * 0.035;            // ends curl up into a smile
+            const sz = Math.sqrt(Math.max(0.01, 0.36 - sx * sx - (sy - 3.65) * (sy - 3.65)));
+            dot.position.set(sx, sy, sz);
+            group.add(dot);
+        }
+
+        // Carrot nose: rotation.x = +90deg turns the cone tip toward +Z (outward)
         const carrot = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.45, 6), carrotMat);
         carrot.rotation.x = Math.PI / 2;
-        carrot.position.set(0, 3.65, -0.65);
+        carrot.position.set(0, 3.65, 0.8);
         group.add(carrot);
 
         // Top Hat
@@ -282,180 +328,285 @@ class ObstaclesManager {
         });
     }
 
+    // ─── RAMPS ───────────────────────────────────────────────────────────────
+    //
+    // A ramp is described ONCE by a "spec" (entry/lip positions, heights and the
+    // deck curve). The mesh builder and the collision code (sampleRampDeck) both
+    // read that same spec, so the surface you see is exactly the surface you ride.
+    //
+    // Layout, in world space (the sled travels toward -Z):
+    //
+    //   entryZ (uphill end, flush with the snow)  ───►  lipZ (launch edge)
+    //
+    // The deck starts a hair under the snow at its lowest lane and curves up with
+    // an ease-in profile, so it grows out of the slope instead of starting with a
+    // step. The body is a solid wedge down to below the lowest terrain it touches.
+
+    _makeRampSpec(x, entryZ, lipZ, width, height, groundFn, exponent = 1.35) {
+        const g = (typeof groundFn === 'function')
+            ? groundFn
+            : (this.getGroundHeightAt || ((gx, gz) => -gz * Math.tan(this.SLOPE_ANGLE)));
+
+        const hw = width * 0.5;
+        const L = entryZ - lipZ;
+        const lanes = [-1, -0.5, 0, 0.5, 1].map(k => x + k * hw);
+
+        let entryGround = Infinity;  // LOWEST terrain across the entry edge
+        let lipGround = -Infinity;   // HIGHEST terrain across the lip edge
+        let floor = Infinity;        // lowest terrain under / just past the footprint
+        for (const px of lanes) {
+            entryGround = Math.min(entryGround, g(px, entryZ));
+            // Also sample 6 m uphill of the lip: at a cliff the terrain AT the lip has already
+            // started dropping into the wall, which would make the ramp far too low.
+            lipGround = Math.max(lipGround, g(px, lipZ), g(px, lipZ + 6));
+            for (let s = 0; s <= 8; s++) {
+                floor = Math.min(floor, g(px, entryZ - (L + 4) * (s / 8)));
+            }
+        }
+
+        const yEntry = entryGround - 0.05;
+        const rise = Math.max(1.0, lipGround + height - yEntry);
+        const clamp01 = (v) => Math.min(1, Math.max(0, v));
+
+        return {
+            x: x,
+            hw: hw,
+            entryZ: entryZ,
+            lipZ: lipZ,
+            L: L,
+            yEntry: yEntry,
+            rise: rise,
+            exp: exponent,
+            bottomY: floor - 1.5,
+            // Deck height at world Z
+            deckY: (z) => yEntry + rise * Math.pow(clamp01((entryZ - z) / L), exponent),
+            // Nose-up pitch (radians) of the deck at world Z
+            pitchAt: (z) => {
+                const t = Math.max(0.02, clamp01((entryZ - z) / L));
+                return Math.atan(rise * exponent * Math.pow(t, exponent - 1) / L);
+            }
+        };
+    }
+
+    _buildRampMesh(spec, opts) {
+        const { x, hw, entryZ, lipZ, L, bottomY } = spec;
+        const slices = opts.slices || 12;
+        const xl = x - hw;
+        const xr = x + hw;
+        const castShadow = !!(this.config && this.config.graphics === 'ultra');
+
+        const woodPos = [], woodCol = [];
+        const snowPos = [], trimPos = [], chevPos = [], lipPos = [];
+
+        const tri = (arr, a, b, c) => { arr.push(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]); };
+        const quad = (arr, a, b, c, d) => { tri(arr, a, b, c); tri(arr, b, d, c); };
+        const shade = (s) => { for (let i = 0; i < 6; i++) woodCol.push(0.43 * s, 0.30 * s, 0.25 * s); };
+
+        const zs = [];
+        const ys = [];
+        for (let i = 0; i <= slices; i++) {
+            const z = entryZ - L * (i / slices);
+            zs.push(z);
+            ys.push(spec.deckY(z));
+        }
+
+        for (let i = 0; i < slices; i++) {
+            const z0 = zs[i], z1 = zs[i + 1], y0 = ys[i], y1 = ys[i + 1];
+
+            // Packed-snow deck
+            quad(snowPos, [xl, y0, z0], [xr, y0, z0], [xl, y1, z1], [xr, y1, z1]);
+
+            // Timber side walls, banded so they read as planking rather than a slab
+            const band = (i % 2 === 0) ? 1.0 : 0.84;
+            quad(woodPos, [xl, y0, z0], [xl, y1, z1], [xl, bottomY, z0], [xl, bottomY, z1]); shade(band);
+            quad(woodPos, [xr, y0, z0], [xr, y1, z1], [xr, bottomY, z0], [xr, bottomY, z1]); shade(band);
+
+            // Raised edge beams along both sides of the deck
+            const bw = 0.7;
+            const lift = 0.04;
+            quad(trimPos, [xl, y0 + lift, z0], [xl + bw, y0 + lift, z0], [xl, y1 + lift, z1], [xl + bw, y1 + lift, z1]);
+            quad(trimPos, [xr - bw, y0 + lift, z0], [xr, y0 + lift, z0], [xr - bw, y1 + lift, z1], [xr, y1 + lift, z1]);
+        }
+
+        // Front (lip) face and rear (entry) face of the wedge
+        const yLip = ys[slices];
+        const yEnt = ys[0];
+        quad(woodPos, [xl, yLip, lipZ], [xr, yLip, lipZ], [xl, bottomY, lipZ], [xr, bottomY, lipZ]); shade(0.78);
+        quad(woodPos, [xl, yEnt, entryZ], [xr, yEnt, entryZ], [xl, bottomY, entryZ], [xr, bottomY, entryZ]); shade(0.78);
+
+        // Bright launch-edge bar across the last 0.9 m of the deck
+        const barZ = lipZ + 0.9;
+        quad(lipPos,
+            [xl, spec.deckY(barZ) + 0.04, barZ], [xr, spec.deckY(barZ) + 0.04, barZ],
+            [xl, spec.deckY(lipZ) + 0.04, lipZ], [xr, spec.deckY(lipZ) + 0.04, lipZ]);
+
+        // Downhill-pointing chevrons laid on the deck surface
+        const cw = hw * 0.7;
+        const th = 1.5;
+        const tipDz = cw * 0.4;
+        const P = (px, pz) => [px, spec.deckY(pz) + 0.05, pz];
+        for (let k = 0; k < opts.chevrons; k++) {
+            const tc = opts.chevrons === 1
+                ? opts.chevStart
+                : opts.chevStart + (opts.chevEnd - opts.chevStart) * (k / (opts.chevrons - 1));
+            const zf = entryZ - L * tc;
+            const R0 = P(x - cw, zf), R1 = P(x, zf - tipDz), R2 = P(x + cw, zf);
+            const F0 = P(x - cw, zf - th), F1 = P(x, zf - tipDz - th), F2 = P(x + cw, zf - th);
+            quad(chevPos, R0, R1, F0, F1);
+            quad(chevPos, R1, R2, F1, F2);
+        }
+
+        const makeMesh = (positions, material, colors) => {
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            if (colors) geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            geo.computeVertexNormals();
+            const mesh = new THREE.Mesh(geo, material);
+            mesh.castShadow = castShadow;
+            return mesh;
+        };
+
+        const group = new THREE.Group();
+        group.add(makeMesh(woodPos, this.matRampWood, woodCol));
+        group.add(makeMesh(snowPos, this.matRampSnow));
+        group.add(makeMesh(trimPos, this.matRampTrim));
+        group.add(makeMesh(chevPos, opts.chevMat));
+        group.add(makeMesh(lipPos, opts.lipMat));
+        return group;
+    }
+
     /**
-     * Mega Ski Jump Ramps with high launch power for massive airtime
+     * Highest ramp deck under world (x, z), or null when the point is off every ramp.
+     * Returns { y, pitch, ramp }. Used by the game loop to ride and launch off ramps.
+     */
+    sampleRampDeck(x, z, margin = 0.4) {
+        let best = null;
+        for (let i = 0; i < this.ramps.length; i++) {
+            const ramp = this.ramps[i];
+            const s = ramp.spec;
+            if (z > s.entryZ || z < s.lipZ) continue;
+            if (Math.abs(x - s.x) > s.hw + margin) continue;
+            const y = s.deckY(z);
+            if (!best || y > best.y) best = { y: y, pitch: s.pitchAt(z), ramp: ramp };
+        }
+        return best;
+    }
+
+    /**
+     * Normal ski-jump kicker. `z` is the ramp's centre; the deck runs flush with the
+     * snow at the uphill end and curves up to a launch lip at the downhill end.
      */
     createMegaRamp(x, y, z, isMega = false, groundFn = null) {
-        const group = new THREE.Group();
-        const rampWidth = isMega ? 14.0 : 9.5;
-        const rampLength = isMega ? 12.0 : 8.5;
-        const rampHeight = isMega ? 4.2 : 2.8;
+        const width = isMega ? 14.0 : 9.5;
+        const length = isMega ? 16.0 : 12.0;
+        const height = isMega ? 4.2 : 2.8;
 
-        // Ramps used to be placed at a flat spawn height, which left them hovering
-        // above (or sunk into) the slope, and they never looked like they rested on
-        // anything. Sit them on the actual terrain height at their footprint instead,
-        // then raise them by their own height so the base is flush with the ground.
-        const sampleZ = z + (isMega ? -rampLength * 0.35 : -rampLength * 0.35);
-        let baseY = y;
-        if (typeof groundFn === 'function') {
-            const zBack = z + rampLength * 0.5;
-            const zFront = z - rampLength * 0.5;
-            baseY = Math.max(groundFn(x, zBack), groundFn(x, zFront));
-        }
-
-        // Timber wood frame
-        const frameGeo = new THREE.BoxGeometry(rampWidth, 0.4, rampLength);
-        const frameMat = new THREE.MeshStandardMaterial({ color: 0x6d4c41, roughness: 0.85 });
-        const frame = new THREE.Mesh(frameGeo, frameMat);
-        frame.rotation.x = isMega ? 0.38 : 0.32;
-        frame.position.set(0, rampHeight * 0.5, 0);
-
-        // Snow packed kicker lip
-        const snowGeo = new THREE.BoxGeometry(rampWidth - 0.2, 0.35, rampLength);
-        const snowMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
-        const snowTop = new THREE.Mesh(snowGeo, snowMat);
-        snowTop.position.set(0, 0.25, 0);
-        frame.add(snowTop);
-
-        // Glowing launch chevrons
-        const chevronGeo = new THREE.BoxGeometry(rampWidth, 0.06, 0.6);
-        const chevronMat = new THREE.MeshBasicMaterial({ color: isMega ? 0xff4757 : 0xf1c40f });
-        const chevron = new THREE.Mesh(chevronGeo, chevronMat);
-        chevron.position.set(0, 0.45, rampLength * 0.45);
-        frame.add(chevron);
-
-        group.add(frame);
-        group.position.set(x, baseY, z);
-        this.scene.add(group);
+        const spec = this._makeRampSpec(x, z + length * 0.5, z - length * 0.5, width, height, groundFn, 1.35);
+        const mesh = this._buildRampMesh(spec, {
+            slices: 10,
+            chevrons: 2, chevStart: 0.4, chevEnd: 0.68,
+            chevMat: isMega ? this.matStripeRed : this.matStripeYellow,
+            lipMat: this.matStripeOrange
+        });
+        this.scene.add(mesh);
 
         this.ramps.push({
-            mesh: group,
-            width: rampWidth,
-            length: rampLength,
-            boostPower: isMega ? 46 : 34, // Big obvious kicker launch (≈25m / ≈14m apex) — clearly above a normal jump
-            pos: group.position
+            mesh: mesh,
+            spec: spec,
+            width: width,
+            length: length,
+            boostPower: isMega ? 46 : 34, // Big obvious kicker launch (≈25m / ≈14m apex)
+            isCliffJumper: false,
+            pos: new THREE.Vector3(x, spec.yEntry, z)
         });
     }
 
     /**
-     * Cliff-clearing ramp: a very long, steep kicker whose lip is high enough to
-     * carry the sled across a chasm it could never clear on the flat.
-     *
-     * Unlike createMegaRamp this one does NOT need to touch the ground — a cliff gap
-     * means the takeoff point is genuinely elevated — but its base is still pinned to
-     * the terrain at its own footing so it never looks like it is hovering.
+     * Cliff-clearing ramp: a very long kicker whose lip is high enough to carry the
+     * sled across a chasm it could never clear on the flat. Built as a solid wedge
+     * (no floating slab, no legs poking through the deck) and wide enough to cover
+     * most of the run so an off-centre line still catches it.
      */
     createCliffJumpRamp(x, y, z, groundFn = null, scale = 1.0) {
-        const group = new THREE.Group();
-        const rampWidth = 22.0 * scale;
-        const rampLength = 48.0 * scale;
-        const rampHeight = 13.0 * scale; // Oversized kicker built to clear the deep chasm
+        const width = 35.0 * scale;
+        const length = 48.0 * scale;
+        const height = 9.0 * scale;
 
-        // Support legs so the ramp reads as built structure, not a floating slab.
-        const legMat = new THREE.MeshStandardMaterial({ color: 0x5d4037, roughness: 0.9 });
-        [-0.34, 0.02, 0.34].forEach(t => {
-            const legH = Math.max(1.2, rampHeight * (0.9 - t));
-            const legGeo = new THREE.BoxGeometry(rampWidth * 0.14, legH, rampWidth * 0.14);
-            const leg = new THREE.Mesh(legGeo, legMat);
-            leg.position.set(rampWidth * 0.32, legH * 0.5 - rampHeight * 0.1, rampLength * t);
-            leg.castShadow = this.config && this.config.graphics === 'ultra';
-            group.add(leg);
+        const spec = this._makeRampSpec(x, z + length * 0.5, z - length * 0.5, width, height, groundFn, 1.35);
+        const mesh = this._buildRampMesh(spec, {
+            slices: 18,
+            chevrons: 4, chevStart: 0.2, chevEnd: 0.82,
+            chevMat: this.matStripeRed,
+            lipMat: this.matStripeYellow
         });
+        this.scene.add(mesh);
 
-        // Timber deck - less steep launch angle (0.35 vs 0.46)
-        const frameGeo = new THREE.BoxGeometry(rampWidth, 0.55, rampLength);
-        const frameMat = new THREE.MeshStandardMaterial({ color: 0x6d4c41, roughness: 0.85 });
-        const frame = new THREE.Mesh(frameGeo, frameMat);
-        frame.rotation.x = 0.35; // Reduced from 0.46 for less height
-        frame.position.set(0, rampHeight * 0.5, 0);
-        frame.castShadow = this.config && this.config.graphics === 'ultra';
-        group.add(frame);
-
-        // Snow-packed launch surface
-        const snowGeo = new THREE.BoxGeometry(rampWidth - 0.3, 0.4, rampLength - 0.3);
-        const snowMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
-        const snowTop = new THREE.Mesh(snowGeo, snowMat);
-        snowTop.position.set(0, 0.3, 0);
-        frame.add(snowTop);
-
-        // Warning chevrons up the face
-        const chevMat = new THREE.MeshBasicMaterial({ color: 0xff4757 });
-        for (let i = 0; i < 4; i++) {
-            const chevGeo = new THREE.BoxGeometry(rampWidth * 0.9, 0.07, 0.7);
-            const chev = new THREE.Mesh(chevGeo, chevMat);
-            chev.position.set(0, 0.52, rampLength * (0.18 + i * 0.16));
-            frame.add(chev);
-        }
-
-        // Align the uphill end of the sloped deck with the snow. The rotation
-        // raises the downhill (-Z) lip; account for that rotation when anchoring.
-        let baseY = y;
-        if (typeof groundFn === 'function') {
-            baseY = groundFn(x, z + rampLength * 0.5)
-                + rampLength * 0.5 * Math.sin(0.35)
-                - rampHeight * 0.5 * Math.cos(0.35);
-        }
-
-        group.position.set(x, baseY, z);
-        this.scene.add(group);
-
-        // Big ramp, big launch: enough range to clear the 44 m trench even
-        // from the deck lip (the old 20*scale undershot at medium speeds).
+        // Big ramp, big launch: enough range to clear the 44 m trench even at the
+        // slowest starting speed.
         const boost = Math.round(26 * scale);
 
-        // World-space Z extent of the sloped deck. The deck box is rotated by
-        // deckAngle about X, so its ends land at +/-half*cos around an offset
-        // of (h/2)*sin -- these let physics pin the sled onto the deck surface
-        // and fire the launch exactly at the downhill lip.
-        const deckAngle = 0.35;
-        const deckHalf = rampLength * 0.5 * Math.cos(deckAngle);
-        const deckOffset = rampHeight * 0.5 * Math.sin(deckAngle);
-
         this.ramps.push({
-            mesh: group,
-            width: rampWidth,
-            length: rampLength,
+            mesh: mesh,
+            spec: spec,
+            width: width,
+            length: length,
             boostPower: boost,
             isCliffJumper: true,
-            rampHeight: rampHeight,
-            deckAngle: deckAngle,
-            deckZMin: deckOffset - deckHalf, // downhill lip (launch side)
-            deckZMax: deckOffset + deckHalf, // uphill entry (flush with snow)
-            lipZ: deckOffset - deckHalf,
-            pos: group.position
+            pos: new THREE.Vector3(x, spec.yEntry, z)
         });
         this.cliffRamps = this.cliffRamps || [];
-        this.cliffRamps.push(group);
+        this.cliffRamps.push(mesh);
     }
 
     /**
-     * Rainbow Ice Grind Rail
+     * Rainbow Ice Grind Rail.
+     * The pipe is a straight line between its two ends and every support post is
+     * sized to reach the terrain under it. It used to be tilted the wrong way for
+     * this slope, so the far half of every rail was buried in the snow.
      */
     createGrindRail(x, y, z, length = 45) {
+        const RAIL_H = 1.8; // pipe centre height above the snow
+        const g = this.getGroundHeightAt
+            ? this.getGroundHeightAt
+            : ((gx, gz) => y + (z - gz) * Math.tan(this.SLOPE_ANGLE));
+
+        const zEnd = z - length;
+        const yStart = g(x, z) + RAIL_H;
+        const yEnd = g(x, zEnd) + RAIL_H;
+        const railY = (zw) => {
+            const t = Math.min(1, Math.max(0, (z - zw) / length));
+            return yStart + (yEnd - yStart) * t;
+        };
+
         const group = new THREE.Group();
 
-        // Curved steel/rainbow rail pipe
-        const railGeo = new THREE.CylinderGeometry(0.18, 0.18, length, 12);
+        // Straight rainbow pipe from the start point to the end point
+        const dir = new THREE.Vector3(0, yEnd - yStart, zEnd - z);
+        const pipeLen = dir.length();
+        dir.normalize();
+
+        const railGeo = new THREE.CylinderGeometry(0.18, 0.18, pipeLen, 12);
         const railMat = new THREE.ShaderMaterial({
             vertexShader: SnowShaders.RainbowRailShader.vertexShader,
             fragmentShader: SnowShaders.RainbowRailShader.fragmentShader,
             uniforms: THREE.UniformsUtils.clone(SnowShaders.RainbowRailShader.uniforms)
         });
         const rail = new THREE.Mesh(railGeo, railMat);
-        rail.rotation.x = Math.PI / 2 - this.SLOPE_ANGLE;
-        rail.position.set(0, 1.8, -length * 0.5);
+        rail.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+        rail.position.set(x, (yStart + yEnd) * 0.5, (z + zEnd) * 0.5);
         group.add(rail);
 
-        // Support vertical posts
-        const postMat = new THREE.MeshStandardMaterial({ color: 0x34495e, metalness: 0.8, roughness: 0.3 });
-        for (let dz = 0; dz < length; dz += 10) {
-            const postGeo = new THREE.CylinderGeometry(0.12, 0.12, 2.0, 8);
-            const post = new THREE.Mesh(postGeo, postMat);
-            post.position.set(0, 0.9, -dz);
+        // Support posts: each one runs from just under the snow up to the pipe
+        const postMat = new THREE.MeshStandardMaterial({ color: 0x34495e, metalness: 0.3, roughness: 0.5 });
+        for (let dz = 0; dz <= length; dz += 10) {
+            const pz = z - dz;
+            const groundY = g(x, pz);
+            const h = Math.max(0.6, railY(pz) - groundY) + 0.3;
+            const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, h, 8), postMat);
+            post.position.set(x, groundY - 0.3 + h * 0.5, pz);
             group.add(post);
         }
 
-        group.position.set(x, y, z);
         this.scene.add(group);
 
         this.grindRails.push({
@@ -463,7 +614,9 @@ class ObstaclesManager {
             railMesh: rail,
             width: 2.2,
             length: length,
-            pos: group.position
+            railY: railY,
+            counted: false,
+            pos: new THREE.Vector3(x, g(x, z), z)
         });
     }
 
@@ -493,6 +646,8 @@ class ObstaclesManager {
 
         group.add(pad);
         group.position.set(x, y + 0.1, z);
+        // Lie flat on the slope instead of cutting into it at one end
+        group.rotation.x = this.SLOPE_ANGLE;
         this.scene.add(group);
 
         this.boostPads.push({
@@ -505,22 +660,26 @@ class ObstaclesManager {
     }
 
     /**
-     * Collectible Holiday Gift Box
+     * Collectible Holiday Gift Box.
+     * Metalness is kept low: there is no environment map in the scene, so highly
+     * metallic surfaces render near-black instead of shiny.
      */
     createGiftBox(x, y, z) {
         const group = new THREE.Group();
         const boxGeo = new THREE.BoxGeometry(2.1, 2.1, 2.1);
         const boxMat = new THREE.MeshStandardMaterial({
             color: 0xff4757,
-            metalness: 0.5,
-            roughness: 0.3
+            emissive: 0x3a0610,
+            metalness: 0.1,
+            roughness: 0.45
         });
         const box = new THREE.Mesh(boxGeo, boxMat);
 
         const ribMat = new THREE.MeshStandardMaterial({
             color: 0xffd166,
-            metalness: 0.85,
-            roughness: 0.2
+            emissive: 0x5c4200,
+            metalness: 0.15,
+            roughness: 0.4
         });
         const rib1 = new THREE.Mesh(new THREE.BoxGeometry(2.18, 2.18, 0.42), ribMat);
         const rib2 = new THREE.Mesh(new THREE.BoxGeometry(0.42, 2.18, 2.18), ribMat);
@@ -594,13 +753,19 @@ class ObstaclesManager {
      */
     update(dt, playerPos) {
         // Update rolling boulders
+        const bound = this.TRACK_WIDTH * 0.44;
         this.obstacles.forEach(obj => {
             if (obj.rolling) {
-                obj.mesh.rotation.x += obj.rollSpeed * dt;
                 obj.pos.x += obj.driftX * dt;
-                if (Math.abs(obj.pos.x) > this.TRACK_WIDTH * 0.44) {
-                    obj.driftX = -obj.driftX;
-                }
+                // Steer back inward based on which side we're past. Flipping the sign
+                // on every frame beyond the bound made boulders jitter at the edge.
+                if (obj.pos.x > bound) obj.driftX = -Math.abs(obj.driftX);
+                else if (obj.pos.x < -bound) obj.driftX = Math.abs(obj.driftX);
+
+                // Roll about the axis that matches the direction of travel (sideways
+                // drift => spin about Z), plus a slow tumble for character.
+                obj.mesh.rotation.z -= (obj.driftX / obj.radius) * dt;
+                obj.mesh.rotation.x += obj.rollSpeed * 0.25 * dt;
             }
         });
 
@@ -630,7 +795,7 @@ class ObstaclesManager {
         const cleanup = (list) => {
             for (let i = list.length - 1; i >= 0; i--) {
                 if (list[i].pos.z > playerPos.z + 90) {
-                    this.scene.remove(list[i].mesh);
+                    this._removeItem(list[i]);
                     list.splice(i, 1);
                 }
             }

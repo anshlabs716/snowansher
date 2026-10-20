@@ -10,6 +10,51 @@
     <link rel="stylesheet" href="./style.css">
 </head>
 <body>
+    <!--
+        Icon sprite. One consistent set (24x24, 2px round strokes) used everywhere via
+        <svg class="icon"><use href="#i-NAME"/></svg>. Colour comes from currentColor.
+    -->
+    <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="position:absolute;width:0;height:0;overflow:hidden">
+        <defs>
+            <symbol id="i-play" viewBox="0 0 24 24"><polygon points="7 4.5 19.5 12 7 19.5" fill="currentColor"/></symbol>
+            <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4.5" width="4" height="15" rx="1" fill="currentColor"/><rect x="14" y="4.5" width="4" height="15" rx="1" fill="currentColor"/></symbol>
+            <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v10h13V10"/><path d="M10 20v-5.5h4V20"/></symbol>
+            <symbol id="i-retry" viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3.5 3.8v4.6h4.6"/></symbol>
+            <symbol id="i-spin" viewBox="0 0 24 24"><path d="M20.5 12a8.5 8.5 0 1 1-2.6-6.1"/><path d="M20.5 3.8v4.6h-4.6"/></symbol>
+            <symbol id="i-gift" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5"/></symbol>
+            <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></symbol>
+            <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7.5 3v5.5c0 4.7-3.2 8.2-7.5 9.5-4.3-1.3-7.5-4.8-7.5-9.5V6L12 3z"/><path d="M9 12l2 2 4-4"/></symbol>
+            <symbol id="i-magnet" viewBox="0 0 24 24"><path d="M5 3h5v9a2 2 0 0 0 4 0V3h5v9a7 7 0 0 1-14 0V3z"/><path d="M5 8h5M14 8h5"/></symbol>
+            <symbol id="i-rocket" viewBox="0 0 24 24"><path d="M12 2.5c3.2 2.3 5 5.8 5 9.5v3.5H7V12c0-3.7 1.8-7.2 5-9.5z"/><circle cx="12" cy="9.5" r="1.8"/><path d="M7 13l-3 3.5V20l3-1.5M17 13l3 3.5V20l-3-1.5"/><path d="M10 18.5c0 1.4.8 2.6 2 3.5 1.2-.9 2-2.1 2-3.5"/></symbol>
+            <symbol id="i-star" viewBox="0 0 24 24"><polygon points="12 2.5 14.9 8.6 21.5 9.5 16.7 14.1 17.9 20.7 12 17.5 6.1 20.7 7.3 14.1 2.5 9.5 9.1 8.6" fill="currentColor"/></symbol>
+            <symbol id="i-bolt" viewBox="0 0 24 24"><polygon points="13 2 4 14 11 14 10 22 20 9 13 9" fill="currentColor"/></symbol>
+            <symbol id="i-mountain" viewBox="0 0 24 24"><path d="M2.5 20 9 8.5l3.8 6 2.7-4L21.5 20z"/><path d="M7.4 11.6 9 8.5l1.6 2.6"/></symbol>
+            <symbol id="i-snowflake" viewBox="0 0 24 24"><path d="M12 2v20M4.2 7l15.6 10M4.2 17 19.8 7"/><path d="M9.5 3.8 12 6l2.5-2.2M9.5 20.2 12 18l2.5 2.2"/></symbol>
+            <symbol id="i-sled" viewBox="0 0 24 24"><path d="M3 18h14.5a3.5 3.5 0 0 0 3.5-3.5V13"/><path d="M5 14h12"/><path d="M7.5 14v4M14.5 14v4"/><path d="M5 14l1.2-3.5h8.6L17 14"/></symbol>
+            <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></symbol>
+            <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/></symbol>
+            <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></symbol>
+            <symbol id="i-steer" viewBox="0 0 24 24"><path d="M3 12h18"/><path d="M7 8l-4 4 4 4"/><path d="M17 8l4 4-4 4"/></symbol>
+            <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="M12 20V5"/><path d="M5.5 11.5 12 5l6.5 6.5"/></symbol>
+            <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 4v15"/><path d="M5.5 12.5 12 19l6.5-6.5"/></symbol>
+            <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M20 12H5"/><path d="M11.5 5.5 5 12l6.5 6.5"/></symbol>
+            <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M4 12h15"/><path d="M12.5 5.5 19 12l-6.5 6.5"/></symbol>
+            <symbol id="i-rail" viewBox="0 0 24 24"><path d="M2.5 14c4-7 15-7 19 0"/><path d="M6 10.4V19M12 8.6V19M18 10.4V19"/></symbol>
+            <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></symbol>
+            <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+            <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+            <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+            <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+            <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v5.5"/><path d="M12 7.5h.01"/></symbol>
+            <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20.5 4.2 12.8a4.7 4.7 0 0 1 6.6-6.7L12 7.3l1.2-1.2a4.7 4.7 0 0 1 6.6 6.7L12 20.5z"/></symbol>
+            <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V3"/><path d="M5 4h12l-2.5 4 2.5 4H5"/></symbol>
+            <symbol id="i-tree" viewBox="0 0 24 24"><path d="M12 2.5 6 10h3L4.5 16h15L15 10h3L12 2.5z"/><path d="M12 16v5.5"/></symbol>
+            <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.8-7 10-7 10 7 10 7-3.8 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+            <symbol id="i-volume" viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L12.5 19V5L7.5 9.5H4z"/><path d="M16 9a4.2 4.2 0 0 1 0 6"/><path d="M18.6 6.4a8 8 0 0 1 0 11.2"/></symbol>
+            <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5.5l11-2V16"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/></symbol>
+        </defs>
+    </svg>
+
     <!-- 3D Canvas WebGL Render Layer -->
     <div id="canvas-container"></div>
 
@@ -23,7 +68,7 @@
         <div class="hud-top">
             <div class="hud-card">
                 <div class="hud-icon-box gold">
-                    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M20 7H4v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V7zm-2 2v6h-3v-6h3zm-5 0v6h-3v-6h3zm-5 0v6H4v-6h3z"/></svg>
+                    <svg class="icon"><use href="#i-gift"/></svg>
                 </div>
                 <div>
                     <div class="hud-label">GIFTS</div>
@@ -36,20 +81,20 @@
                     <div class="hud-label">DISTANCE</div>
                     <div><span class="hud-val" id="hud-dist">0</span><span class="unit">M</span></div>
                 </div>
-                <div id="combo-popup"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> CLOSE CALL! +50m <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+                <div id="combo-popup"><svg class="icon"><use href="#i-star"/></svg> CLOSE CALL! +50m <svg class="icon"><use href="#i-star"/></svg></div>
 
                 <!-- Active Powerups Tray -->
                 <div id="powerup-tray">
-                    <div class="powerup-pill" id="pill-shield"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> SHIELD</div>
-                    <div class="powerup-pill" id="pill-magnet"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M14 2a2 2 0 0 1 2 2v3h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-4v-2h4a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2V4a2 2 0 0 1 2-2zm-4 0a2 2 0 0 0-2 2v3H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4v-2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2V4a2 2 0 0 0 2-2z"/></svg> MAGNET</div>
-                    <div class="powerup-pill" id="pill-rocket"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.36-2.91l-1.46-1.46c-1.81.7-3.72.24-4.68-.94a2.2 2.2 0 0 1 0-3.12c1.53-1.53 3.99-2.27 6.29-2.27 2.3 0 4.76.74 6.29 2.27a2.2 2.2 0 0 1 0 3.12c-.96 1.18-2.87 1.64-4.68.94l-1.46 1.46c-1.06.78-.97 2.07-.36 2.91a6.94 6.94 0 0 0 5 2c1.26 1.5-.5 5-2 5s-3.74.5-5-2c-1.32-1.32-3.4-1.12-4.68-.61l-.76.76a1 1 0 0 1-1.39.07L7 13.11a1 1 0 0 1 .07-1.39l.76-.76c-.51-1.28-.71-3.36-.61-4.68zM12 4c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg> HYPER BOOST</div>
-                    <div class="powerup-pill" id="pill-multiplier"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> 2X SCORE</div>
+                    <div class="powerup-pill" id="pill-shield"><svg class="icon"><use href="#i-shield"/></svg> SHIELD</div>
+                    <div class="powerup-pill" id="pill-magnet"><svg class="icon"><use href="#i-magnet"/></svg> MAGNET</div>
+                    <div class="powerup-pill" id="pill-rocket"><svg class="icon"><use href="#i-rocket"/></svg> HYPER BOOST</div>
+                    <div class="powerup-pill" id="pill-multiplier"><svg class="icon"><use href="#i-star"/></svg> 2X SCORE</div>
                 </div>
             </div>
 
             <div class="hud-card">
                 <div class="hud-icon-box">
-                    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M19 6h-2V4a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v2H5a2 2 0 0 0 0 4h1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10h1a2 2 0 0 0 0-4zM9 4h6v2H9V4zm8 14H7V10h10v8z"/></svg>
+                    <svg class="icon"><use href="#i-trophy"/></svg>
                 </div>
                 <div>
                     <div class="hud-label">RECORD</div>
@@ -98,27 +143,27 @@
             </div>
 
             <div class="tabs">
-                <button class="tab-btn active" data-tab="tab-play"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M8 5v14l11-7z"/></svg> RIDE</button>
-                <button class="tab-btn" data-tab="tab-garage"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M20 14H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1zm-6-8H10a1 1 0 0 0-1 1v5h2V7h6v5h2V7a1 1 0 0 0-1-1z"/></svg> GARAGE (10)</button>
-                <button class="tab-btn" data-tab="tab-settings"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M7 2a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v20a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V2zm0 2v4h2V4H7zm4 0v4h2V4h-2zm4 0v4h2V4h-2zM7 14v4h2v-4H7zm4 0v4h2v-4h-2zm4 0v4h2v-4h-2z"/></svg> OPTIONS</button>
-                <button class="tab-btn" data-tab="tab-controls"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M12 2a8 8 0 0 0-8 8c0 2.5 1.5 4.5 3.5 5.5v2h2v-2h4v2h2v-2c2-1 3.5-3 3.5-5.5a8 8 0 0 0-8-8zm0 2a6 6 0 0 1 6 6c0 1.5-.8 2.8-2 3.4v1h4v-1c-1.2-.6-2-1.9-2-3.4a6 6 0 0 1-6-6zm-4 8a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0zm8 0a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0z"/></svg> STUNT GUIDE</button>
+                <button class="tab-btn active" data-tab="tab-play"><svg class="icon"><use href="#i-play"/></svg> RIDE</button>
+                <button class="tab-btn" data-tab="tab-garage"><svg class="icon"><use href="#i-sled"/></svg> GARAGE (10)</button>
+                <button class="tab-btn" data-tab="tab-settings"><svg class="icon"><use href="#i-sliders"/></svg> OPTIONS</button>
+                <button class="tab-btn" data-tab="tab-controls"><svg class="icon"><use href="#i-keyboard"/></svg> STUNT GUIDE</button>
             </div>
 
             <!-- Tab: Play Modes -->
             <div id="tab-play" class="tab-panel active">
                 <div class="modes-grid">
                     <div class="mode-card" onclick="game.start('easy')">
-                        <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M12 2l1 7h7l-5 4 1 7-6-5-6 5 1-7-5-4 7 1V2h1z"/></svg>
+                        <svg class="icon"><use href="#i-snowflake"/></svg>
                         <h3>POWDER CRUISE</h3>
                         <p>Gentle slopes & wide corridors. Perfect for relaxing glides.</p>
                     </div>
                     <div class="mode-card featured" onclick="game.start('medium')">
-                        <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M12 3L3 18h18L12 3zM7 15l5-7 5 7H7z"/></svg>
+                        <svg class="icon"><use href="#i-mountain"/></svg>
                         <h3>ALPINE RUSH</h3>
                         <p>The premier downhill run! Mega kickers, rolling avalanches & rainbow grind rails.</p>
                     </div>
                     <div class="mode-card" onclick="game.start('hard')">
-                        <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M13 2L3 14h8l-1 10 9-12h-8l1-10z"/></svg>
+                        <svg class="icon"><use href="#i-bolt"/></svg>
                         <h3>BLIZZARD RUN</h3>
                         <p>Maximum speed, huge hang-time ramps, dense hazards, and polar auroras.</p>
                     </div>
@@ -126,7 +171,7 @@
 
                 <div style="text-align: center;">
                     <button class="btn-action" onclick="game.start('medium')">
-                        <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M8 5v14l11-7z"/></svg> LAUNCH SLED
+                        <svg class="icon"><use href="#i-play"/></svg> LAUNCH SLED
                     </button>
                 </div>
             </div>
@@ -136,7 +181,7 @@
                 <div class="garage-header">
                     <h2 style="font-family: 'Orbitron'; font-size: 20px;">FLEET GARAGE</h2>
                     <div class="garage-currency">
-                        <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M20 7H4v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V7zm-2 2v6h-3v-6h3zm-5 0v6h-3v-6h3zm-5 0v6H4v-6h3z"/></svg> <span id="garage-gifts-val">0</span>
+                        <svg class="icon"><use href="#i-gift"/></svg> <span id="garage-gifts-val">0</span>
                     </div>
                 </div>
 
@@ -183,23 +228,23 @@
             <div id="tab-controls" class="tab-panel">
                 <div style="display: flex; flex-direction: column; gap: 12px; font-size: 15px; color: rgba(255,255,255,0.85); line-height: 1.5;">
                     <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px;">
-                        <span><svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M3 12l5-5 5 5H5v2h8v-2h-8zm14 0l5-5-5-5h-8v2h8v2h8z"/></svg> Steer Left / Right</span>
+                        <span><svg class="icon"><use href="#i-steer"/></svg> Steer Left / Right</span>
                         <span><span class="kbd-badge">A</span> <span class="kbd-badge">D</span> or <span class="kbd-badge">←</span> <span class="kbd-badge">→</span></span>
                     </div>
                     <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px;">
-                        <span><svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.36-2.91l-1.46-1.46c-1.81.7-3.72.24-4.68-.94a2.2 2.2 0 0 1 0-3.12c1.53-1.53 3.99-2.27 6.29-2.27 2.3 0 4.76.74 6.29 2.27a2.2 2.2 0 0 1 0 3.12c-.96 1.18-2.87 1.64-4.68.94l-1.46 1.46c-1.06.78-.97 2.07-.36 2.91a6.94 6.94 0 0 0 5 2c1.26 1.5-.5 5-2 5s-3.74.5-5-2c-1.32-1.32-3.4-1.12-4.68-.61l-.76.76a1 1 0 0 1-1.39.07L7 13.11a1 1 0 0 1 .07-1.39l.76-.76c-.51-1.28-.71-3.36-.61-4.68zM12 4c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg> High Jump / Mega Ramp Launch</span>
+                        <span><svg class="icon"><use href="#i-arrow-up"/></svg> High Jump / Mega Ramp Launch</span>
                         <span><span class="kbd-badge">SPACE</span> (Hold for extra floaty height!)</span>
                     </div>
                     <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px;">
-                        <span><svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M12 4V1L8 5l4 4V6a8 8 0 0 1 8 8v1l4-4-4-4v1a6 6 0 0 0-12 0v3l-4 4 4 4v-1a8 8 0 0 1 8-8v1l-4 4 4 4z"/></svg> Aerial Stunts (While in air)</span>
+                        <span><svg class="icon"><use href="#i-spin"/></svg> Aerial Stunts (While in air)</span>
                         <span><span class="kbd-badge">W</span> Superman | <span class="kbd-badge">S</span> Backflip | <span class="kbd-badge">E</span> Method</span>
                     </div>
                     <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px;">
-                        <span><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" style="vertical-align:middle"><path d="M22 17a10 10 0 0 1-20 0"/><path d="M6 17a4 4 0 0 1 12 0"/><path d="M10 17a1 1 0 0 1 4 0"/></svg> Rainbow Grind Rails</span>
+                        <span><svg class="icon"><use href="#i-rail"/></svg> Rainbow Grind Rails</span>
                         <span>Land on elevated rails to grind with sparks!</span>
                     </div>
                     <div style="display: flex; align-items: center; justify-content: space-between;">
-                        <span><svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Powerup Pickups</span>
+                        <span><svg class="icon"><use href="#i-shield"/></svg> Powerup Pickups</span>
                         <span>Shield (Absorbs crash) | Magnet | Hyper Rocket Boost</span>
                     </div>
                 </div>
@@ -210,7 +255,7 @@
     <!-- Game Over Overlay -->
     <div id="gameover-overlay" class="overlay hidden">
         <div class="menu-modal gameover-modal">
-            <div id="new-record-tag" class="highscore-badge"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> NEW RECORD! <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+            <div id="new-record-tag" class="highscore-badge"><svg class="icon"><use href="#i-star"/></svg> NEW RECORD! <svg class="icon"><use href="#i-star"/></svg></div>
             <h1 style="font-family: 'Orbitron'; font-size: 42px; color: var(--danger); text-shadow: 0 0 25px rgba(255, 71, 87, 0.5);">WIPEOUT!</h1>
             <p style="color: rgba(255,255,255,0.6); letter-spacing: 3px; font-weight: 700; margin-top: 4px;">HEAVY IMPACT DETECTED</p>
 
@@ -231,10 +276,10 @@
 
             <div style="display: flex; justify-content: center; gap: 16px;">
                 <button class="btn-action" onclick="game.retry()">
-                    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M12 4V1L8 5l4 4V6a8 8 0 0 1 8 8v1l4-4-4-4v1a6 6 0 0 0-12 0v3l-4 4 4 4v-1a8 8 0 0 1 8-8v1l-4 4 4 4z"/></svg> RETRY RUN
+                    <svg class="icon"><use href="#i-retry"/></svg> RETRY RUN
                 </button>
                 <button class="btn-secondary" onclick="game.openMenu()">
-                    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg> HUB
+                    <svg class="icon"><use href="#i-home"/></svg> HUB
                 </button>
             </div>
         </div>
@@ -246,13 +291,13 @@
             <h1 style="font-family: 'Orbitron'; font-size: 36px; margin-bottom: 24px;">GAME PAUSED</h1>
             <div style="display: flex; flex-direction: column; gap: 14px;">
                 <button class="btn-action" onclick="game.togglePause()">
-                    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M8 5v14l11-7z"/></svg> RESUME
+                    <svg class="icon"><use href="#i-play"/></svg> RESUME
                 </button>
                 <button class="btn-secondary" onclick="game.retry()">
-                    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M12 4V1L8 5l4 4V6a8 8 0 0 1 8 8v1l4-4-4-4v1a6 6 0 0 0-12 0v3l-4 4 4 4v-1a8 8 0 0 1 8-8v1l-4 4 4 4z"/></svg> RESTART
+                    <svg class="icon"><use href="#i-retry"/></svg> RESTART
                 </button>
                 <button class="btn-secondary" onclick="game.openMenu()">
-                    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" style="vertical-align:middle"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg> MAIN MENU
+                    <svg class="icon"><use href="#i-home"/></svg> MAIN MENU
                 </button>
             </div>
         </div>
@@ -260,6 +305,7 @@
 
     <!-- Three.js Engine & Modular Subsystems -->
     <script src="three.r128.min.js"></script>
+    <script src="js/DebugTools.js"></script>
     <script src="js/Shaders.js"></script>
     <script src="js/AudioEngine.js"></script>
     <script src="js/AudioSynthesizerBank.js"></script>
@@ -291,96 +337,84 @@
     <script src="script.js"></script>
 
     <style>
-        svg.snow-fa-icon {
+        /* Sprite icons: stroke-based, sized to the surrounding text by default. */
+        svg.icon {
             display: inline-block;
             width: 1em;
             height: 1em;
-            vertical-align: -0.125em;
             flex: 0 0 auto;
+            vertical-align: -0.125em;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
             overflow: visible;
         }
+
+        /* Mode cards: the icon sits above the title at a real size. It was 1em (16px)
+           because the old rule targeted <i> elements that no longer exist. */
+        .mode-card > svg.icon {
+            display: block;
+            width: 44px;
+            height: 44px;
+            margin: 0 auto 14px;
+            color: var(--primary);
+            filter: drop-shadow(0 0 10px currentColor);
+            transition: transform 0.25s;
+        }
+        .mode-card.featured > svg.icon { color: var(--accent); }
+        .mode-card:hover > svg.icon { transform: scale(1.15); }
+
+        .tab-btn svg.icon { width: 1.2em; height: 1.2em; }
+        .btn-action svg.icon, .btn-secondary svg.icon { width: 1.15em; height: 1.15em; }
+        .hud-icon-box svg.icon { width: 1.15em; height: 1.15em; }
+        .garage-currency svg.icon { width: 1.1em; height: 1.1em; }
+        #tab-controls svg.icon { width: 1.25em; height: 1.25em; margin-right: 6px; color: var(--primary); }
+
+        /* Legacy Font Awesome-style <i> icons created by JS templates are swapped for
+           sprite icons by the script below; keep their old shim class styled the same. */
+        svg.snow-fa-icon { display: inline-block; }
     </style>
     <script>
+    /* Swap <i class="fas fa-..."> placeholders (used by JS-built toasts and garage
+       cards) for icons from the sprite above. */
     (() => {
-        const paths = {
-            "fa-gift":"M20 12v9H4v-9h16ZM2 7h20v3H2V7Zm10 0c-2.8-5.3-7.4-4.1-6.2-1.6C6.5 7 9.6 7 12 7Zm0 0c2.8-5.3 7.4-4.1 6.2-1.6C17.5 7 14.4 7 12 7ZM10 12h4v9h-4z",
-            "fa-trophy":"M7 3h10v3h4v4c0 3-2 5-5 5a6 6 0 0 1-3 2v3h5v2H6v-2h5v-3a6 6 0 0 1-3-2c-3 0-5-2-5-5V6h4V3Zm0 5H5v2c0 1.4.7 2.3 2 2.8V8Zm10 0v4.8c1.3-.5 2-1.4 2-2.8V8h-2Z",
-            "fa-shield-alt":"M12 2 21 6v5c0 5.5-3.8 9.5-9 11-5.2-1.5-9-5.5-9-11V6l9-4Zm0 3.2L6 7.8V11c0 3.9 2.4 6.8 6 8.1 3.6-1.3 6-4.2 6-8.1V7.8l-6-2.6Z",
-            "fa-shield":"M12 2 21 6v5c0 5.5-3.8 9.5-9 11-5.2-1.5-9-5.5-9-11V6l9-4Z",
-            "fa-magnet":"M4 3h5v10a3 3 0 0 0 6 0V3h5v10a8 8 0 0 1-16 0V3ZM4 3h5v4H4V3Zm11 0h5v4h-5V3Z",
-            "fa-rocket":"M14 2c4 1 7 5 8 9l-5 5-5-1-1-5 3-8ZM8 12l4 4-5 5-2-4-4-2 7-3Zm-1-5 3 3-4 4-3-3 4-4Z",
-            "fa-star":"m12 2 3 6.2 7 1-5 4.9 1.2 6.9L12 17.8l-6.2 3.2L7 14.1 2 9.2l7-1L12 2Z",
-            "fa-play":"M7 4v16l13-8L7 4Z",
-            "fa-pause":"M6 4h4v16H6zM14 4h4v16h-4z",
-            "fa-home":"m3 11 9-8 9 8v10h-6v-6H9v6H3V11Z",
-            "fa-cog":"M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm0-6 2 2.1 2.8-.2 1 2.6 2.5 1.3-.6 2.7 1.3 2.5-1.9 2.1.2 2.8-2.6 1-1.3 2.5-2.7-.6-2.5 1.3-2.1-1.9-2.8.2-1-2.6L2 16.5l.6-2.7-1.3-2.5 1.9-2.1L3 6.4l2.6-1 1.3-2.5 2.7.6L12 2Z",
-            "fa-wrench":"m21 6-5 5-3-3 5-5a6 6 0 0 0-7 7L3 18a2 2 0 0 0 3 3l8-8a6 6 0 0 0 7-7Z",
-            "fa-volume-up":"M3 9v6h4l5 4V5L7 9H3Zm12-2v2a4 4 0 0 1 0 6v2a6 6 0 0 0 0-10Zm0-4v2a10 10 0 0 1 0 14v2a12 12 0 0 0 0-18Z",
-            "fa-volume-down":"M3 9v6h4l5 4V5L7 9H3Zm12 1v4a3 3 0 0 0 0-4Z",
-            "fa-volume-mute":"M3 9v6h4l5 4V5L7 9H3Zm12 0 5 6m0-6-5 6",
-            "fa-music":"M9 18V5l12-2v13M9 18a3 3 0 1 1-3-3 3 3 0 0 1 3 3Zm12-2a3 3 0 1 1-3-3 3 3 0 0 1 3 3Z",
-            "fa-heart":"M12 21 3 12C-1 7 6 1 12 7c6-6 13 0 9 5l-9 9Z",
-            "fa-snowflake":"M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7M8 4l4 3 4-3M8 20l4-3 4 3M3 11l4-1-1-4M21 13l-4 1 1 4",
-            "fa-bolt":"M13 2 4 13h6l-1 9 11-13h-6l-1-7Z",
-            "fa-tree":"M12 2 4 12h4l-5 6h7v4h4v-4h7l-5-6h4L12 2Z",
-            "fa-flag":"M5 22V3m0 1h13l-3 4 3 4H5",
-            "fa-check":"m5 12 4 4L19 6",
-            "fa-times":"m5 5 14 14M19 5 5 19",
-            "fa-close":"m5 5 14 14M19 5 5 19",
-            "fa-info-circle":"M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm-1 9h2v6h-2zm0-4h2v2h-2z",
-            "fa-question-circle":"M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm-1 14h2v2h-2Zm1-10a4 4 0 0 0-4 4h2a2 2 0 1 1 2 2c-1 1-1 2-1 3h2c0-1 .3-1.3 1-2a4 4 0 0 0-2-7Z",
-            "fa-chart-line":"M3 3v18h18v-2H5V3H3Zm3 12 4-5 4 3 6-7 2 2-7 9-4-3-3 4-2-3Z",
-            "fa-medal":"M12 12a5 5 0 1 0 0 10 5 5 0 0 0 0-10ZM6 2h5l1 6-4 3-4-6 2-3Zm7 0h5l2 3-4 6-4-3 1-6Z",
-            "fa-coins":"M12 3c5 0 9 1.5 9 4s-4 4-9 4-9-1.5-9-4 4-4 9-4Zm-9 8c2 2 6 3 9 3s7-1 9-3v4c0 2.5-4 4-9 4s-9-1.5-9-4v-4Z",
-            "fa-shopping-cart":"M2 3h3l2 12h12l3-9H6M9 20a1 1 0 1 0 0 .1M17 20a1 1 0 1 0 0 .1",
-            "fa-lock":"M5 10h14v11H5V10Zm3 0V7a4 4 0 0 1 8 0v3",
-            "fa-unlock":"M5 10h14v11H5V10Zm3 0V7a4 4 0 0 1 8 0",
-            "fa-eye":"M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Zm10-3a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z",
-            "fa-keyboard":"M2 5h20v14H2V5Zm3 3h2v2H5V8Zm4 0h2v2H9V8Zm4 0h2v2h-2V8Zm4 0h2v2h-2V8ZM5 12h14v2H5v-2Z",
-            "fa-gamepad":"M7 8h10a5 5 0 0 1 5 6l-1 4-4-3H7l-4 3-1-4a5 5 0 0 1 5-6Zm1 2v4m-2-2h4m5-1h.1m2 2h.1",
-            "fa-rotate":"M20 7V2l-3 3a8 8 0 0 0-13 5h3a5 5 0 0 1 9-3l-2 2h6ZM4 17v5l3-3a8 8 0 0 0 13-5h-3a5 5 0 0 1-9 3l2-2H4Z",
-            "fa-sliders-h":"M3 6h18M3 12h18M3 18h18M7 3v6m7 0v6m4 0v6",
-            "fa-trophy":"M7 3h10v3h4v4c0 3-2 5-5 5a6 6 0 0 1-3 2v3h5v2H6v-2h5v-3a6 6 0 0 1-3-2c-3 0-5-2-5-5V6h4V3Z",
-            "fa-gift":"M20 12v9H4v-9h16ZM2 7h20v3H2V7Zm8-5h4v19h-4z",
-            "fa-arrow-left":"M20 11H7l5-5-2-2-9 8 9 8 2-2-5-5h13v-2Z",
-            "fa-arrow-right":"M4 11h13l-5-5 2-2 9 8-9 8-2-2 5-5H4v-2Z",
-            "fa-arrow-up":"M11 20V7l-5 5-2-2 8-9 8 9-2 2-5-5v13h-2Z",
-            "fa-arrow-down":"M11 4v13l-5-5-2 2 8 9 8-9-2-2-5 5V4h-2Z",
-            "fa-plus":"M11 3h2v8h8v2h-8v8h-2v-8H3v-2h8V3Z",
-            "fa-minus":"M3 11h18v2H3z"
+        const MAP = {
+            "fa-gift": "gift", "fa-trophy": "trophy", "fa-medal": "trophy",
+            "fa-shield-alt": "shield", "fa-shield": "shield", "fa-magnet": "magnet",
+            "fa-rocket": "rocket", "fa-star": "star", "fa-bolt": "bolt",
+            "fa-play": "play", "fa-pause": "pause", "fa-home": "home", "fa-rotate": "retry",
+            "fa-cog": "gear", "fa-wrench": "gear", "fa-sliders-h": "sliders",
+            "fa-snowflake": "snowflake", "fa-tree": "tree", "fa-flag": "flag",
+            "fa-check": "check", "fa-times": "x", "fa-close": "x",
+            "fa-plus": "plus", "fa-minus": "minus", "fa-lock": "lock", "fa-unlock": "lock",
+            "fa-info-circle": "info", "fa-question-circle": "info", "fa-heart": "heart",
+            "fa-eye": "eye", "fa-music": "music", "fa-keyboard": "keyboard",
+            "fa-volume-up": "volume", "fa-volume-down": "volume", "fa-volume-mute": "volume",
+            "fa-arrow-left": "arrow-left", "fa-arrow-right": "arrow-right",
+            "fa-arrow-up": "arrow-up", "fa-arrow-down": "arrow-down"
         };
-        const fallback = "M12 2 14.5 9.5 22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5L12 2Z";
+        function convert(el) {
+            const key = [...el.classList].find(c => MAP[c]);
+            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svg.setAttribute("class", "icon snow-fa-icon");
+            svg.setAttribute("data-icon", key || "fa-star");
+            svg.setAttribute("aria-hidden", "true");
+            const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+            use.setAttribute("href", "#i-" + (key ? MAP[key] : "star"));
+            svg.appendChild(use);
+            el.replaceWith(svg);
+        }
         function replaceIcons(root) {
             if (root.nodeType === 1 && root.matches && root.matches('i[class*="fa-"]')) convert(root);
             if (!root.querySelectorAll) return;
             root.querySelectorAll('i[class*="fa-"]').forEach(convert);
         }
-        function convert(el) {
-            const classes = [...el.classList];
-            const key = classes.find(c => paths[c]) || classes.find(c => c.startsWith("fa-") && c !== "fa-icon");
-            const svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
-            svg.setAttribute("viewBox","0 0 24 24");
-            svg.setAttribute("class","snow-fa-icon");
-            svg.setAttribute("data-icon", key || "fa-star");
-            svg.setAttribute("aria-hidden","true");
-            const path = document.createElementNS("http://www.w3.org/2000/svg","path");
-            path.setAttribute("d", paths[key] || fallback);
-            path.setAttribute("fill","currentColor");
-            if ((key || "").includes("volume") || key === "fa-snowflake" || key === "fa-check" || key === "fa-times" || key === "fa-close" || key === "fa-gamepad" || key === "fa-music") {
-                path.setAttribute("fill","none");
-                path.setAttribute("stroke","currentColor");
-                path.setAttribute("stroke-width","2");
-                path.setAttribute("stroke-linecap","round");
-                path.setAttribute("stroke-linejoin","round");
-            }
-            svg.appendChild(path);
-            el.replaceWith(svg);
-        }
         replaceIcons(document);
-        const observer = new MutationObserver(records => records.forEach(record =>
+        new MutationObserver(records => records.forEach(record =>
             record.addedNodes.forEach(node => { if (node.nodeType === 1) replaceIcons(node); })
-        ));
-        observer.observe(document.documentElement,{childList:true,subtree:true});
+        )).observe(document.documentElement, { childList: true, subtree: true });
     })();
     </script>
 

@@ -102,7 +102,7 @@ class GamePhysics {
         }
 
         // Undulating moguls
-        y += Math.sin(x * 0.1) * Math.cos(z * 0.07) * 0.45;
+        y += Math.sin(x * 0.1) * Math.cos(z * 0.07) * 0.8;
 
         // Match the rendered 24 m-deep, 44 m-long cliff trench exactly.
         const gapLength = 44;

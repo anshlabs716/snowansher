@@ -55,6 +55,11 @@ function makeSafeStorage() {
     };
 }
 
+/** Markup for an icon from the inline SVG sprite in index.html. */
+function srIcon(name) {
+    return '<svg class="icon" aria-hidden="true"><use href="#i-' + name + '"/></svg>';
+}
+
 class SnowAnsherMaster {
     constructor() {
         // Storage shim. Touching localStorage throws in Firefox private browsing and
@@ -88,6 +93,9 @@ class SnowAnsherMaster {
         this.paused = false;
         this.crashed = false;
         this._wasGrounded = true; // trick-state reset bookkeeping (see update loop)
+        this._ride = null;        // ramp the sled is currently riding (see applyTrackStructures)
+        this._launchPitch = 0;    // nose-up pitch carried off a ramp lip, fades during the flight
+        this._grindY = null;      // smoothed sled height while grinding a rail
         this.difficulty = 'medium';
         this.distance = 0;
         this.giftsRun = 0;
@@ -349,6 +357,24 @@ class SnowAnsherMaster {
         this.sledContainer.add(this.rider.rootGroup);
     }
 
+    /**
+     * Remove every alpine chalet from the scene. They are spawned from the course
+     * generator but nothing ever removed them, so a long run (or many retries) left
+     * hundreds of invisible cabins being culled every frame.
+     */
+    clearChalets(behindZ = null) {
+        const list = this.world && this.world.chalets;
+        if (!list) return;
+        for (let i = list.length - 1; i >= 0; i--) {
+            const chalet = list[i];
+            if (behindZ === null || chalet.position.z > behindZ) {
+                this.scene.remove(chalet);
+                chalet.traverse((c) => { if (c.geometry && c.geometry.dispose) c.geometry.dispose(); });
+                list.splice(i, 1);
+            }
+        }
+    }
+
     start(difficulty = 'medium') {
         if (this.dead || !this.sound) {
             this.fatal('The renderer failed to start, so the run cannot begin.');
@@ -367,6 +393,9 @@ class SnowAnsherMaster {
         this.giftsRun = 0;
         this.topSpeedReached = 0;
         this.closeCallsRun = 0;
+        this._ride = null;
+        this._launchPitch = 0;
+        this._grindY = null;
 
         // Re-lay the terrain run around the sled. physics.reset() teleports the player
         // back to z=0 while the chunks are still hundreds of metres downhill, which
@@ -380,6 +409,7 @@ class SnowAnsherMaster {
         this.obstacles.clearAll();
         this.cliffRampsSpawned.clear();
         if (this.structures) this.structures.clear();
+        this.clearChalets();
         this.lastSpawnZ = -50;
         // Only spawn initial track up to the spawn-ahead distance (950m)
         // so the dynamic spawner in updateRunningGame can take over.
@@ -405,7 +435,10 @@ class SnowAnsherMaster {
     }
 
     spawnCourseRow(z) {
-        const y = this.physics.getGroundHeightAt(0, z);
+        // Ground height at ANY x on this row. Items used to be placed at the height
+        // of the track centreline (x = 0) even when spawned far to one side, so on
+        // the moguls they floated or sank by up to a metre.
+        const gh = (px, pz = z) => this.physics.getGroundHeightAt(px, pz);
         const rand = Math.random();
 
         // Check for cliff BEFORE random chain -- guaranteed cliff jump ramp
@@ -439,21 +472,19 @@ class SnowAnsherMaster {
             if (bestCp && !this.cliffRampsSpawned.has(bestCp)) {
                 this.cliffRampsSpawned.add(bestCp);
                 // Place the ramp from the cliff's scheduled Z, not from whichever
-                // random obstacle-spawn tick happened to notice the cliff.
-                const x = 0;
+                // random obstacle-spawn tick happened to notice the cliff. The launch
+                // lip sits 4 m before the edge of the drop and the deck runs back
+                // up the slope from there.
                 const scale = 1.25;
-                const rampLength = 48.0 * scale;
-                const rampHeight = 13.0 * scale;
-                const rampCenterZ = bestCp + rampLength * 0.5 + 5;
-                const rampY = this.physics.getGroundHeightAt(x, rampCenterZ + rampLength * 0.5);
-                this.obstacles.createCliffJumpRamp(x, rampY, rampCenterZ, (gx, gz) => this.physics.getGroundHeightAt(gx, gz), scale);
+                const rampLength = 48.0 * scale; // must match createCliffJumpRamp
+                const rampCenterZ = (bestCp + 4) + rampLength * 0.5;
+                this.obstacles.createCliffJumpRamp(0, 0, rampCenterZ, (gx, gz) => this.physics.getGroundHeightAt(gx, gz), scale);
             }
             return; // Don't spawn other obstacles at cliff positions
         }
 
         // Keep forest scenery alive throughout the run, including around cliffs.
-        // Only gameplay hazards are suppressed in the takeoff/landing corridor.
-        // Keep random gameplay hazards out of the cliff takeoff/landing corridor,
+        // Only gameplay hazards are suppressed in the takeoff/landing corridor,
         // but do not skip the trees above: that made the whole world look empty.
         // Corridor sized to cover ramp takeoff (cliff+65) and trench landing (cliff-90).
         const inCliffCorridor = this.cliffPositions.some(cp => Math.abs(z - cp) <= 90);
@@ -464,7 +495,7 @@ class SnowAnsherMaster {
             for (let f = 0; f < flankCount; f++) {
                 const x = side * (this.physics.TRACK_WIDTH * 0.52 + 3 + Math.random() * 11);
                 const fz = z + (Math.random() - 0.5) * 22;
-                const fy = this.physics.getGroundHeightAt(x, fz);
+                const fy = gh(x, fz);
                 if (Math.random() < 0.85) {
                     this.obstacles.createPineTree(x, fy, fz);
                 } else {
@@ -484,7 +515,7 @@ class SnowAnsherMaster {
             if (Math.random() < 0.65) {
                 const sx = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 10);
                 const sz = z + (Math.random() - 0.5) * 20;
-                const sy = this.physics.getGroundHeightAt(sx, sz);
+                const sy = gh(sx, sz);
                 const pick = Math.random();
                 if (pick < 0.45) {
                     if (Math.random() < 0.65) {
@@ -505,46 +536,46 @@ class SnowAnsherMaster {
         if (rand < 0.07) {
             // Holiday Gift Box
             const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 8);
-            this.obstacles.createGiftBox(x, y, z);
+            this.obstacles.createGiftBox(x, gh(x), z);
         } else if (rand < 0.12) {
             // Power-Up Capsule
             const types = ['shield', 'magnet', 'rocket', 'multiplier'];
             const chosen = types[Math.floor(Math.random() * types.length)];
             const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 10);
-            this.obstacles.createPowerupOrb(x, y, z, chosen);
+            this.obstacles.createPowerupOrb(x, gh(x), z, chosen);
         } else if (rand < 0.18) {
             // Speed Boost Chevron Pad
             const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 12);
-            this.obstacles.createBoostPad(x, y, z);
+            this.obstacles.createBoostPad(x, gh(x), z);
         } else if (rand < 0.26) {
             // Normal ski jump kicker (mega kickers removed -- always a normal ramp now)
             const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 14);
-            this.obstacles.createMegaRamp(x, y, z, false, (gx, gz) => this.physics.getGroundHeightAt(gx, gz));
+            this.obstacles.createMegaRamp(x, gh(x), z, false, (gx, gz) => this.physics.getGroundHeightAt(gx, gz));
         } else if (rand < 0.32) {
             // Rainbow Ice Grind Rail
             const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 16);
-            this.obstacles.createGrindRail(x, y, z, 40);
+            this.obstacles.createGrindRail(x, gh(x), z, 40);
         } else if (rand < 0.46) {
             // Giant rolling avalanche snowball
             const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 10);
-            this.obstacles.createRollingBoulder(x, y, z);
+            this.obstacles.createRollingBoulder(x, gh(x), z);
         } else if (rand < 0.53) {
             // Extra snowball (sometimes a pair rolls down together)
             const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 10);
-            this.obstacles.createRollingBoulder(x, y, z);
+            this.obstacles.createRollingBoulder(x, gh(x), z);
         } else if (rand < 0.67) {
             // Cute 3D Snowman (often a snowman pair)
             const pairs = (Math.random() < 0.35) ? 2 : 1;
             for (let s = 0; s < pairs; s++) {
                 const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 8);
-                this.obstacles.createSnowman(x, y, z + s * 6);
+                this.obstacles.createSnowman(x, gh(x, z + s * 6), z + s * 6);
             }
         } else if (rand < 0.79) {
             // Dark grey rock cluster -- lethal (hop over it)
             const pairs = (Math.random() < 0.3) ? 2 : 1;
             for (let s = 0; s < pairs; s++) {
                 const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 12);
-                this.obstacles.createRock(x, y, z + s * 5);
+                this.obstacles.createRock(x, gh(x, z + s * 5), z + s * 5);
             }
         } else {
             // Snow pines / bare winter trees right on the run
@@ -553,9 +584,9 @@ class SnowAnsherMaster {
                 const x = (Math.random() - 0.5) * (this.physics.TRACK_WIDTH - 6);
                 const fz = z + (c - count * 0.5) * 7;
                 if (Math.random() < 0.65) {
-                    this.obstacles.createPineTree(x, y, fz);
+                    this.obstacles.createPineTree(x, gh(x, fz), fz);
                 } else {
-                    this.obstacles.createBareTree(x, y, fz);
+                    this.obstacles.createBareTree(x, gh(x, fz), fz);
                 }
             }
         }
@@ -565,7 +596,7 @@ class SnowAnsherMaster {
             const side = (Math.random() < 0.5 ? -1 : 1);
             const chaletX = side * (this.physics.TRACK_WIDTH * 0.55 + 16);
             // Sit the chalet on the actual plateau height at its side position
-            this.world.createAlpineChalet(chaletX, this.physics.getGroundHeightAt(chaletX, z), z);
+            this.world.createAlpineChalet(chaletX, gh(chaletX), z);
         }
     }
 
@@ -578,6 +609,33 @@ class SnowAnsherMaster {
         this.paused = false;
         this.sound.stopMusic();
         this.sound.stopMovementLoops(); // silence wind/carve in the hub too
+
+        // Rebuild a clean showroom. After a run the sled was left hidden at the crash
+        // site, the camera orbit was pointed at an empty patch of mountain, and the
+        // old course was still in the scene.
+        this.crashed = false;
+        this._ride = null;
+        this._launchPitch = 0;
+        this._grindY = null;
+        this.obstacles.clearAll();
+        this.cliffRampsSpawned.clear();
+        if (this.structures) this.structures.clear();
+        if (this.decorations) this.decorations.clear();
+        this.clearChalets();
+        this.physics.reset(this.difficulty, this.currentSledData.stats);
+        if (this.world && this.world.resetTerrainAround) {
+            this.world.resetTerrainAround(this.physics.position.z);
+        }
+        this.playerRoot.position.copy(this.physics.position);
+        this.playerRoot.rotation.set(0, 0, 0);
+        if (this.sledContainer) this.sledContainer.visible = true;
+        if (this.contactShadow) {
+            this.contactShadow.visible = true;
+            this.contactShadow.position.set(0, this.physics.getGroundHeightAt(0, 0) + 0.08, 0);
+            this.contactShadow.material.opacity = 1;
+            this.contactShadow.scale.set(1, 1, 1);
+        }
+
         this.ui.dom.gameoverOverlay.classList.add('hidden');
         this.ui.dom.pauseOverlay.classList.add('hidden');
         this.ui.dom.hud.classList.remove('active');
@@ -658,8 +716,9 @@ class SnowAnsherMaster {
         this.closeCallsRun++;
         this.sound.playNearMiss();
         if (this.closeCallsRun >= 5) this.ui.unlockAchievement('close_call_master');
+        if (this.challenges) this.challenges.reportMetric('close_calls', 1);
 
-        this.ui.dom.comboPopup.innerText = '\u2605 CLOSE CALL! +50m \u2605';
+        this.ui.dom.comboPopup.innerHTML = srIcon('star') + ' CLOSE CALL! +50m ' + srIcon('star');
         this.ui.dom.comboPopup.classList.add('show');
         setTimeout(() => this.ui.dom.comboPopup.classList.remove('show'), 700);
     }
@@ -714,6 +773,12 @@ class SnowAnsherMaster {
         const effectiveDt = this.powerups.hasActive('slowmo') ? dt * 0.6 : dt;
         this.physics.update(effectiveDt, this.keys, this.currentSledData.stats, this.sound, this.particles);
 
+        // Ramps and grind rails raise the sled off the terrain. This MUST happen here,
+        // before the player mesh is synced below: it used to run after the sync (in
+        // checkCollisions) and physics snapped the sled back to the snow on the next
+        // frame, so the sled tunnelled under every ramp and only popped out at the lip.
+        this.applyTrackStructures(effectiveDt);
+
         // A cliff is a fatal gap, not a safe trench with a walkable floor. If the
         // sled drops below the track surface while between the two cliff edges,
         // trigger the normal game-over flow. A successful jump stays above this line.
@@ -738,9 +803,11 @@ class SnowAnsherMaster {
         this.playerRoot.position.copy(this.physics.position);
         this.playerRoot.rotation.copy(this.physics.rotation);
 
-        // Soft contact shadow follows the terrain under the sled
+        // Soft contact shadow follows whatever surface is under the sled (snow or ramp deck)
         if (this.contactShadow) {
-            const gY = this.physics.getGroundHeightAt(this.physics.position.x, this.physics.position.z);
+            let gY = this.physics.getGroundHeightAt(this.physics.position.x, this.physics.position.z);
+            const deckUnder = this.obstacles.sampleRampDeck(this.physics.position.x, this.physics.position.z);
+            if (deckUnder && deckUnder.y <= this.physics.position.y + 0.5) gY = Math.max(gY, deckUnder.y);
             this.contactShadow.position.set(this.physics.position.x, gY + 0.08, this.physics.position.z);
             const airGap = Math.max(0, this.physics.position.y - gY);
             this.contactShadow.material.opacity = Math.max(0.15, Math.min(1, 1 - airGap / 16));
@@ -783,6 +850,7 @@ class SnowAnsherMaster {
             this.spawnCourseRow(this.lastSpawnZ);
         }
         this.world.update(dt, this.physics.position);
+        this.clearChalets(this.physics.position.z + 120); // drop cabins that are far behind us
 
         // 6. Hazard & Item Interactions
         this.checkCollisions();
@@ -840,64 +908,139 @@ class SnowAnsherMaster {
         this.ui.updateHUD(this.distance, this.giftsRun, this.bestScore, this.physics.speed, this.physics.maxSpeed);
     }
 
-    checkCollisions() {
-        const pPos = this.physics.position;
+    /**
+     * Ramps and grind rails. Runs straight after the physics step (before the mesh
+     * sync) so the height/pitch we set here is what actually gets rendered.
+     *
+     * Ramps: while grounded over a deck the sled rides its surface and pitches with
+     * it; sailing off the lip fires the launch from the deck height; touching down on
+     * a deck from the air lands on it. Running into the SIDE of a ramp bumps the sled
+     * off the timber wall rather than teleporting it up the side.
+     */
+    applyTrackStructures(dt) {
+        const phys = this.physics;
+        const p = phys.position;
 
-        // Big (cliff-jumper) ramps get REAL ramp collision:
-        //   * a wide x-window (half-width + 10) so a slightly off-centre line
-        //     still catches the deck instead of eating the cliff,
-        //   * a solid deck you visibly ride up (sled pinned to the sloped
-        //     surface, which emerges flush with the snow at the entry),
-        //   * a launch fired exactly at the downhill lip, from deck height.
-        // Small kickers keep the simple touch-trigger.
-        this.obstacles.ramps.forEach(ramp => {
-            const dx = Math.abs(pPos.x - ramp.pos.x);
-            const dzRel = pPos.z - ramp.pos.z;
-            const dz = Math.abs(dzRel);
-            const isBig = !!ramp.isCliffJumper;
-            const dxHalf = isBig ? ramp.width * 0.5 + 10 : ramp.width * 0.5;
-            const halfLen = ramp.length * (isBig ? 0.85 : 0.5);
+        // Nose-up pitch carried off a lip, fading over the flight
+        if (!phys.isGrounded && this._launchPitch) {
+            phys.rotation.x += this._launchPitch * Math.max(0, 1 - phys.airTime * 1.4);
+        } else if (phys.isGrounded) {
+            this._launchPitch = 0;
+        }
 
-            let atLaunchLip = true;
-            if (isBig) {
-                // Launch zone: a 6u strip ending right at the lip. Entering it
-                // while grounded fires before the deck runs out (the 0.85
-                // half-length test above still covers it at any speed).
-                atLaunchLip = ramp.lipZ !== undefined
-                    ? (dzRel <= ramp.lipZ + 4 && dzRel >= ramp.lipZ - 2)
-                    : (dzRel <= -ramp.length * 0.02 && dzRel >= -ramp.length * 0.68);
+        // ---- Ramps ----
+        let deck = this.obstacles.sampleRampDeck(p.x, p.z);
+        const wasRiding = this._ride;
+        this._ride = null;
 
-                // Ride the deck: pin the sled to the sloped surface. Physics
-                // snaps to terrain first each frame; this runs after it, so the
-                // rendered y follows the deck with no jitter.
-                if (ramp.deckZMin !== undefined && this.physics.isGrounded &&
-                    dzRel > ramp.deckZMin && dzRel < ramp.deckZMax && dx < dxHalf) {
-                    const a = ramp.deckAngle;
-                    const zLocal = (dzRel - ramp.rampHeight * 0.5 * Math.sin(a)) / Math.cos(a);
-                    const deckY = ramp.pos.y
-                        + ramp.rampHeight * 0.5 * Math.cos(a)
-                        - zLocal * Math.sin(a) + 0.5;
-                    if (deckY > pPos.y) this.physics.position.y = deckY;
+        if (deck && phys.isGrounded && !wasRiding) {
+            const s = deck.ramp.spec;
+            const groundY = phys.getGroundHeightAt(p.x, p.z);
+            // Only meaningful once clear of the entry edge: at the entry the deck is
+            // flush with the snow, further in a tall deck means we came in sideways.
+            if (s.entryZ - p.z > 3.5 && deck.y - groundY > 0.5) {
+                const side = (p.x >= s.x) ? 1 : -1;
+                p.x = s.x + side * (s.hw + 0.5);
+                phys.velocity.x = 0;
+                deck = null;
+            }
+        }
+
+        if (deck) {
+            const groundY = phys.getGroundHeightAt(p.x, p.z);
+            const surfaceY = Math.max(deck.y, groundY); // never sink into snow poking through the deck
+            if (phys.isGrounded) {
+                p.y = surfaceY;
+                phys.velocity.y = 0;
+                phys.rotation.x = deck.pitch;
+                this._ride = { ramp: deck.ramp, lastY: surfaceY };
+            } else if (phys.velocity.y <= 0) {
+                const tol = Math.max(1.0, Math.abs(phys.velocity.y) * dt * 1.5);
+                if (p.y <= surfaceY && p.y >= surfaceY - tol) {
+                    // Touched down on the deck
+                    const impact = Math.abs(phys.velocity.y);
+                    p.y = surfaceY;
+                    phys.velocity.y = 0;
+                    phys.isGrounded = true;
+                    phys.isGrinding = false;
+                    if (phys.airTime > 0.5) phys.cameraDip = Math.min(1.2, phys.airTime * 0.8);
+                    phys.airTime = 0;
+                    phys.rotation.x = deck.pitch;
+                    this._ride = { ramp: deck.ramp, lastY: surfaceY };
+                    this.sound.playLanding(Math.min(1.8, impact / 25.0));
+                    this.particles.emitLandingShockwave(p, Math.min(1.8, impact / 20.0));
                 }
             }
-
-            if ((!isBig || !ramp.launched) &&
-                dx < dxHalf && dz < halfLen + 2 &&
-                atLaunchLip && this.physics.isGrounded) {
-                if (isBig) ramp.launched = true;
-                this.physics.launchRamp(ramp.boostPower, this.sound, this.particles);
+        } else if (wasRiding && phys.isGrounded) {
+            const s = wasRiding.ramp.spec;
+            if (p.z < s.lipZ) {
+                // Sailed off the launch lip: fire the launch from deck height
+                p.y = s.deckY(s.lipZ);
+                phys.launchRamp(wasRiding.ramp.boostPower, this.sound, this.particles);
+                this._launchPitch = s.pitchAt(s.lipZ);
+                if (this.challenges) this.challenges.reportMetric('ramps', 1);
+            } else {
+                // Slid off the side of the deck: fall from where we were, don't snap down
+                p.y = wasRiding.lastY;
+                phys.isGrounded = false;
+                phys.velocity.y = 0;
             }
-        });
+        }
 
-        // Rainbow Grind Rails
-        this.obstacles.grindRails.forEach(rail => {
-            const dx = Math.abs(pPos.x - rail.pos.x);
-            const dz = (rail.pos.z - pPos.z);
-            if (dx < 1.4 && dz > 0 && dz < rail.length && this.physics.position.y >= rail.pos.y) {
-                this.physics.attachToGrindRail(rail, this.sound, this.particles);
-                this.ui.unlockAchievement('grind_king');
+        // ---- Grind rails ---- (not while on a ramp deck)
+        if (!this._ride) this.updateGrind(dt);
+    }
+
+    /**
+     * Rainbow grind rails: the sled locks onto the rail's lane and rides the pipe at
+     * its real height. Leaving the end of the rail drops the sled back to the snow
+     * (previously the grinding flag stayed on forever, so the grind sound and the
+     * missing ski spray persisted for the rest of the run).
+     */
+    updateGrind(dt) {
+        const phys = this.physics;
+        const p = phys.position;
+
+        let rail = null;
+        for (const r of this.obstacles.grindRails) {
+            const dx = Math.abs(p.x - r.pos.x);
+            const dz = r.pos.z - p.z;
+            if (dx < 1.4 && dz > 0 && dz < r.length) { rail = r; break; }
+        }
+
+        if (rail) {
+            const top = rail.railY(p.z) + 0.2;
+            const canLand = phys.isGrinding || phys.isGrounded || (phys.velocity.y <= 0 && p.y <= top + 0.6);
+            if (canLand) {
+                if (!phys.isGrinding) {
+                    this._grindY = p.y; // start from wherever the sled is and hop up onto the pipe
+                    this.ui.unlockAchievement('grind_king');
+                    if (!rail.counted) {
+                        rail.counted = true;
+                        if (this.challenges) this.challenges.reportMetric('rails', 1);
+                    }
+                }
+                phys.attachToGrindRail(rail, this.sound, this.particles);
+                this._grindY += (top - this._grindY) * Math.min(1, 16 * dt);
+                p.y = this._grindY;
+                phys.velocity.y = 0;
+                phys.airTime = 0;
+                return;
             }
-        });
+        }
+
+        if (phys.isGrinding) {
+            // Ran off the end of the rail (or jumped clear): drop from rail height
+            phys.isGrinding = false;
+            if (this._grindY !== null) p.y = this._grindY;
+            phys.isGrounded = false;
+            phys.velocity.y = 0;
+            this._grindY = null;
+        }
+    }
+
+    checkCollisions() {
+        const pPos = this.physics.position;
 
         // Boost Chevrons
         this.obstacles.boostPads.forEach(pad => {
@@ -911,8 +1054,6 @@ class SnowAnsherMaster {
             }
         });
 
-        
-
         // Cliff death: player dies if they fall into the cliff trench gap without a ramp.
         // Compute the nearest cliff from the shared schedule -- never reference a
         // local 'cliffZ' (that undefined variable crashed the render loop).
@@ -925,13 +1066,14 @@ class SnowAnsherMaster {
             if (!hadRamp) this.triggerCrash();
         }
 
-// Collectible Gifts
+        // Collectible Gifts
         for (let i = this.obstacles.gifts.length - 1; i >= 0; i--) {
             const gift = this.obstacles.gifts[i];
             const dist = pPos.distanceTo(gift.pos);
             if (!gift.collected && dist < 2.4) {
                 gift.collected = true;
                 this.giftsRun++;
+                if (this.challenges) this.challenges.reportMetric('gifts', 1);
                 this.sound.playGiftCollect();
                 this.particles.emitGiftExplosion(gift.pos);
                 this.scene.remove(gift.mesh);
@@ -1216,144 +1358,13 @@ class SnowAnsherMaster {
 // index.html use inline handlers like onclick="game.start('medium')", and those
 // resolve against the global scope. With only `let game` the inline handlers
 // threw ReferenceError and every menu button did nothing.
+//
+// The diagnostics panel, emergency start button and error log that used to live
+// below this point are now in js/DebugTools.js and only appear when something has
+// actually failed to boot (or when opened on purpose with ` / F3 / ?debug), instead
+// of popping up over the menu for every player.
 let game;
 window.game = null;
-
-// ---- Diagnostics ----------------------------------------------------------
-// A tiny always-available panel so a dead or blocked menu is never a mystery.
-// Press ` (backtick) / F3, or click the \u2699 badge. It is bound with
-// addEventListener and sits at the maximum z-index, so it still works when
-// something else (an extension overlay, a strict CSP, a stuck layer) is
-// swallowing the normal menu. The FORCE START button drives the game directly.
-window.__snowErrs = [];
-window.__snowDiag = function () {
-    const existing = document.getElementById('snow-diag');
-    if (existing) { existing.remove(); return; }
-    const g = window.game;
-
-    let glInfo = 'probe failed';
-    try {
-        const c = document.createElement('canvas');
-        const gl = c.getContext('webgl2') || c.getContext('webgl');
-        if (!gl) {
-            glInfo = 'NO WebGL CONTEXT -- 3D cannot run here';
-        } else {
-            const ext = gl.getExtension('WEBGL_debug_renderer_info');
-            glInfo = ext
-                ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)
-                : 'WebGL available';
-        }
-    } catch (e) { glInfo = 'WebGL threw: ' + (e && e.message ? e.message : e); }
-
-    let ls = 'ok';
-    try {
-        localStorage.setItem('__snowprobe', '1');
-        localStorage.removeItem('__snowprobe');
-    } catch (e) { ls = 'BLOCKED: ' + (e && e.message ? e.message : e); }
-
-    const errList = window.__snowErrs.length
-        ? window.__snowErrs.slice(-8).map((e) => '* ' + e).join('\n')
-        : 'none recorded';
-
-    const d = document.createElement('div');
-    d.id = 'snow-diag';
-    d.style.cssText = 'position:fixed;top:10px;left:10px;z-index:2147483649;'
-        + 'max-width:440px;background:rgba(4,12,24,.97);color:#dff0ff;'
-        + 'border:1px solid #2b4a6b;border-radius:10px;padding:14px 16px;'
-        + 'font:12px/1.55 system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.6);'
-        + 'white-space:pre-wrap;word-break:break-word;';
-    d.innerHTML =
-        '<div style="font-weight:700;font-size:14px;margin-bottom:8px">\u2744 Snow Ansher diagnostics</div>'
-        + 'boot:        ' + (g ? 'OK -- game object exists' : 'FAILED -- no game object') + '\n'
-        + 'state:       dead=' + (g ? g.dead : '?') + '  running=' + (g ? g.running : '?') + '\n'
-        + 'three.js:    ' + (typeof THREE !== 'undefined' ? 'loaded' : 'NOT LOADED (CDN blocked?)') + '\n'
-        + 'WebGL:       ' + glInfo + '\n'
-        + 'localStorage: ' + ls + '\n'
-        + 'browser:     ' + navigator.userAgent + '\n\n'
-        + 'errors (' + window.__snowErrs.length + '):\n' + errList;
-
-    const bar = document.createElement('div');
-    bar.style.cssText = 'margin-top:12px;display:flex;gap:8px;flex-wrap:wrap';
-    const mkBtn = (id, label, bg, fn) => {
-        const b = document.createElement('button');
-        b.id = id;
-        b.textContent = label;
-        b.style.cssText = 'cursor:pointer;background:' + bg + ';color:#fff;border:0;'
-            + 'border-radius:6px;padding:8px 14px;font-weight:700;font-size:12px';
-        b.addEventListener('click', fn);
-        return b;
-    };
-    bar.appendChild(mkBtn('snow-diag-start', '\u25b6 FORCE START', '#2f7dff', () => { if (g) g.start('easy'); }));
-    bar.appendChild(mkBtn('snow-diag-reload', '@@@ hard reload', '#33475f', () => location.reload()));
-    bar.appendChild(mkBtn('snow-diag-close', 'x close', '#33475f', () => d.remove()));
-    d.appendChild(bar);
-    document.body.appendChild(d);
-};
-
-// Record every escaped error so the panel can show what actually broke.
-window.addEventListener('error', (e) => {
-    const line = (e && e.message ? e.message : String(e))
-        + ' @ ' + (e && e.filename ? e.filename : '') + ':' + (e && e.lineno ? e.lineno : '?');
-    window.__snowErrs.push(line);
-    if (window.__snowErrs.length > 40) window.__snowErrs.shift();
-    console.error('[SnowAnsher] uncaught error:', line);
-});
-
-// ALWAYS-visible emergency start button (bottom-left).
-// If ANYTHING breaks (CSP, extension overlay, WebGL fail, script load fail),
-// this button survives because it's added directly to body with max z-index
-// and binds directly to game.start(). Press it if the menu is dead.
-(function addEmergencyStart() {
-    if (!document.body) return;
-    const btn = document.createElement('button');
-    btn.id = 'snow-emergency-start';
-    btn.textContent = '\u25b6 START GAME';
-    btn.title = 'Emergency start -- works even if menu is broken';
-    btn.style.cssText = 'position:fixed;bottom:10px;left:10px;z-index:2147483648;'
-        + 'background:#2f7dff;color:#fff;border:0;border-radius:8px;'
-        + 'padding:12px 18px;font-weight:700;font-size:14px;cursor:pointer;'
-        + 'box-shadow:0 4px 20px rgba(0,0,0,.5);opacity:.95;';
-    btn.addEventListener('click', () => {
-        if (window.game && window.game.start) {
-            window.game.start('easy');
-            btn.style.display = 'none';
-        } else {
-            window.__snowDiag && window.__snowDiag();
-        }
-    });
-    document.body.appendChild(btn);
-    const check = setInterval(() => {
-        if (window.game && window.game.running) {
-            btn.style.display = 'none';
-            clearInterval(check);
-        }
-    }, 500);
-    setTimeout(() => clearInterval(check), 30000);
-})();
-
-// Auto-show diagnostics if boot takes >3 seconds (means something is stuck)
-setTimeout(() => {
-    if (window.game && !window.game.running && !document.getElementById('snow-diag')) {
-        if (window.__snowDiag) window.__snowDiag();
-    }
-}, 3000);
-
-// Hotkey + badge. The script is the last in <body>, so document.body exists.
-window.addEventListener('keydown', (e) => {
-    if (e.key === '`' || e.key === 'F3') { e.preventDefault(); window.__snowDiag(); }
-});
-(function addDiagBadge() {
-    if (!document.body) return;
-    const badge = document.createElement('button');
-    badge.textContent = '\u2699';
-    badge.title = 'Snow Ansher diagnostics (or press `)';
-    badge.style.cssText = 'position:fixed;bottom:10px;right:10px;z-index:2147483649;'
-        + 'width:34px;height:34px;border-radius:50%;border:1px solid #2b4a6b;'
-        + 'background:rgba(4,12,24,.9);color:#9fd0ff;cursor:pointer;font-size:16px;'
-        + 'line-height:1;opacity:.7;padding:0;';
-    badge.addEventListener('click', () => window.__snowDiag());
-    document.body.appendChild(badge);
-})();
 
 function boot() {
     if (window.game) return;            // already booted
