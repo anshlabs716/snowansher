@@ -13,7 +13,6 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge&logo=apache&logoColor=white)](https://www.apache.org/licenses/LICENSE-2.0)
 [![Platform](https://img.shields.io/badge/Platform-Web-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://github.com/anshlabs716/snowansher)
 
-
 </div>
 
 ---
@@ -272,7 +271,6 @@ Physics is handled by the in-house `js/GamePhysics.js` arcade physics engine:
 
 ---
 
-
 ## Browser Compatibility
 
 SnowAnsher is designed for modern browsers with WebGL support.
@@ -286,127 +284,6 @@ Recommended browsers include:
 - Brave
 
 Performance will depend on your hardware, browser, and selected graphics settings.
-
----
-
-## 📁 Project Files
-
-```text
-snowansher/
-├── .editorconfig
-├── .gitattributes
-├── .github/
-├── .gitignore
-├── .htmlvalidate.json
-├── .markdownlint-cli2.jsonc
-├── .prettierignore
-├── .prettierrc.json
-├── ASSET_CREDITS.md
-├── assets/
-│   ├── credits.md
-│   ├── licences/
-│   ├── README.md
-├── BROWSER_SUPPORT.md
-├── build-nuclear.py
-├── CHANGELOG.md
-├── CITATION.cff
-├── CODE_OF_CONDUCT.md
-├── CONTRIBUTING.md
-├── docs/
-├── favicon.svg
-├── index-nuclear.html
-├── index.html
-├── js/
-│   ├── AchievementsCatalog.js
-│   ├── AudioEngine.js
-│   ├── AudioSynthesizerBank.js
-│   ├── BiomesManager.js
-│   ├── CosmeticsCatalog.js
-│   ├── Customizer.js
-│   ├── DailyChallenges.js
-│   ├── DebugTools.js
-│   ├── GamePhysics.js
-│   ├── GameUI.js
-│   ├── GhostRacer.js
-│   ├── InteractiveShowroom.js
-│   ├── MultiplayerBotRiders.js
-│   ├── ObstaclesManager.js
-│   ├── ParticleEngine.js
-│   ├── PhysicsRaycasterEngine.js
-│   ├── PowerupSystem.js
-│   ├── ProceduralDecorations.js
-│   ├── ReplayTheater.js
-│   ├── RiderModel.js
-│   ├── Shaders.js
-│   ├── SledCollection.js
-│   ├── SlopeTrackPatterns.js
-│   ├── SoundtrackData.js
-│   ├── StuntAnimationLibrary.js
-│   ├── StuntComboEngine.js
-│   ├── TelemetryAndLeaderboard.js
-│   ├── TerrainBiomesMesher.js
-│   ├── TrickSystem.js
-│   ├── VisualPostProcessor.js
-│   ├── WeatherFX.js
-│   ├── WorldEnvironment.js
-├── LICENSE
-├── README.md
-├── script.js
-├── SECURITY.md
-├── style.css
-├── SUPPORT.md
-├── THIRD_PARTY_NOTICES.md
-├── three.r128.min.js
-```
-
-
-~~~~text
-snowansher/
-|
-├── js/
-│   ├── AchievementsCatalog.js     # Achievement definitions
-│   ├── AudioEngine.js             # Sound effects and audio
-│   ├── AudioSynthesizerBank.js    # Procedural sound synthesis
-│   ├── BiomesManager.js           # Biome and environment changes
-│   ├── CosmeticsCatalog.js        # Cosmetic item definitions
-│   ├── Customizer.js              # Rider and sled customisation
-│   ├── DailyChallenges.js         # Daily challenge system
-│   ├── GamePhysics.js             # Custom arcade physics engine
-│   ├── GameUI.js                  # Game interface and menus
-│   ├── GhostRacer.js              # Previous-run ghost system
-│   ├── InteractiveShowroom.js     # Showroom viewer
-│   ├── MultiplayerBotRiders.js    # AI-controlled rival riders
-│   ├── ObstaclesManager.js        # Obstacles and pickups
-│   ├── ParticleEngine.js          # Particle effects
-│   ├── PhysicsRaycasterEngine.js  # Terrain raycasting helpers
-│   ├── PowerupSystem.js           # Power-up effects and timers
-│   ├── ProceduralDecorations.js   # Procedural scenery
-│   ├── ReplayTheater.js           # Run replay playback
-│   ├── RiderModel.js              # 3D rider model and animation
-│   ├── Shaders.js                 # Custom visual shaders
-│   ├── SledCollection.js          # Sled definitions and models
-│   ├── SlopeTrackPatterns.js      # Track and obstacle patterns
-│   ├── SoundtrackData.js          # Music composition data
-│   ├── StuntAnimationLibrary.js   # Stunt animation definitions
-│   ├── StuntComboEngine.js        # Stunt combo tracking
-│   ├── TelemetryAndLeaderboard.js # Run statistics and leaderboard
-│   ├── TerrainBiomesMesher.js     # Special terrain geometry
-│   ├── TrickSystem.js             # Tricks and trick scoring
-│   ├── VisualPostProcessor.js     # Final rendering effects
-│   └── WeatherFX.js               # Weather and atmospheric effects
-│
-├── build-nuclear.py               # Builds the single-file version
-├── .gitignore
-├── LICENSE                        # Apache License 2.0
-├── README.md                      # Project documentation
-├── SECURITY.md                    # Security reporting policy
-├── favicon.svg                    # Browser tab icon
-├── index.html                     # Game entry point (modular version)
-├── index-nuclear.html             # Single-file build (no server needed)
-├── script.js                      # Game controller / orchestrator
-├── style.css                      # All game styling (incl. dark theme)
-└── three.r128.min.js              # Locally bundled Three.js library
-~~~~
 
 ---
 
