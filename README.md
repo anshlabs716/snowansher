@@ -289,7 +289,76 @@ Performance will depend on your hardware, browser, and selected graphics setting
 
 ---
 
-## Project Structure
+## 📁 Project Files
+
+```text
+snowansher/
+├── .editorconfig
+├── .gitattributes
+├── .github/
+├── .gitignore
+├── .htmlvalidate.json
+├── .markdownlint-cli2.jsonc
+├── .prettierignore
+├── .prettierrc.json
+├── ASSET_CREDITS.md
+├── assets/
+│   ├── credits.md
+│   ├── licences/
+│   ├── README.md
+├── BROWSER_SUPPORT.md
+├── build-nuclear.py
+├── CHANGELOG.md
+├── CITATION.cff
+├── CODE_OF_CONDUCT.md
+├── CONTRIBUTING.md
+├── docs/
+├── favicon.svg
+├── index-nuclear.html
+├── index.html
+├── js/
+│   ├── AchievementsCatalog.js
+│   ├── AudioEngine.js
+│   ├── AudioSynthesizerBank.js
+│   ├── BiomesManager.js
+│   ├── CosmeticsCatalog.js
+│   ├── Customizer.js
+│   ├── DailyChallenges.js
+│   ├── DebugTools.js
+│   ├── GamePhysics.js
+│   ├── GameUI.js
+│   ├── GhostRacer.js
+│   ├── InteractiveShowroom.js
+│   ├── MultiplayerBotRiders.js
+│   ├── ObstaclesManager.js
+│   ├── ParticleEngine.js
+│   ├── PhysicsRaycasterEngine.js
+│   ├── PowerupSystem.js
+│   ├── ProceduralDecorations.js
+│   ├── ReplayTheater.js
+│   ├── RiderModel.js
+│   ├── Shaders.js
+│   ├── SledCollection.js
+│   ├── SlopeTrackPatterns.js
+│   ├── SoundtrackData.js
+│   ├── StuntAnimationLibrary.js
+│   ├── StuntComboEngine.js
+│   ├── TelemetryAndLeaderboard.js
+│   ├── TerrainBiomesMesher.js
+│   ├── TrickSystem.js
+│   ├── VisualPostProcessor.js
+│   ├── WeatherFX.js
+│   ├── WorldEnvironment.js
+├── LICENSE
+├── README.md
+├── script.js
+├── SECURITY.md
+├── style.css
+├── SUPPORT.md
+├── THIRD_PARTY_NOTICES.md
+├── three.r128.min.js
+```
+
 
 ~~~~text
 snowansher/
