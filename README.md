@@ -503,6 +503,78 @@ This makes bugs much easier to reproduce.
 - Edit a lot of what Ansh has done
 - Verify things are going correctly
 
+## 📁 Project Files
+
+```text
+snowansher/
+├── .editorconfig
+├── .gitattributes
+├── .github/
+├── .gitignore
+├── .htmlvalidate.json
+├── .markdownlint-cli2.jsonc
+├── .prettierignore
+├── .prettierrc.json
+├── ASSET_CREDITS.md
+├── BROWSER_SUPPORT.md
+├── CHANGELOG.md
+├── CITATION.cff
+├── CODE_OF_CONDUCT.md
+├── CONTRIBUTING.md
+├── LICENSE
+├── README.md
+├── SECURITY.md
+├── SUPPORT.md
+├── THIRD_PARTY_NOTICES.md
+├── assets/
+│   ├── README.md
+│   ├── credits.md
+│   └── licences/
+├── build-nuclear.py
+├── docs/
+├── favicon.svg
+├── index-nuclear.html
+├── index.html
+├── js/
+│   ├── AchievementsCatalog.js
+│   ├── AudioEngine.js
+│   ├── AudioSynthesizerBank.js
+│   ├── BiomesManager.js
+│   ├── CosmeticsCatalog.js
+│   ├── Customizer.js
+│   ├── DailyChallenges.js
+│   ├── DebugTools.js
+│   ├── GamePhysics.js
+│   ├── GameUI.js
+│   ├── GhostRacer.js
+│   ├── InteractiveShowroom.js
+│   ├── MultiplayerBotRiders.js
+│   ├── ObstaclesManager.js
+│   ├── ParticleEngine.js
+│   ├── PhysicsRaycasterEngine.js
+│   ├── PowerupSystem.js
+│   ├── ProceduralDecorations.js
+│   ├── ReplayTheater.js
+│   ├── RiderModel.js
+│   ├── Shaders.js
+│   ├── SledCollection.js
+│   ├── SlopeTrackPatterns.js
+│   ├── SoundtrackData.js
+│   ├── StuntAnimationLibrary.js
+│   ├── StuntComboEngine.js
+│   ├── TelemetryAndLeaderboard.js
+│   ├── TerrainBiomesMesher.js
+│   ├── TrickSystem.js
+│   ├── VisualPostProcessor.js
+│   ├── WeatherFX.js
+│   └── WorldEnvironment.js
+├── script.js
+├── style.css
+└── three.r128.min.js
+```
+
+---
+
 ## License
 
 SnowAnsher is licensed under the **Apache License 2.0**.
