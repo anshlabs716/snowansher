@@ -230,7 +230,7 @@ Tricks are only triggered by their own stunt keys mid-air — jump alone never t
 ### Touch devices
 
 On-screen touch controls appear automatically on touch-capable devices:
-left/right steer zones and a jump button.
+left/right steer zones and a jump button not tested yet......
 
 ---
 
